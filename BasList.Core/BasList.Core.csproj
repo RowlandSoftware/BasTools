@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="ArmMnemonics.txt" />
+    <None Remove="TokenTable.ods" />
+    <None Remove="TokenTable.txt" />
+    <None Remove="VTokenTable.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="ArmMnemonics.txt"></EmbeddedResource>
+    <EmbeddedResource Include="TokenTable.ods"></EmbeddedResource>
+    <EmbeddedResource Include="TokenTable.txt"></EmbeddedResource>
+    <EmbeddedResource Include="VTokenTable.txt"></EmbeddedResource>
+  </ItemGroup>
+
+</Project>

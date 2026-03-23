@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="BAnalysis.CLI/BAnalysis.CLI.csproj" />
+  <Project Path="BasList.CLI/BasList.CLI.csproj" />
+  <Project Path="BasList.Core/BasList.Core.csproj" />
+</Solution>
