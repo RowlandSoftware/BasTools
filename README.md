@@ -1,4 +1,4 @@
-The tools will eventually include BBC Basic analysis and editing. The most complete at the moment is BasList, a command line utility to list tokenised BASIC programs from the BBC Micro, RiscOS machines and R.T. Russell's Z80 programs. Cross-platform (Windows, Max, Linux).
+The tools will eventually include BBC Basic analysis and editing. The most complete at the moment is BasList, a command line utility to list tokenised BASIC programs from the BBC Micro, RiscOS machines and R.T. Russell's Z80 programs. Cross-platform (Windows, Mac, Linux).
 
 # BasList vs 1.1.0
 
