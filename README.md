@@ -1,4 +1,7 @@
-The tools will eventually include BBC Basic analysis and editing. The most complete at the moment is BasList, a command line utility to list tokenised BASIC programs from the BBC Micro, RiscOS machines and R.T. Russell's Z80 programs. Cross-platform (Windows, Mac, Linux).
+BasTools is designed to modernise and preserve BBC BASIC development workflows. 
+It provides accurate pretty‑printing, token analysis, and structural inspection for 6502 and ARM and R.T. Russell BBC BASIC sources, using a deterministic parsing engine shared across all tools.
+
+The tools will eventually include full analysis and editing. The most complete at the moment is BasList, a command line utility to list tokenised BASIC programs from the BBC Micro, RiscOS machines and R.T. Russell's Z80 programs, with optional comprehensive pretty-printing. Cross-platform (Windows, Mac, Linux).
 
 # BasList vs 1.1.0
 
@@ -12,50 +15,6 @@ BasList [/file=]filename [/V] [/addnumbers] [/auto] [/align] [/indent] [/nonumbe
 
 BasList /? or /h - help
 
-
-  /V	Allow BASIC V keywords. See Compatibility below.
-  
-  /addnumbers	Show line numbers (starting at 10, in tens) when none in the program (Z80 only)
-  
-  /align	Right-align line numbers
-	
-  Without /align (line numbers displayed with one following space):
-  
->		10 REM An example program
->
->		100 MODE 7
->
->		1000 DEFPROCmain
-	
-With /align (line numbers ranged right and one following space):
-		   
->       10 REM An example program
->
->      100 MODE 7
->
->     1000 DEFPROCmain
-  
-  /indent	Indent listing of loops (unless /nospaces specified).
-	
-  The equivalent of LISTO7 in BASIC IV
-  
-  /nonumbers	Omits line numbers
-  
-  /nospaces	Omits spaces after line numbers. (Also cancels /indent.)
-  
->		10REM An example program
->    
->		100MODE 7
->    
->		1000DEFPROCmain
-  
-  /bare	Omits additional messages
-  
-  /prettyprint	Adds additional spaces and syntax colouring
-  
-  /dark	Dark mode - black background (default)
-  
-  /light	Light mode - white background
 
 ## EXAMPLES
 
@@ -76,3 +35,26 @@ With /align (line numbers ranged right and one following space):
 >BasList Program LIST FNadd	- Displays FNadd definition
 >
 >	Note that there may be multiple PROCs and FNs specified, e.g. LIST PROCinp FNadd
+
+# Features
+
+- Accurate tokenisation for BBC BASIC (6502 and ARM)
+
+- Deterministic pretty‑printing
+
+- Case‑insensitive assembly handling
+
+- Shared parsing engine across all tools
+
+- Clean multi‑project .NET solution
+
+- Installer for Windows (Inno Setup)
+
+# Contributing
+
+Contributions, bug reports, and suggestions are welcome. 
+Please open an issue, submit a pull request or contact through the website.
+
+# Website
+
+https://www.rowlandsoftware.com/BBC/BasList/help.php?id=998
