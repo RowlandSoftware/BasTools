@@ -674,8 +674,7 @@
 
         static void help()
         {
-            string vs = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion; //string vs = Assembly.Application.FileVersion; // requires ref to System.Windows.Forms
-            if (vs == null || vs == string.Empty) vs = "1.1.0";
+            string vs = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion ?? "1.1.0"; // ?? is null-coalescing operator
 
             Console.WriteLine($"\nBasList vs {vs} (C) Andrew Rowland 2022-26");
             Console.WriteLine("\nLists a BBC BASIC program file\n");
