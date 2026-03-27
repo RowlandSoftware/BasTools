@@ -38,12 +38,11 @@
         public int Ptr;
         public bool Z80;
         public int LineCount;
-        
+        public bool InAsm;
+
         public List<string> DirectiveParams = new();
 
         public int DataSize;
-        public int Bound; // to go
-        public bool InAsm;
         public ParserState()
         {
             Data = Array.Empty<byte>();
@@ -51,19 +50,8 @@
             Ptr = 0;
             LineCount = 0;
             DataSize = 0;
-            Bound = 0;
             InAsm = false;
-        }
-        public ParserState(ParserState other)
-        {
-            Data = other.Data;                     // shared buffer (correct for lookahead)
-            Ptr = other.Ptr;
-            Z80 = other.Z80;
-            LineCount = other.LineCount;
-            DataSize = other.DataSize;
-            Bound = other.Bound; // to go
-            InAsm = other.InAsm;
-        }
+        }       
     }
     //***************** SemanticTags *****************
     public static class SemanticTags
@@ -72,7 +60,7 @@
         public static string Keyword => "{=keyword}";
         public static string IndentingKeyword => "{=indentingkeyword}";
         public static string OutdentingKeyword => "{=outdentingkeyword}";
-        public static string StrongKeyword => "{=strong_keyword}";
+        public static string InOutKeyword => "{=inout_keyword}";
         public static string StringLiteral => "{=string}";
         public static string Variable => "{=var}";
         public static string RemText => "{=remtext}";
@@ -140,7 +128,7 @@
                 "SP","LR","PC"
             };
             readTokenTable(token, "BasTools.Core.TokenTable.txt");
-            readTokenTable(Vtoken,"BasTools.Core.VTokenTable.txt");
+            readTokenTable(Vtoken, "BasTools.Core.VTokenTable.txt");
         }
 
         public bool Process(string fn, ref bool flgZ80, bool BasicV, Listing listing)
@@ -178,10 +166,17 @@
                 processLineBody(State, thisline.TokenisedLine, thisline, BasicV);
 
                 listing.ProgramLines.Add(thisline);
-                Console.WriteLine($"{progline.linenumber}" + ' ' + thisline.PlainDetokenisedLine);
+
+                /*Console.WriteLine($"{progline.linenumber}" + ' ' + thisline.PlainDetokenisedLine);
                 Console.WriteLine($"{progline.linenumber}" + ' ' + thisline.NoSpacesLine);
                 Console.WriteLine($"{progline.linenumber}" + ' ' + thisline.TaggedLine);
-                Console.WriteLine();
+                string untaggedline = Regex.Replace(thisline.TaggedLine, @"\{.*?\}", "");
+                if (untaggedline != thisline.PlainDetokenisedLine)
+                {
+                    Console.WriteLine("Mismatch");
+                    Console.WriteLine(untaggedline);
+                }
+                Console.WriteLine();*/
             }
 
             return true;
@@ -210,7 +205,7 @@
             {
                 bool endOfProg = false;
                 if (!flgZ80 && ((BasicV && data[ptr] == 255) || data[ptr] > 127)) endOfProg = true; // End of program marker (Acorn)
-                if (flgZ80 && data[ptr+1] == 255 && data[ptr + 2] == 255)         endOfProg = true; // End of program marker (Z80)
+                if (flgZ80 && data[ptr + 1] == 255 && data[ptr + 2] == 255) endOfProg = true; // End of program marker (Z80)
                 if (endOfProg) break;
 
                 if (ptr + 3 > data.Length)
@@ -230,7 +225,7 @@
                 }
 
                 LineCount++;
-                if (data[ptr + length-1] != 13)
+                if (data[ptr + length - 1] != 13)
                 {
                     string ordinal = "th";
                     if (LineCount.ToString().EndsWith('1') && LineCount != 11) ordinal = "st";
@@ -242,7 +237,7 @@
                         $" after {LineCount}{ordinal} line of program");
                 }
 
-                var content = data.AsSpan(ptr + 3, length-4); // lose line number & ll bytes and final CR
+                var content = data.AsSpan(ptr + 3, length - 4); // lose line number & ll bytes and final CR
                 byte[] slice = content.ToArray();
 
                 ptr += length;
@@ -266,21 +261,18 @@
             bool asmComment = false;
             int prevbyte = 0;
 
-            for (int i = 0; i <= tokenisedLine.Length-1; i++)
+            for (int i = 0; i <= tokenisedLine.Length - 1; i++)
             {
                 byte curbyte = tokenisedLine[i];
                 char curchar = (char)curbyte;
-                char nxtchar = (i == tokenisedLine.Length-1) ? '\0' : (char)tokenisedLine[i + 1];
+                char nxtchar = (i == tokenisedLine.Length - 1) ? '\0' : (char)tokenisedLine[i + 1];
 
-                if (curbyte == '*' && startOfStatement) // star command
-                {
-                    taggedline += SemanticTags.StarCommand;
-                    rem = true;                         // rem ensures no further processing
-                }
+                // 1. Stuff we do BEFORE adding curchar to the listings
 
+                // 1a) Setting flags
                 if (startOfStatement && curbyte == '[')
                     State.InAsm = true;
-
+                
                 if (startOfStatement && curbyte == ']')
                     State.InAsm = false;
 
@@ -292,7 +284,6 @@
                         taggedline += SemanticTags.StringLiteral + '"';
                     else
                         taggedline += '"' + SemanticTags.Reset;
-
                     plainline += '"';
                     linenospaces += '"';
 
@@ -300,186 +291,186 @@
                     continue;
                 }
 
-                if (State.InAsm)
+                if (curbyte == '*' && startOfStatement) // star command
                 {
-                    string mnemonic = readMnemonic(tokenisedLine, i);
-                    if (mnemonic != string.Empty)
+                    taggedline += SemanticTags.StarCommand;
+                    rem = true;                         // rem ensures no further processing
+                    startOfStatement = false;
+                }
+               
+                // 1b) Wrapping semantic tokens
+
+                // Mathematical operators
+                if (curchar is '+' or '-' or '/' or '*' or '=' or '<' or '>' or '^' && !rem && !quote) // not good with unary minus
+                {
+                    char p = (char)prevbyte;
+                    if (!IsExponentSign(p, curchar))       // trying to deal with e.g. 1E-5
                     {
-                        bool isMnemonic;
-                        if (BasicV)
-                        {
-                            isMnemonic = ArmMnemonics.Contains(mnemonic);
-                        }
-                        else
-                        {
-                            isMnemonic = Mnemonics6502.Contains(mnemonic) || Regex.IsMatch(mnemonic, "EQU[BDSW]", RegexOptions.IgnoreCase);
-                        }
+                        taggedline += SemanticTags.Operator;
 
-                        if (isMnemonic)
+                        while (i < tokenisedLine.Length - 1 && curchar is '+' or '-' or '/' or '*' or '=' or '<' or '>' or '^')
                         {
-                            taggedline += SemanticTags.Mnemonic + mnemonic.ToUpper() + SemanticTags.Reset;
-                            plainline += mnemonic;
-                            linenospaces += mnemonic;
+                            addtoall(curchar, ref plainline, ref linenospaces, ref taggedline);
+                            curchar = (char)State.Data[++i];
+                        }
+                        taggedline += SemanticTags.Reset;
+                        i--;
+                        continue;
+                    }
+                }
 
-                            i += mnemonic.Length - 1;
-                            curbyte = tokenisedLine[i];
-                            curchar = (char)curbyte;
-                            nxtchar = (i == tokenisedLine.Length) ? '\0' : (char)tokenisedLine[i + 1];
-                            prevbyte = (byte)plainline[^1];
+                #region Assembler
+                //if (State.InAsm) Console.WriteLine("In asm");
+                if (State.InAsm && !quote)
+                {
+                    if (!asmComment && curchar is '\\' or ';' or '\'')
+                    {
+                        asmComment = true;
+                        rem = true;
+                        startOfStatement = false;
+                        taggedline += SemanticTags.AssemblerComment;
+                    }
+                    else if (asmComment && curchar == ':')
+                    {
+                        asmComment = false;
+                        startOfStatement = true;
+                        taggedline += SemanticTags.Reset;
+                        // fall through so ':' still acts as statement separator
+                    }
+
+                    /*if (asmComment)
+                    {
+                        // In assembler comment: just copy the character and skip all other logic
+                        plainline += curchar;
+                        linenospaces += curchar;
+                        taggedline += curchar;
+                        prevbyte = curbyte;
+                        continue;
+                    }*/
+
+                    if (!asmComment)
+                    {
+                        string mnemonic = readMnemonic(tokenisedLine, i);
+                        if (mnemonic != string.Empty)
+                        {
+                            bool isMnemonic;
+                            if (BasicV)
+                            {
+                                isMnemonic = ArmMnemonics.Contains(mnemonic);
+                            }
+                            else
+                            {
+                                isMnemonic = Mnemonics6502.Contains(mnemonic) || Regex.IsMatch(mnemonic, "EQU[BDSW]", RegexOptions.IgnoreCase);
+                            }
+
+                            if (isMnemonic)
+                            {
+                                taggedline += SemanticTags.Mnemonic + mnemonic.ToUpper() + SemanticTags.Reset;
+                                plainline += mnemonic;
+                                linenospaces += mnemonic;
+
+                                i += mnemonic.Length - 1;
+                                curbyte = tokenisedLine[i];
+                                curchar = (char)curbyte;
+                                nxtchar = (i == tokenisedLine.Length - 1) ? '\0' : (char)tokenisedLine[i + 1];
+                                prevbyte = (byte)plainline[^1];
+                                continue;
+                            }
+                        }
+                    }
+                    if (BasicV)
+                    {
+                        // ARM: Detect tokens like R0, R12, SP, LR, PC
+                        char uchar = char.ToUpperInvariant(curchar);
+                        char unext = char.ToUpperInvariant(nxtchar);
+                        if (uchar is 'R' && char.IsDigit(nxtchar) || (curchar is 'S' or 'L' or 'P' && unext is 'P' or 'R' or 'C'))
+                        {
+                            // R0–R15, SP, LR, PC
+                            string reg = readRegister(tokenisedLine, i);   // similar to readMnemonic
+                            if (ArmRegisters.Contains(reg))
+                            {
+                                taggedline += SemanticTags.Register + reg.ToUpper() + SemanticTags.Reset;
+                                plainline += reg;
+                                linenospaces += reg;
+
+                                i += reg.Length - 1;   // advance past the whole register
+                                curbyte = tokenisedLine[i];
+                                curchar = (char)curbyte;
+                                nxtchar = (i == tokenisedLine.Length - 1) ? '\0' : (char)tokenisedLine[i + 1];
+                                prevbyte = (byte)plainline[^1];
+
+                                continue;
+                            }
+                        }
+                    }
+                    else // 6502 registers
+                    { // 6502: deal with ROL A, STA (&70),Y, LDA &80,X
+                        bool isIndexRegister = (curchar is 'X' or 'x' or 'Y' or 'y') && prevbyte == ',';   // or previous non-space char if you want to be stricter
+                        bool isAccumulator = char.ToUpperInvariant(curchar) == 'A' && !char.IsAsciiLetterOrDigit((char)prevbyte);
+                        bool isRegister = (isIndexRegister || isAccumulator);
+
+                        if (isRegister)
+                        {
+                            curchar = char.ToUpperInvariant(curchar);
+                            taggedline += SemanticTags.Register + char.ToUpper(curchar) + SemanticTags.Reset;
+                            plainline += curchar;
+                            linenospaces += curchar;
+
                             continue;
                         }
                     }
-                }
+                } //end of assembler section
+                #endregion
 
-                if ((curbyte < 127 && curbyte > 31) || rem || quote) // copy these bytes verbatim
+                // Variables
+                if (!flgVar && !rem && (char.IsAsciiLetter(curchar) || curbyte == '_') && !flgFnOrProc && !quote && !flgHex) // variables may start with letter or underline
+                {
+                    flgVar = true;
+                    taggedline += SemanticTags.Variable;
+                }
+                
+                // *** 2. Printable characters - NOW we add to listings ***
+                if ((curbyte < 127 && curbyte > 31) || rem || quote) // Anything not a BASIC token
                 {
                     if (curbyte > 32 || rem || quote)
                         linenospaces += curchar;
-                    if (rem)
+                    plainline += curchar;
+                    taggedline += curchar;
+                    
+                    // 3. Things we do AFTER adding the character to the listings
+
+                    if (flgFnOrProc && !char.IsAsciiLetterOrDigit(curchar) && curbyte != '_')
                     {
-                        plainline += curchar;
-                        taggedline += curchar;
+                        flgFnOrProc = false;
+                        taggedline += SemanticTags.Reset;
                     }
-                    else
+                    if (flgVar && !char.IsAsciiLetterOrDigit(curchar) && curchar is not '%' and not '$' and not '_')
                     {
-                        if (curbyte != 34)
-                        {
-                            // things that aren't quotes "
-                            if (State.InAsm && !quote)
-                            {
-                                if (!asmComment && curchar is '\\' or ';' or '\'')
-                                {
-                                    asmComment = true;
-                                    taggedline += SemanticTags.AssemblerComment;
-                                }
-                                else if (asmComment && curchar == ':')
-                                {
-                                    asmComment = false;
-                                    taggedline += SemanticTags.Reset;
-                                    // fall through so ':' still acts as statement separator
-                                }
-
-                                if (asmComment)
-                                {
-                                    // In assembler comment: just copy the character and skip all other logic
-                                    plainline += curchar;
-                                    linenospaces += curchar;
-                                    taggedline += curchar;
-                                    prevbyte = curbyte;
-                                    continue;
-                                }
-                            }
-
-                            if (State.InAsm && BasicV)
-                            {
-                                // ARM: Detect tokens like R0, R12, SP, LR, PC
-                                char uchar = char.ToUpperInvariant(curchar);
-                                char unext = char.ToUpperInvariant(nxtchar);
-                                if (uchar is 'R' && char.IsDigit(nxtchar) || (curchar is 'S' or 'L' or 'P' && unext is 'P' or 'R' or 'C'))
-                                {
-                                    // R0–R15, SP, LR, PC
-                                    string reg = readRegister(tokenisedLine, i);   // similar to readMnemonic
-                                    if (ArmRegisters.Contains(reg))
-                                    {
-                                        taggedline += SemanticTags.Register + reg.ToUpper() + SemanticTags.Reset;
-                                        plainline += reg;
-                                        linenospaces += reg;
-
-                                        i += reg.Length - 1;   // advance past the whole register
-                                        curbyte = tokenisedLine[i];
-                                        curchar = (char)curbyte;
-                                        nxtchar = (i == tokenisedLine.Length) ? '\0' : (char)tokenisedLine[i + 1];
-                                        prevbyte = (byte)plainline[^1];
-                                        continue;
-                                    }
-                                }
-                            }
-
-                            // 6502: deal with ROL A, STA (&70),Y, LDA &80,X
-                            bool isIndexRegister = State.InAsm && (curchar is 'X' or 'x' or 'Y' or 'y') && prevbyte == ',';   // or previous non-space char if you want to be stricter
-                            bool isAccumulator = State.InAsm && char.ToUpperInvariant(curchar) == 'A' && !char.IsAsciiLetterOrDigit((char)prevbyte);
-                            bool isRegister = !BasicV && (isIndexRegister || isAccumulator);
-                            if (isRegister) curchar = char.ToUpperInvariant(curchar);
-
-                            if (flgFnOrProc && !char.IsAsciiLetterOrDigit(curchar) && curbyte != '_')
-                            {
-                                flgFnOrProc = false;
-                                taggedline += SemanticTags.Reset;
-                            }
-                            else
-                            {
-                                if (flgVar && !char.IsAsciiLetterOrDigit(curchar) && curchar is not '%' and not '$' and not '_')
-                                {
-                                    flgVar = false;
-                                    taggedline += SemanticTags.Reset;
-                                }
-                            }
-
-                            if (curchar is ':' or ']' && !rem && !quote)
-                                startOfStatement = true;  // a colon outside of quotes or REM is new statement; so is assembler delimiter
-                            else if (curchar != ' ')
-                                startOfStatement = false; // anything else isn't
-
-                            if (flgHex && !char.IsAsciiHexDigit(curchar)) { flgHex = false; }
-
-                            if (curbyte == '&') { flgHex = true; }
-
-                            // Mathematical operators
-                            if (curchar is '+' or '-' or '/' or '*' or '=' or '<' or '>' or '^' && !rem && !quote) // not good with unary minus
-                            {
-                                char p = (char)prevbyte;
-                                if (IsExponentSign(p, curchar)) // trying to deal with e.g. 1E-5
-                                {
-                                    taggedline += curchar;
-                                    continue;
-                                }
-
-                                if (p is not '+' and not '-' and not '/' and not '*' and not '=' and not '<' and not '>' and not '^')
-                                {
-                                    taggedline += SemanticTags.Operator;
-                                }
-                                taggedline += curchar;
-                                plainline += curchar;
-                                //linenospaces += curchar; // Already added
-                                if (nxtchar is not '+' and not '-' and not '/' and not '*' and not '=' and not '<' and not '>')
-                                {
-                                    taggedline += SemanticTags.Reset;
-                                }
-                            }
-                            else
-                            {
-                                if (!flgVar && (char.IsAsciiLetter(curchar) || curbyte == '_') && !flgFnOrProc && !quote && !flgHex) // variables may start with letter or underline
-                                {
-                                    if (!isRegister)
-                                    {
-                                        flgVar = true;
-                                        taggedline += SemanticTags.Variable;
-                                    }
-                                    else
-                                    {
-                                        // 6502 register A, X, Y
-                                        taggedline += SemanticTags.Register + curchar + SemanticTags.Reset;
-                                        continue; // only one char, so skip to next
-                                    }
-                                }
-
-                                plainline += curchar;
-                                taggedline += curchar;
-                            }
-                        }
+                        flgVar = false;
+                        taggedline += SemanticTags.Reset;
                     }
+
+                    if (curchar is ':' or ']' && !rem && !quote)
+                        startOfStatement = true;  // a colon outside of quotes or REM is new statement; so is assembler delimiter
+                    else if (curchar != ' ')
+                        startOfStatement = false; // anything else isn't
+
+                    if (flgHex && !char.IsAsciiHexDigit(curchar)) { flgHex = false; }
+
+                    if (curbyte == '&') { flgHex = true; }                    
                 }
-                else // now deal with tokens
+                else
+                // 4. Now deal with tokens
                 {
                     string keyword = getKeywordOrLineNumber(tokenisedLine, curbyte, ref i, ref nxtchar, BasicV, State);
 
                     if (keyword == "THEN") startOfStatement = true; // THEN signals new statement
-                    if (keyword == "FN" || keyword == "PROC") flgFnOrProc = true;                   
+                    if (keyword == "FN" || keyword == "PROC") flgFnOrProc = true;
 
                     if (curbyte == 0x8D)
                         taggedline += SemanticTags.LineNumber + keyword + SemanticTags.Reset; // a GOTO linenumber
                     else
-                    { 
+                    {
                         string tag = SemanticTags.Keyword;
                         switch (keyword)
                         {
@@ -500,7 +491,7 @@
                             case "THEN":
                             case "ELSE":
                             case "OTHERWISE":
-                                tag = SemanticTags.StrongKeyword;
+                                tag = SemanticTags.InOutKeyword;
                                 break;
                         }
                         taggedline += tag + keyword + SemanticTags.Reset;
@@ -545,7 +536,7 @@
                     if (curbyte > 197 && curbyte < 201)
                     {
                         int token = curbyte * 256 + tokenisedLine[++ptr];
-                        nxtchar = (ptr == tokenisedLine.Length) ? '\0' : (char)tokenisedLine[ptr+1];
+                        nxtchar = (ptr == tokenisedLine.Length - 1) ? '\0' : (char)tokenisedLine[ptr+1];
                         return Vtoken[token];
                     }
                 }
@@ -586,6 +577,15 @@
                 throw new BasToolsException(e.Message);
             }
         }
+        static void addtoall(char curchar,
+            ref string plainline,
+            ref string linenospaces,
+            ref string taggedline)
+        {
+            plainline += curchar;
+            linenospaces += curchar;
+            taggedline += curchar;
+        }
         static string readMnemonic(byte[] tokenisedLine, int ptr)
         {
             string result = string.Empty;
@@ -599,7 +599,7 @@
         static string readRegister(byte[] tokenisedLine, int index)
         {
             int i = index;
-            while (i < tokenisedLine.Length && char.IsAsciiLetterOrDigit((char)tokenisedLine[i]))
+            while (i < tokenisedLine.Length-1 && char.IsAsciiLetterOrDigit((char)tokenisedLine[i]))
                 i++;
 
             return Encoding.ASCII.GetString(tokenisedLine, index, i - index);
@@ -608,7 +608,6 @@
         {
             return (curr == '+' || curr == '-') && char.ToUpper(prev) == 'E';
         }
-
         static HashSet<string> LoadMnemonicTable(string resourceName)
         {
             string fileContent = GetEmbeddedResourceContent(resourceName);
@@ -623,8 +622,7 @@
             }
 
             return set;
-        }
-       
+        }       
         private void readTokenTable(Dictionary<int, string> toktable, string filename)
         {
             string table = GetEmbeddedResourceContent(filename);
@@ -670,43 +668,6 @@
             var asm = Assembly.GetExecutingAssembly();
             foreach (var name in asm.GetManifestResourceNames())
                 Console.WriteLine(name);
-        }
-
-        static void help()
-        {
-            string vs = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion ?? "1.1.0"; // ?? is null-coalescing operator
-
-            Console.WriteLine($"\nBasList vs {vs} (C) Andrew Rowland 2022-26");
-            Console.WriteLine("\nLists a BBC BASIC program file\n");
-            Console.WriteLine("BasList [/file=]filename ([[from line] [to line]) | [line,line]]) [Options] ([IF ...] | [IFX ...] | [LIST ...])");
-            Console.WriteLine("BasList [/file=]filename [/V] [/addnumbers] [/align] [/indent] [/nonumbers] [/nospaces] [/bare] [/pause] [/prettyprint]");
-            Console.WriteLine("BasList [/file=]filename [/mode=(dark | light | none)]");
-            Console.WriteLine("BasList /? - help\n");
-            Console.WriteLine("  /file=       Filename to follow without spaces. Quote if contains spaces.");
-            Console.WriteLine("               '/file=' may be omitted if filename is first item");
-            Console.WriteLine("  /V           Allow BASIC V keywords");
-            Console.WriteLine("  /addnumbers  Supply missing line numbers (Z80 only)");
-            Console.WriteLine("  /align       Right-align line numbers");
-            Console.WriteLine("  /indent      Indent listing of loops (unless Nospaces specified)");
-            Console.WriteLine("  /nonumbers   Omits line numbers");
-            Console.WriteLine("  /nospaces    Omits spaces and indent after line numbers");
-            Console.WriteLine("  /bare        Omits additional messages (cancels pause)");
-            Console.WriteLine("  /pause       Pause at bottom of each screenful");
-            Console.WriteLine("  /prettyprint Adds spaces and syntax colouring");
-            Console.WriteLine("  /dark        Dark mode – black background (default)");
-            Console.WriteLine("  /light       Light mode – white background");
-            Console.WriteLine("\nE.g.");
-            Console.WriteLine("  BasList program ,200        - List up to line 200");
-            Console.WriteLine("  BasList program 1000,       - List from line 1000");
-            Console.WriteLine("  BasList program 200,1000    - List from line 200 to 1000");
-            Console.WriteLine("  BasList program 200 1000    - List from line 200 to 1000");
-            Console.WriteLine("  BasList program IF PRINTTAB - List only lines containing PRINTTAB or PRINT TAB, case insensitive");
-            Console.WriteLine("  BasList program IFX         - IF, but respecting spaces and case");
-            Console.WriteLine("  BasList program LIST FNinp  - List named function/procedure");
-            Console.WriteLine("\nOptions may be specified in any order, may start with / or - and can be abbreviated.");
-            Console.WriteLine("Parameters containing spaces must be enclosed by double quotes.");
-            Console.WriteLine("Any IF or IFX clause must be at the end. Multiple matches may be entered\nand BasList will list any line containing at least one of them.");
-            Console.WriteLine("\nFor further help, see ReadMe.");
         }
     }
 }

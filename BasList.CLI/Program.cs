@@ -78,7 +78,7 @@
             [SemanticTags.Keyword] = ConsoleColor.Blue,
             [SemanticTags.IndentingKeyword] = ConsoleColor.Blue,
             [SemanticTags.OutdentingKeyword] = ConsoleColor.Blue,
-            [SemanticTags.StrongKeyword] = ConsoleColor.Blue,
+            [SemanticTags.InOutKeyword] = ConsoleColor.Blue,
             [SemanticTags.StringLiteral] = ConsoleColor.Green,
             [SemanticTags.Variable] = ConsoleColor.Magenta,
             [SemanticTags.RemText] = ConsoleColor.Yellow,
@@ -285,8 +285,8 @@
             string format = flgZ80 ? "Z80" : "Acorn";
             if (!switches.Bare && !switches.FlgList) Console.WriteLine($"\nListing {filename} from line {switches.FromLine} to {switches.ToLine} ({format} format)\n");
 
-            string line;
-            string linenospaces;
+            //string line;
+            //string linenospaces;
             string linenumber;
             string sIndent = string.Empty;
             ListerState State = new();      // this sets initial conditions
@@ -448,33 +448,33 @@
         }
         static void help()
         {
-            string vs = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion; //"1.0.4";
-                                                                                                              //string vs = Assembly.Application.FileVersion; // requires ref to System.Windows.Forms
+            string vs = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion ?? "1.1.0"; // ?? = null coalescing operator. //requires ref to System.Windows.Forms
+
             Console.WriteLine($"\nBasList vs {vs} (C) Andrew Rowland 2022-26");
             Console.WriteLine("\nLists a BBC BASIC program file\n");
             Console.WriteLine("BasList [/file=]filename ([[from line] [to line]) | [line,line]]) [Options] ([IF ...] | [IFX ...] | [LIST ...])");
             //Console.WriteLine("BasList [/file=]filename [/V] [/addnumbers] [/align] [/indent] [/nonumbers] [/nospaces] [/bare] [/pause] [/prettyprint]");
             //Console.WriteLine("BasList [/file=]filename [/mode=(dark | light | none)]");
-            Console.WriteLine("BasList /?     Display help\n");
+            Console.WriteLine("BasList [/? | -h]  Display help\n");
             Console.WriteLine("  [/file=]filename");
-            Console.WriteLine("               Specifies filename of tokenised BASIC program.");
-            Console.WriteLine("               Filename to follow '=' without spaces. Quote if contains spaces.");
-            Console.WriteLine("               '/file=' may be omitted if filename is first item");
+            Console.WriteLine("                   Specifies filename of tokenised BASIC program.");
+            Console.WriteLine("                   Filename to follow '=' without spaces. Quote if contains spaces.");
+            Console.WriteLine("                   '/file=' may be omitted if filename is first item");
 
             Console.WriteLine("\nOPTIONS");
             Console.WriteLine("-------");
-            Console.WriteLine("  /V           Allow BASIC V keywords");
-            Console.WriteLine("  /addnumbers  Supply missing line numbers (Z80 only)");
-            Console.WriteLine("  /align       Right-align line numbers");
-            Console.WriteLine("  /indent      Indent listing of loops (unless Nospaces specified)");
-            Console.WriteLine("  /nonumbers   Omits line numbers");
-            Console.WriteLine("  /nospaces    Omits spaces and indent after line numbers");
-            Console.WriteLine("  /bare        Omits additional messages (cancels pause)");
-            Console.WriteLine("  /breakapart  Prints each statement on its own line");
-            Console.WriteLine("  /pause       Pause at bottom of each screenful");
-            Console.WriteLine("  /prettyprint Adds spaces and syntax colouring");
-            Console.WriteLine("  /dark        Dark mode – black background (default)");
-            Console.WriteLine("  /light       Light mode – white background");
+            Console.WriteLine("  /V               Allow BASIC V keywords");
+            Console.WriteLine("  /addnumbers      Supply missing line numbers (Z80 only)");
+            Console.WriteLine("  /align           Right-align line numbers");
+            Console.WriteLine("  /indent          Indent listing of loops (unless Nospaces specified)");
+            Console.WriteLine("  /nonumbers       Omits line numbers");
+            Console.WriteLine("  /nospaces        Omits spaces and indent after line numbers");
+            Console.WriteLine("  /bare            Omits additional messages (cancels pause)");
+            Console.WriteLine("  /breakapart      Prints each statement on its own line");
+            Console.WriteLine("  /pause           Pause at bottom of each screenful");
+            Console.WriteLine("  /prettyprint     Adds spaces and syntax colouring");
+            Console.WriteLine("  /dark            Dark mode – black background (default)");
+            Console.WriteLine("  /light           Light mode – white background");
             Console.WriteLine("\nE.g.");
             Console.WriteLine("  BasList program ,200        - List up to line 200");
             Console.WriteLine("  BasList program 1000,       - List from line 1000");
