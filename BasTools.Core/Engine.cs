@@ -11,7 +11,6 @@
     using System.IO;
     using System.Linq;
     using System.Numerics;
-    //using System.Windows.Forms;
     using System.Reflection;
     using System.Reflection.Emit;
     using System.Reflection.PortableExecutable;
@@ -63,11 +62,13 @@
         public static string InOutKeyword => "{=inout_keyword}";
         public static string StringLiteral => "{=string}";
         public static string Variable => "{=var}";
+        public static string ResidentInteger => "{=resint}";
         public static string RemText => "{=remtext}";
         public static string AssemblerComment => "{=assemcomment}";
         public static string StarCommand => "{=starcommand}";
         public static string EmbeddedData => "{=embeddeddata}";
-        public static string ProcFunction => "{=proc_fn}";
+        public static string Proc => "{=proc}";
+        public static string Function => "{=fn}";
         public static string Label => "{=label}";
         public static string Register => "{=register}";
         public static string Mnemonic => "{=mnemonic}";
@@ -77,8 +78,7 @@
     }
 
     public record Listing(
-    List<ProcessedLine> ProgramLines,
-    List<Token> Tokens
+    List<ProcessedLine> ProgramLines //, List<Token> Tokens
     );
 
     public record class ProcessedLine
@@ -133,7 +133,6 @@
 
         public bool Process(string fn, ref bool flgZ80, bool BasicV, Listing listing)
         {
-            listing = new(new List<ProcessedLine>(), new List<Token>());
             ParserState State = new();
             bool result = LoadFile(fn, State);
             if (!result) return false;
@@ -166,7 +165,7 @@
                 processLineBody(State, thisline.TokenisedLine, thisline, BasicV);
 
                 listing.ProgramLines.Add(thisline);
-
+#if DEBUG
                 /*Console.WriteLine($"{progline.linenumber}" + ' ' + thisline.PlainDetokenisedLine);
                 Console.WriteLine($"{progline.linenumber}" + ' ' + thisline.NoSpacesLine);
                 Console.WriteLine($"{progline.linenumber}" + ' ' + thisline.TaggedLine);
@@ -177,9 +176,11 @@
                     Console.WriteLine(untaggedline);
                 }
                 Console.WriteLine();*/
+#endif
             }
 
             return true;
+
         } // End Process()
         private bool LoadFile(string fn, ParserState State)
         {
@@ -250,7 +251,6 @@
             string plainline = string.Empty;
             string linenospaces = string.Empty;
             string taggedline = string.Empty;
-            //string prettyLine = string.Empty;
 
             bool quote = false;
             bool rem = false;
@@ -297,24 +297,24 @@
                     rem = true;                         // rem ensures no further processing
                     startOfStatement = false;
                 }
-               
+
                 // 1b) Wrapping semantic tokens
 
                 // Mathematical operators
-                if (curchar is '+' or '-' or '/' or '*' or '=' or '<' or '>' or '^' && !rem && !quote) // not good with unary minus
+                if (IsOperator(curchar) && !rem && !quote) // not good with unary minus??
                 {
                     char p = (char)prevbyte;
                     if (!IsExponentSign(p, curchar))       // trying to deal with e.g. 1E-5
                     {
                         taggedline += SemanticTags.Operator;
 
-                        while (i < tokenisedLine.Length - 1 && curchar is '+' or '-' or '/' or '*' or '=' or '<' or '>' or '^')
+                        while (IsOperator(curchar) && i < tokenisedLine.Length - 1)
                         {
                             addtoall(curchar, ref plainline, ref linenospaces, ref taggedline);
-                            curchar = (char)State.Data[++i];
+                            curchar = (char)tokenisedLine[++i];
                         }
-                        taggedline += SemanticTags.Reset;
                         i--;
+                        taggedline += SemanticTags.Reset;
                         continue;
                     }
                 }
@@ -337,16 +337,6 @@
                         taggedline += SemanticTags.Reset;
                         // fall through so ':' still acts as statement separator
                     }
-
-                    /*if (asmComment)
-                    {
-                        // In assembler comment: just copy the character and skip all other logic
-                        plainline += curchar;
-                        linenospaces += curchar;
-                        taggedline += curchar;
-                        prevbyte = curbyte;
-                        continue;
-                    }*/
 
                     if (!asmComment)
                     {
@@ -409,7 +399,7 @@
                         bool isAccumulator = char.ToUpperInvariant(curchar) == 'A' && !char.IsAsciiLetterOrDigit((char)prevbyte);
                         bool isRegister = (isIndexRegister || isAccumulator);
 
-                        if (isRegister)
+                        if (isRegister && !asmComment)
                         {
                             curchar = char.ToUpperInvariant(curchar);
                             taggedline += SemanticTags.Register + char.ToUpper(curchar) + SemanticTags.Reset;
@@ -444,7 +434,7 @@
                         flgFnOrProc = false;
                         taggedline += SemanticTags.Reset;
                     }
-                    if (flgVar && !char.IsAsciiLetterOrDigit(curchar) && curchar is not '%' and not '$' and not '_')
+                    if (flgVar && !(char.IsAsciiLetterOrDigit(nxtchar) || nxtchar is '%' or '$' or '_'))
                     {
                         flgVar = false;
                         taggedline += SemanticTags.Reset;
@@ -457,7 +447,7 @@
 
                     if (flgHex && !char.IsAsciiHexDigit(curchar)) { flgHex = false; }
 
-                    if (curbyte == '&') { flgHex = true; }                    
+                    if (curbyte == '&') { flgHex = true; }
                 }
                 else
                 // 4. Now deal with tokens
@@ -474,29 +464,25 @@
                         string tag = SemanticTags.Keyword;
                         switch (keyword)
                         {
-                            case "IF":
                             case "FOR":
                             case "REPEAT":
                             case "WHILE":
                             case "CASE":
                                 tag = SemanticTags.IndentingKeyword;
                                 break;
-                            case "ENDIF":
                             case "NEXT":
                             case "UNTIL":
                             case "ENDWHILE":
                             case "ENDCASE":
                                 tag = SemanticTags.OutdentingKeyword;
                                 break;
-                            case "THEN":
-                            case "ELSE":
-                            case "OTHERWISE":
-                                tag = SemanticTags.InOutKeyword;
-                                break;
                         }
                         taggedline += tag + keyword + SemanticTags.Reset;
-                        if (flgFnOrProc)
-                            taggedline += SemanticTags.ProcFunction;
+
+                        if (keyword == "PROC")
+                            taggedline += SemanticTags.Proc;
+                        if (keyword == "FN")
+                            taggedline += SemanticTags.Function;
 
                         if (keyword == "DATA")
                         {
@@ -577,14 +563,14 @@
                 throw new BasToolsException(e.Message);
             }
         }
-        static void addtoall(char curchar,
+        static void addtoall(char addition,
             ref string plainline,
             ref string linenospaces,
             ref string taggedline)
         {
-            plainline += curchar;
-            linenospaces += curchar;
-            taggedline += curchar;
+            plainline += addition;
+            linenospaces += addition;
+            taggedline += addition;
         }
         static string readMnemonic(byte[] tokenisedLine, int ptr)
         {
@@ -608,6 +594,9 @@
         {
             return (curr == '+' || curr == '-') && char.ToUpper(prev) == 'E';
         }
+        static bool IsOperator(char c) => c is '+' or '-' or '/' or '*' or '=' or '<' or '>' or '^';
+
+
         static HashSet<string> LoadMnemonicTable(string resourceName)
         {
             string fileContent = GetEmbeddedResourceContent(resourceName);

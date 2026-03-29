@@ -7,6 +7,8 @@
     using static System.Runtime.InteropServices.JavaScript.JSType;
     using static System.Windows.Forms.AxHost;
     using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
+    using System.Text.RegularExpressions;
+    using System.CodeDom.Compiler;
 
     //***************** CommandSwitches *****************
     public class CommandSwitches
@@ -14,12 +16,14 @@
         public bool BasicV;
         public bool FlgAddNums;
         public bool FlgIndent;
+        public bool FlgEmphDefs;
         public bool Align;
         public bool NoSpaces;
         public bool NoLineNumbers;
         public bool Bare;
         public bool BreakApart;
         public bool Pretty;
+        public bool Clear;
         public bool FlgIf;
         public bool FlgIfX;
         public bool FlgList;
@@ -39,12 +43,14 @@
             FromLine = 0;
             ToLine = -1;
             FlgIndent = false;
+            FlgEmphDefs = false;
             Align = false;
             NoSpaces = false;
             NoLineNumbers = false;
             Bare = false;
             BreakApart = false;
             Pretty = false;
+            Clear = false;
             FlgIf = false;
             FlgIfX = false;
             FlgList = false;
@@ -81,18 +87,23 @@
             [SemanticTags.InOutKeyword] = ConsoleColor.Blue,
             [SemanticTags.StringLiteral] = ConsoleColor.Green,
             [SemanticTags.Variable] = ConsoleColor.Magenta,
+            [SemanticTags.ResidentInteger] = ConsoleColor.DarkYellow,
             [SemanticTags.RemText] = ConsoleColor.Yellow,
             [SemanticTags.AssemblerComment] = ConsoleColor.Yellow,
             [SemanticTags.EmbeddedData] = ConsoleColor.White,
-            [SemanticTags.ProcFunction] = ConsoleColor.Cyan,
+            [SemanticTags.Proc] = ConsoleColor.Cyan,
+            [SemanticTags.Function] = ConsoleColor.Cyan,
             [SemanticTags.Label] = ConsoleColor.Magenta,
             [SemanticTags.Register] = ConsoleColor.Green,
             [SemanticTags.Mnemonic] = ConsoleColor.Blue,
             [SemanticTags.Operator] = ConsoleColor.Red,
-            [SemanticTags.LineNumber] = ConsoleColor.Gray
+            [SemanticTags.LineNumber] = ConsoleColor.Gray,
+            [SemanticTags.StarCommand] = ConsoleColor.White,
+            ["{=ListingLineNo}"] = ConsoleColor.DarkGray
         };
         public static bool TryGetColor(string tag, out ConsoleColor color, bool darkMode)
         {
+            //Console.WriteLine($" -- {tag} --");
             if (_map.TryGetValue(tag, out color))
             {
                 if (color == ConsoleColor.Yellow && !darkMode)
@@ -105,85 +116,145 @@
     }
     class ListerState
     {
+        public bool Z80;
         public int LineCount;
         public bool Printme;
-        public int Indent;
+        private int _indent;        
+        public int PendingIndent;
         public bool Listme;
+        public bool fMultiLineIf;
+        public ConsoleColor CurrentForeground;
+        public ConsoleColor CurrentBackground;
         public ListerState()
         {
+            Z80 = false;
             LineCount = 0;
             Printme = false;
             Indent = 0;
+            PendingIndent = 0;
             Listme = false;
+            fMultiLineIf = false;
+            CurrentForeground = ConsoleColor.White;
+            CurrentBackground = ConsoleColor.Black;
         }
         public ListerState(ListerState other)
         {
+            Z80 = other.Z80;
             LineCount = other.LineCount;
             Printme = other.Printme;
             Indent = other.Indent;
+            PendingIndent= other.PendingIndent;
             Listme = other.Listme;
+            fMultiLineIf |= other.fMultiLineIf;
+            CurrentForeground = other.CurrentForeground;
+            CurrentBackground = other.CurrentBackground;
+        }
+        public int Indent
+        {
+            get => _indent;
+            set => _indent = value < 0 ? 0 : value;
         }
     }
     public class Program
     {
         static void Main(string[] args)
         {
+            if (args.Length == 0)
+            {
+                help();
+                Environment.Exit(0);
+            }
+
             CommandSwitches switches = new();
             string filename = string.Empty;
             string format = string.Empty;
 
+            //******** readCommandSwitches ******** 
+
             readCommandSwitches(args, switches, ref filename, ref format);
-            //List<string> listing = new();
-            // now we've loaded the file, show message
+
+            // Show message
             Console.Error.WriteLine("Processing, please wait...");
 
             BasToolsEngine engine = new BasToolsEngine();
             bool flgZ80 = false;
 
-            Listing listing = new(new List<ProcessedLine>(), new List<Token>());
-            engine.Process(filename, ref flgZ80, switches.BasicV, listing);
+            Listing listing = new(new List<ProcessedLine>()); //, new List<Token>());
 
-            displayProgramLines(listing, switches, filename, flgZ80);
+            if (engine.Process(filename, ref flgZ80, switches.BasicV, listing))
+            {
+                displayProgramLines(listing, switches, filename, flgZ80);
+            }
+            else
+            {
+                Console.Error.WriteLine($"Program '{filename}' could not be processed");
+            }
+            
         }
 
         //**************** Get User Input *****************
-        static void readCommandSwitches(string[] args, CommandSwitches switches, ref string fn, ref string format)
+        static void readCommandSwitches(string[] args, CommandSwitches switches, ref string filename, ref string format)
         {
-            try
+            foreach (string arg in args)
             {
-                foreach (string arg in args)
+                bool recognised = false;
+                if ((arg.StartsWith('/') || arg.StartsWith('-')) && arg.Length > 1)
                 {
-                    bool recognised = false;
-                    if ((arg.StartsWith('/') || arg.StartsWith('-')) && arg.Length > 1)
+                    string arg2 = arg.Substring(1).ToUpper(); // remove the / or -
+                    string arg1 = string.Empty;
+                    string arg3 = string.Empty;
+                    int x = arg2.IndexOf('=');                // split at '=' or ':' if present
+                    x = x >= 0 ? x : arg2.IndexOf(':');
+                    if (x >= 0)
                     {
-                        string arg2 = arg.Substring(1).ToUpper();
-                        if (arg2 == "V") { switches.BasicV = true; recognised = true; }
-                        if ("ADDNUMBERS".StartsWith(arg2)) { switches.FlgAddNums = true; recognised = true; }
-                        if (arg2 == "?" || arg2 == "H") { help(); Environment.Exit(0); }
-                        if ("BARE".StartsWith(arg2)) { switches.Bare = true; recognised = true; }
-                        if ("BREAKAPART".StartsWith(arg2)) { switches.BreakApart = true; recognised = true; }
-                        if ("PAUSE".StartsWith(arg2)) { switches.FlgPause = true; recognised = true; }
-                        if (arg2.Contains('='))
-                        {
-                            string arg1 = arg2.Substring(0, arg2.IndexOf('='));
+                        arg1 = arg2.Substring(0, x);
+                        arg3 = arg2.Substring(x + 1);
 
-                            if ("FILE".StartsWith(arg1))
+                        if ("FILE".StartsWith(arg1)) { filename = arg3; recognised = true; }
+                        if ("INDENT".StartsWith(arg1))
+                        {
+                            recognised = true;
+                            switch (arg3)
                             {
-                                fn = arg2.Substring(arg2.IndexOf('=') + 1);
-                                recognised = true;
+                                case "ALL":
+                                    switches.FlgIndent = true;
+                                    switches.FlgEmphDefs = true;
+                                    break;
+                                case "LOOPS":
+                                    switches.FlgIndent = true;
+                                    switches.FlgEmphDefs = false;
+                                    break;
+                                case "DEFS":
+                                    switches.FlgIndent = false;
+                                    switches.FlgEmphDefs = true;
+                                    break;
+                                case "NONE":
+                                    switches.FlgIndent = false;
+                                    switches.FlgEmphDefs = false;
+                                    break;
                             }
                         }
-                        if ("PRETTYPRINT".StartsWith(arg2)) { switches.Pretty = true; recognised = true; }
-                        if ("ALIGN".StartsWith(arg2)) { switches.Align = true; recognised = true; }
-                        if ("INDENT".StartsWith(arg2)) { switches.FlgIndent = true; recognised = true; }
-                        if ("NONUMBERS".StartsWith(arg2)) { switches.NoLineNumbers = true; recognised = true; }
-                        if ("NOSPACES".StartsWith(arg2)) { switches.NoSpaces = true; recognised = true; }
-                        if ("DARK".StartsWith(arg2)) { switches.FlgDark = true; recognised = true; }
-                        if ("LIGHT".StartsWith(arg2)) { switches.FlgDark = false; recognised = true; }
-                        if (!recognised && !switches.Bare) Console.Error.WriteLine("Option " + arg.ToLower() + " not recognised");
                     }
-                    // not a switch ...
-                    if (IsNumeric(arg))
+                    if (arg2 == "V") { switches.BasicV = true; recognised = true; }
+                    if (arg2 == "?" || "HELP".StartsWith(arg2)) { help(); Environment.Exit(0); }
+                    if ("ADDNUMBERS".StartsWith(arg2)) { switches.FlgAddNums = true; recognised = true; }
+                    if ("BARE".StartsWith(arg2)) { switches.Bare = true; recognised = true; }
+                    if ("BREAKAPART".StartsWith(arg2)) { switches.BreakApart = true; recognised = true; }
+                    if ("PAUSE".StartsWith(arg2)) { switches.FlgPause = true; recognised = true; }
+                    if ("PRETTYPRINT".StartsWith(arg2)) { switches.Pretty = true; recognised = true; }
+                    if ("ALIGN".StartsWith(arg2)) { switches.Align = true; recognised = true; }
+                    if ("CLS".StartsWith(arg2)) { switches.Clear = true; recognised = true; }
+                    if ("INDENT".StartsWith(arg2)) { switches.FlgIndent = true; recognised = true; }
+                    if ("NONUMBERS".StartsWith(arg2)) { switches.NoLineNumbers = true; recognised = true; }
+                    if ("NOSPACES".StartsWith(arg2)) { switches.NoSpaces = true; recognised = true; }
+                    if ("DARK".StartsWith(arg2)) { switches.FlgDark = true; recognised = true; }
+                    if ("LIGHT".StartsWith(arg2)) { switches.FlgDark = false; recognised = true; }
+                    if (!recognised && !switches.Bare) Console.Error.WriteLine("Option " + arg.ToLower() + " not recognised");
+                }
+                // not a switch ...
+                if (IsNumeric(arg))
+                {
+                    try
                     {
                         recognised = true;
                         if (arg.EndsWith(','))
@@ -203,45 +274,47 @@
                         {
                             if (switches.FromLine == 0) switches.FromLine = int.Parse(arg); else switches.ToLine = int.Parse(arg);
                         }
+
                         if (switches.ToLine == -1) switches.ToLine = switches.FromLine;
                         switches.checkFromTo(); // reverse From Line and To Line if wrong way round
                     }
-                    else if (fn.Length == 0 && !recognised) // This is where we pick up the filename if not already found
+                    catch (System.FormatException fe)
                     {
-                        if (arg != "IF" && arg != "IFX" && arg != "LIST")
-                            fn = arg;
-                    }
-                    if (string.Equals(arg, "IF", StringComparison.OrdinalIgnoreCase))
-                    {
-                        switches.FlgIf = true;
-                        getDirectiveParams(args, switches);
-                        break;
-                    }
-                    else if (string.Equals(arg, "IFX", StringComparison.OrdinalIgnoreCase))
-                    {
-                        switches.FlgIfX = true;
-                        getDirectiveParams(args, switches);
-                        break;
-                    }
-                    else if (string.Equals(arg, "LIST", StringComparison.OrdinalIgnoreCase))
-                    {
-                        switches.FlgList = true;
-                        getDirectiveParams(args, switches);
-                        break;
+                        Console.Error.WriteLine("Line numbers not in correct format");
+                        //Console.WriteLine(fe.Message);
+                        Environment.Exit(0);
                     }
                 }
-                if (switches.FlgList) { switches.FromLine = 0; switches.ToLine = 0xFFFF; } // line numbers ignored for LIST
+                else if (filename.Length == 0 && !recognised) // This is where we pick up the filename if not already found
+                {
+                    if (arg != "IF" && arg != "IFX" && arg != "LIST")
+                        filename = arg;
+                }
+                if (string.Equals(arg, "IF", StringComparison.OrdinalIgnoreCase))
+                {
+                    switches.FlgIf = true;
+                    getDirectiveParams(args, switches);
+                    break;
+                }
+                else if (string.Equals(arg, "IFX", StringComparison.OrdinalIgnoreCase))
+                {
+                    switches.FlgIfX = true;
+                    getDirectiveParams(args, switches);
+                    break;
+                }
+                else if (string.Equals(arg, "LIST", StringComparison.OrdinalIgnoreCase))
+                {
+                    switches.FlgList = true;
+                    getDirectiveParams(args, switches);
+                    break;
+                }
             }
-            catch (System.FormatException fe)
-            {
-                Console.Error.WriteLine("Line numbers not in correct format");
-                //Console.WriteLine(fe.Message);
-                Environment.Exit(0);
-            }
-            if (switches.ToLine < 0) switches.ToLine = 0xffff;
+
+            if (switches.ToLine < 0) switches.ToLine = switches.BasicV ? 0xFFFF : 0x7FFF;
+            if (switches.FlgList) { switches.FromLine = 0; switches.ToLine = 0xFFFF; } // line numbers ignored for LIST
 
             // no filename found:
-            if (fn.Length == 0)
+            if (filename.Length == 0)
             {
                 Console.Error.WriteLine("Error: No filename found");
                 help();
@@ -270,14 +343,20 @@
         //****************** Display the Output ***********
         private static void displayProgramLines(Listing listing, CommandSwitches switches, string filename, bool flgZ80)
         {
+            ListerState state = new();
+            state.Z80 = flgZ80;
+
             switches.BackColor = ConsoleColor.Black;
             switches.ForeColor = ConsoleColor.White;
             switches.SwopIfLight();
 
             Console.ForegroundColor = switches.ForeColor;
             Console.BackgroundColor = switches.BackColor;
-            //Console.Clear();
-            int linesprinted = 0;
+            state.CurrentForeground = switches.ForeColor;
+            state.CurrentBackground = switches.BackColor;
+
+            if (switches.Clear) Console.Clear();
+            //int linesprinted = 0;
 
             //
             // ******** LISTING STARTS HERE ********
@@ -291,100 +370,277 @@
             string sIndent = string.Empty;
             ListerState State = new();      // this sets initial conditions
 
+            Console.WriteLine($"Number of lines: {listing.ProgramLines.Count}");
+
             foreach (ProcessedLine progline in listing.ProgramLines)
             {
-                linenumber = progline.LineNumber.ToString();
-                if (progline.LineNumber == 0 && flgZ80)
+                if (!switches.Pretty)
                 {
-                    linenumber = string.Empty;
-                    if (switches.FlgAddNums) linenumber = (State.LineCount * 10).ToString();
+                    Console.WriteLine(progline.LineNumber.ToString() + ' ' + progline.TaggedLine);
+                    continue;
                 }
-                else if (switches.Align)
-                    linenumber = linenumber.PadLeft(5);
-                if (switches.Pretty) linenumber = SemanticTags.LineNumber + linenumber + SemanticTags.Reset;
-                if (!switches.NoSpaces)
+                linenumber = formatLineNumber(progline, switches, state);
+
+                if (switches.Pretty)
                 {
-                    if (linenumber != string.Empty) linenumber+= " "; // only space if number present
-                    sIndent = "".PadLeft(State.Indent * 2, ' ');
+                    PrettyPrint(linenumber, progline.TaggedLine, state, switches);
+                }
+                else
+                {
+                    Console.WriteLine(linenumber + progline.PlainDetokenisedLine);
                 }
             }
         }
         /**** ----------------  ******/
-        /*static void PrettyPrint(string msg, ParserState state, EngineSwitches switches)
-       {
-           string[] ss = msg.Split('{', '}');
-           foreach (var s in ss)
-           {
-               if (s.Equals("/"))
-               {
-                   //Console.ResetColor();
-                   Console.BackgroundColor = switches.BackColor;
-                   Console.ForegroundColor = switches.ForeColor;
-               }
-               else
-               {
-                   try
-                   {
-                       if (s.StartsWith('=') && Enum.TryParse(s.Substring(1), out ConsoleColor c))
-                           Console.ForegroundColor = c;
-                       else
-                           Console.Write(s);
-                   }
-                   catch (Exception e)
-                   {
-                       Console.Write(s);
-                   }
-               }
-           }
+        static void PrettyPrint(string linenumber, string line, ListerState state, CommandSwitches switches)
+        {
+            //Console.WriteLine(line);
+
+            // Deal with indents at start of line
+
+            string indent = switches.FlgIndent ? new string(' ', state.Indent * 2) : string.Empty;
+            if (state.PendingIndent > 0)
+            {
+                state.Indent += state.PendingIndent;
+                state.PendingIndent = 0;
+            }
+
+            line = linenumber + indent + line;
+            foreach (var (value, tag, isLast) in WalkTagged(line))
+            {
+                //if (!(value == null || value == string.Empty)) Console.WriteLine($"{tag} - {value}");
+                /*if (tag == "keyword" && value == "THEN")
+                {
+                    if (switches.BasicV && isLast)
+                        state.Indent--;
+                }
+                else*/ if (tag != null && ConsoleColorMap.TryGetColor(tag, out var c, switches.FlgDark))
+                {
+                    Console.ForegroundColor = c;
+                    Console.Write(value);
+                    //Console.ResetColor();
+                    Console.BackgroundColor = switches.BackColor;
+                    Console.ForegroundColor = switches.ForeColor;
+
+                    if (value == "THEN" && switches.BasicV && isLast)
+                    {
+                        state.fMultiLineIf = true;
+                        state.Indent++;
+                    }
+                    else if (state.fMultiLineIf && value == "ELSE")
+                    {
+                        state.PendingIndent++;
+                        state.Indent--;
+                    }
+                    else if (state.fMultiLineIf && value == "ENDIF")
+                    {
+                        state.Indent--;
+                        state.fMultiLineIf = false;
+                    }
+                    else
+                    {
+                        if (tag == SemanticTags.IndentingKeyword) state.Indent++;
+                        if (tag == SemanticTags.OutdentingKeyword) state.Indent--;
+                        if (tag == SemanticTags.InOutKeyword)
+                        {
+                            state.Indent--; state.PendingIndent++;
+                        }
+                    }
+                }
+                else
+                {
+                    Console.Write(value);
+                }
+            }
+
+
+
+            /*for (int i = 0; i < ss.Count(); i++)
+            {
+                var s = ss[i];
+                //Console.WriteLine($"[{s}]");
+
+                bool isLast = (i == ss.Count() - 1);
+            
+                if (s.Equals("/"))
+                {
+                    //Console.ResetColor();
+                    Console.BackgroundColor = switches.BackColor;
+                    Console.ForegroundColor = switches.ForeColor;
+                }
+                else
+                {
+                    try
+                    {
+                        string tag = '{' + s + '}';
+                        if (s.StartsWith('=') && ConsoleColorMap.TryGetColor(tag, out ConsoleColor c, switches.FlgDark))
+                        {
+                            Console.ForegroundColor = c;
+                            if (tag == SemanticTags.IndentingKeyword) state.Indent++;
+                            if (tag == SemanticTags.OutdentingKeyword) state.Indent--;
+                            if (tag == SemanticTags.InOutKeyword)
+                            {
+                                state.Indent--; state.PendingIndent++;
+                            }
+                        }
+                        else
+                        {
+                            if (s == "THEN")  // && !isLast || !switches.BasicV)
+                                state.Indent--;
+                            Console.Write(s);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Console.Write($" !! {s}");
+                    }
+                }
+            }*/
+           
            Console.WriteLine("");
-       }
-       private bool isEndOfProc(ParserState s, EngineSwitches switches) // s is a CLONE so can use freely
-       {
-           string templine = getNextLine(s, switches);
+        }
+        static string formatLineNumber(ProcessedLine progline, CommandSwitches switches, ListerState State)
+        {
+            string linenumber = progline.LineNumber.ToString();
 
-           if (templine == null) return true; // End of program
+            if (progline.LineNumber == 0 && State.Z80)
+            {
+                linenumber = string.Empty;
+                if (switches.FlgAddNums) linenumber = (State.LineCount * 10).ToString();
+            }
+            else if (switches.Align)
+                linenumber = linenumber.PadLeft(5);
+            if (switches.Pretty) linenumber = "{=ListingLineNo}" + linenumber + SemanticTags.Reset;
+            if (!switches.NoSpaces)
+            {
+                if (linenumber != string.Empty) linenumber += " "; // only space if number present
+            }
+            return linenumber;
+        }
 
-           templine = Regex.Replace(templine, @"\{.*?\}", "");
-           templine = templine.Replace(" ", "").ToUpper();
-           templine = templine.Replace(":", "");
-           templine = Regex.Replace(templine, @"REM.*$", "", RegexOptions.IgnoreCase);
+        /*public static IEnumerable<(string value, string? tag)> WalkTagged(string line)
+        {
+            int i = 0;
 
-           if (templine.Length == 0) return isEndOfProc(s, switches);
+            while (i < line.Length)
+            {
+                // Tagged token?
+                if (line[i] == '{' && i + 2 < line.Length && line[i + 1] == '=')
+                {
+                    int tagStart = i;
+                    int tagEnd = line.IndexOf('}', tagStart);
+                    if (tagEnd < 0) yield break;
 
-           return templine.StartsWith("DEF");
-       }
-       private string getNextLine(ParserState s, EngineSwitches switches)
-       {
-           // End of program?
-           if (!s.Z80 && ((switches.BasicV && s.Data[s.Ptr + 1] == 255) || s.Data[s.Ptr + 1] > 127)) return null;
-           if (s.Z80 && s.Data[s.Ptr + 2] == 255 && s.Data[s.Ptr + 3] == 255) return null;
+                    string tag = line.Substring(tagStart, tagEnd - tagStart+1);
 
-           // compute Bound for the clone (saved in s.Bound)
-           int dummy = GetLineNumber(s, switches);
+                    int valueStart = tagEnd + 1;
+                    int close = line.IndexOf("{/}", valueStart);
+                    if (close < 0) yield break;
 
-           processLineBody(s, switches, out string line);
+                    string value = line.Substring(valueStart, close - valueStart);
 
-           return line;
-       }
-       static void getDirectiveParams(string[] args, ParserState s)
-       {
-           s.DirectiveParams = new();
+                    yield return (value, tag);
 
-           int i = 0;
-           while (i < args.Length &&
-                   !args[i].Equals("IF", StringComparison.InvariantCultureIgnoreCase) &&
-                   !args[i].Equals("IFX", StringComparison.InvariantCultureIgnoreCase) &&
-                   !args[i].Equals("LIST", StringComparison.InvariantCultureIgnoreCase))
-           { i++; }
+                    i = close + 3;
+                }
+                else
+                {
+                    // Untagged text — collect until next '{'
+                    int start = i;
+                    int next = line.IndexOf('{', i);
+                    if (next < 0) next = line.Length;
 
-           // Move past the directive keyword
-           if (i < args.Length) i++;
+                    string text = line.Substring(start, next - start);
+                    yield return (text, null);
 
-           for (int j = i; j < args.Length; j++)
-               s.DirectiveParams.Add(args[j]);
-       }
-       //**** Utility functions ******
-       private static void ClearCurrentConsoleLine()
+                    i = next;
+                }
+            }
+        }*/
+        public static IEnumerable<(string value, string? tag, bool isLast)> WalkTagged(string line)
+        {
+            int i = 0;
+
+            // First, collect all items into a temporary list
+            var items = new List<(string value, string? tag)>();
+
+            while (i < line.Length)
+            {
+                // Tagged token?
+                if (line[i] == '{' && i + 2 < line.Length && line[i + 1] == '=')
+                {
+                    int tagStart = i;
+                    int tagEnd = line.IndexOf('}', tagStart);
+                    if (tagEnd < 0) break;
+
+                    string tag = line.Substring(tagStart, tagEnd - tagStart + 1);
+
+                    int valueStart = tagEnd + 1;
+                    int close = line.IndexOf("{/}", valueStart);
+                    if (close < 0) break;
+
+                    string value = line.Substring(valueStart, close - valueStart);
+
+                    items.Add((value, tag));
+
+                    i = close + 3;
+                }
+                else
+                {
+                    // Untagged text — collect until next '{'
+                    int start = i;
+                    int next = line.IndexOf('{', i);
+                    if (next < 0) next = line.Length;
+
+                    string text = line.Substring(start, next - start);
+                    items.Add((text, null));
+
+                    i = next;
+                }
+            }
+
+            // Now yield with correct isLast flag
+            for (int n = 0; n < items.Count; n++)
+            {
+                var (value, tag) = items[n];
+                bool isLast = (n == items.Count - 1);
+                yield return (value, tag, isLast);
+            }
+        }
+
+
+
+        /*private bool isEndOfProc(ListerState s, CommandSwitches switches) // s is a CLONE so can use freely
+        {
+            string templine = getNextLine(s, switches);
+
+            if (templine == null) return true; // End of program
+
+            templine = Regex.Replace(templine, @"\{.*?\}", "");
+            templine = templine.Replace(" ", "").ToUpper();
+            templine = templine.Replace(":", "");
+            templine = Regex.Replace(templine, @"REM.*$", "", RegexOptions.IgnoreCase);
+
+            if (templine.Length == 0) return isEndOfProc(s, switches);
+
+            return templine.StartsWith("DEF");
+        }
+        /*private string getNextLine(ListerState s, CommandSwitches switches)
+        {
+            // End of program?
+            if (!s.Z80 && ((switches.BasicV && s.Data[s.Ptr + 1] == 255) || s.Data[s.Ptr + 1] > 127)) return null;
+            if (s.Z80 && s.Data[s.Ptr + 2] == 255 && s.Data[s.Ptr + 3] == 255) return null;
+
+            // compute Bound for the clone (saved in s.Bound)
+            int dummy = GetLineNumber(s, switches);
+
+            processLineBody(s, switches, out string line);
+
+            return line;
+        }*/
+
+        //**** Utility functions ******
+        private static void ClearCurrentConsoleLine()
        {
            int currentLineCursor = Console.CursorTop;
            Console.SetCursorPosition(0, Console.CursorTop);
@@ -392,15 +648,8 @@
                Console.Write(" ");
            Console.SetCursorPosition(0, currentLineCursor);
        }/*
-       static bool IsNumeric(string s)
-       {
-           for (int i = 0; i < s.Length; i++)
-           {
-               if (!"0123456789,".Contains(s.Substring(i, 1))) return false;
-           }
-           return true;
-       }*/
-        /*private bool nameMatch(int ptr, ParserState s, EngineSwitches switches)
+       
+        /*private bool nameMatch(int ptr, ListerState s, CommandSwitches switches)
         {
             if (!switches.FlgList) return false;
 
@@ -414,7 +663,7 @@
             }
             return false;
         }
-        private string readProcFnName(int ptr, ParserState s, EngineSwitches switches)
+        private string readProcFnName(int ptr, ListerState s, CommandSwitches switches)
         {
             while (s.Data[ptr] == 32) ptr++; // this is correct: leave ptr pointing at first non-space char
 
@@ -430,14 +679,6 @@
             return result;
         }
         /**** Utility functions ******/
-        public static void ClearCurrentConsoleLine()
-        {
-            int currentLineCursor = Console.CursorTop;
-            Console.SetCursorPosition(0, Console.CursorTop);
-            for (int i = 0; i < Console.WindowWidth; i++)
-                Console.Write(" ");
-            Console.SetCursorPosition(0, currentLineCursor);
-        }
         static bool IsNumeric(string s)
         {
             for (int i = 0; i < s.Length; i++)
@@ -453,7 +694,7 @@
             Console.WriteLine($"\nBasList vs {vs} (C) Andrew Rowland 2022-26");
             Console.WriteLine("\nLists a BBC BASIC program file\n");
             Console.WriteLine("BasList [/file=]filename ([[from line] [to line]) | [line,line]]) [Options] ([IF ...] | [IFX ...] | [LIST ...])");
-            //Console.WriteLine("BasList [/file=]filename [/V] [/addnumbers] [/align] [/indent] [/nonumbers] [/nospaces] [/bare] [/pause] [/prettyprint]");
+            //Console.WriteLine("BasList [/file=]filename [/V] [/addnumbers] [/align] [/indent] [/nonumbers] [/nospaces] [/bare] [/pause] [/prettyprint] [cls]");
             //Console.WriteLine("BasList [/file=]filename [/mode=(dark | light | none)]");
             Console.WriteLine("BasList [/? | -h]  Display help\n");
             Console.WriteLine("  [/file=]filename");
@@ -467,12 +708,15 @@
             Console.WriteLine("  /addnumbers      Supply missing line numbers (Z80 only)");
             Console.WriteLine("  /align           Right-align line numbers");
             Console.WriteLine("  /indent          Indent listing of loops (unless Nospaces specified)");
+            Console.WriteLine("  /indent=(loops | defs | all | none)");
+            Console.WriteLine("                   Indent loops only, PROC & FN definitions, both, neither");
             Console.WriteLine("  /nonumbers       Omits line numbers");
             Console.WriteLine("  /nospaces        Omits spaces and indent after line numbers");
             Console.WriteLine("  /bare            Omits additional messages (cancels pause)");
             Console.WriteLine("  /breakapart      Prints each statement on its own line");
             Console.WriteLine("  /pause           Pause at bottom of each screenful");
             Console.WriteLine("  /prettyprint     Adds spaces and syntax colouring");
+            Console.WriteLine("  /cls             Clear console (terminal) before listing");
             Console.WriteLine("  /dark            Dark mode – black background (default)");
             Console.WriteLine("  /light           Light mode – white background");
             Console.WriteLine("\nE.g.");
