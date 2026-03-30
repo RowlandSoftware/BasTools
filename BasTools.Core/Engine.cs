@@ -62,7 +62,7 @@
         public static string InOutKeyword => "{=inout_keyword}";
         public static string StringLiteral => "{=string}";
         public static string Variable => "{=var}";
-        public static string ResidentInteger => "{=resint}";
+        public static string StaticInteger => "{=staticint}";
         public static string RemText => "{=remtext}";
         public static string AssemblerComment => "{=assemcomment}";
         public static string StarCommand => "{=starcommand}";
@@ -475,6 +475,10 @@
                             case "ENDWHILE":
                             case "ENDCASE":
                                 tag = SemanticTags.OutdentingKeyword;
+                                break;
+                            case "OTHERWISE":
+                            case "WHEN":
+                                tag = SemanticTags.InOutKeyword;
                                 break;
                         }
                         taggedline += tag + keyword + SemanticTags.Reset;

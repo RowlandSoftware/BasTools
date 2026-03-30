@@ -87,7 +87,7 @@
             [SemanticTags.InOutKeyword] = ConsoleColor.Blue,
             [SemanticTags.StringLiteral] = ConsoleColor.Green,
             [SemanticTags.Variable] = ConsoleColor.Magenta,
-            [SemanticTags.ResidentInteger] = ConsoleColor.DarkYellow,
+            [SemanticTags.StaticInteger] = ConsoleColor.DarkYellow,
             [SemanticTags.RemText] = ConsoleColor.Yellow,
             [SemanticTags.AssemblerComment] = ConsoleColor.Yellow,
             [SemanticTags.EmbeddedData] = ConsoleColor.White,
