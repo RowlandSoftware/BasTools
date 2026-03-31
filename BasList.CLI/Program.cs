@@ -9,6 +9,7 @@
     using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
     using System.Text.RegularExpressions;
     using System.CodeDom.Compiler;
+    using System.ComponentModel.Design;
 
     //***************** CommandSwitches *****************
     public class CommandSwitches
@@ -60,7 +61,6 @@
         }
         // Deep copy so lookahead doesn't mutate the real list
         //DirectiveParams = new List<string>(other.DirectiveParams);
-
         public bool FlgPause
         {
             get => !Console.IsOutputRedirected && _flgPause;
@@ -73,6 +73,19 @@
         public void SwopIfLight()
         {
             if (!FlgDark) (ForeColor, BackColor) = (BackColor, ForeColor);
+        }
+        public FormattingOptions copyToFormatOptions()
+        {
+            FormattingOptions opts= new FormattingOptions();
+            opts.NoSpaces = NoSpaces;
+            opts.Align = Align;
+            opts.FlgAddNums = FlgAddNums;
+            opts.BreakApart = BreakApart;
+            opts.Bare = Bare;
+            opts.FlgEmphDefs = FlgEmphDefs;
+            opts.FlgIndent = FlgIndent;
+
+            return opts;
         }
     }
     // This maps semantic tags to actual console colours
@@ -116,43 +129,35 @@
     }
     class ListerState
     {
-        public bool Z80;
         public int LineCount;
         public bool Printme;
-        private int _indent;        
-        public int PendingIndent;
         public bool Listme;
-        public bool fMultiLineIf;
+        public int Indent;
+        public int PendingIndent;
+        public bool MultiLineIf;
         public ConsoleColor CurrentForeground;
         public ConsoleColor CurrentBackground;
         public ListerState()
         {
-            Z80 = false;
             LineCount = 0;
             Printme = false;
+            Listme = false;
             Indent = 0;
             PendingIndent = 0;
-            Listme = false;
-            fMultiLineIf = false;
+            MultiLineIf = false;
             CurrentForeground = ConsoleColor.White;
             CurrentBackground = ConsoleColor.Black;
         }
         public ListerState(ListerState other)
         {
-            Z80 = other.Z80;
             LineCount = other.LineCount;
             Printme = other.Printme;
             Indent = other.Indent;
-            PendingIndent= other.PendingIndent;
+            PendingIndent = other.PendingIndent;
             Listme = other.Listme;
-            fMultiLineIf |= other.fMultiLineIf;
+            MultiLineIf = other.MultiLineIf;
             CurrentForeground = other.CurrentForeground;
             CurrentBackground = other.CurrentBackground;
-        }
-        public int Indent
-        {
-            get => _indent;
-            set => _indent = value < 0 ? 0 : value;
         }
     }
     public class Program
@@ -178,12 +183,26 @@
 
             BasToolsEngine engine = new BasToolsEngine();
             bool flgZ80 = false;
+            ProgInfo progInfo = new(switches.BasicV, flgZ80, filename);
 
             Listing listing = new(new List<ProcessedLine>()); //, new List<Token>());
 
-            if (engine.Process(filename, ref flgZ80, switches.BasicV, listing))
+            if (engine.ProcessRawProgram(filename, listing, progInfo))
             {
-                displayProgramLines(listing, switches, filename, flgZ80);
+                //Console.WriteLine($"Prog type: {progInfo.BasicDialect}");
+
+                FormattedListing formattedListing = new(new List<FormattedLine>());
+                FormattingOptions formatOptions = switches.copyToFormatOptions();
+
+                if (engine.FormatProgram(listing, formattedListing, formatOptions, progInfo.BasicV))
+                {
+                    displayProgramLines(formattedListing, switches, progInfo);
+                }
+                else
+                {
+                    Console.Error.WriteLine("Error while formatting the program");
+                }
+                
             }
             else
             {
@@ -341,10 +360,9 @@
         }
 
         //****************** Display the Output ***********
-        private static void displayProgramLines(Listing listing, CommandSwitches switches, string filename, bool flgZ80)
+        private static void displayProgramLines(FormattedListing formattedListing, CommandSwitches switches, ProgInfo progInfo)
         {
             ListerState state = new();
-            state.Z80 = flgZ80;
 
             switches.BackColor = ConsoleColor.Black;
             switches.ForeColor = ConsoleColor.White;
@@ -361,91 +379,54 @@
             //
             // ******** LISTING STARTS HERE ********
             //
-            string format = flgZ80 ? "Z80" : "Acorn";
-            if (!switches.Bare && !switches.FlgList) Console.WriteLine($"\nListing {filename} from line {switches.FromLine} to {switches.ToLine} ({format} format)\n");
+            string format = progInfo.BasicDialect;
+            if (!switches.Bare && !switches.FlgList) Console.WriteLine($"\nListing {progInfo.Filename} from line {switches.FromLine} to {switches.ToLine} ({format} format)\n");
 
-            //string line;
-            //string linenospaces;
-            string linenumber;
             string sIndent = string.Empty;
             ListerState State = new();      // this sets initial conditions
 
-            Console.WriteLine($"Number of lines: {listing.ProgramLines.Count}");
-
-            foreach (ProcessedLine progline in listing.ProgramLines)
+            foreach (FormattedLine progline in formattedListing.FormattedLines)
             {
-                if (!switches.Pretty)
-                {
-                    Console.WriteLine(progline.LineNumber.ToString() + ' ' + progline.TaggedLine);
-                    continue;
-                }
-                linenumber = formatLineNumber(progline, switches, state);
-
                 if (switches.Pretty)
                 {
-                    PrettyPrint(linenumber, progline.TaggedLine, state, switches);
+                    PrettyPrint(progline, state, switches);
                 }
                 else
                 {
-                    Console.WriteLine(linenumber + progline.PlainDetokenisedLine);
+                    Console.WriteLine(progline.FormattedLineNumber + progline.LineLineOrSegment);
                 }
             }
         }
-        /**** ----------------  ******/
-        static void PrettyPrint(string linenumber, string line, ListerState state, CommandSwitches switches)
+        // ******** PrettyPrint ********
+        static void PrettyPrint(FormattedLine progline, ListerState state, CommandSwitches switches)
         {
-            //Console.WriteLine(line);
-
-            // Deal with indents at start of line
-
-            string indent = switches.FlgIndent ? new string(' ', state.Indent * 2) : string.Empty;
-            if (state.PendingIndent > 0)
+            // Line preamble
+            string? ln = progline.FormattedLineNumber;
+            ln = "{=ListingLineNo}" + ln + "{/}";
+            foreach (var (value, tag, isLast) in BasToolsEngine.WalkTagged(ln))
             {
-                state.Indent += state.PendingIndent;
-                state.PendingIndent = 0;
-            }
-
-            line = linenumber + indent + line;
-            foreach (var (value, tag, isLast) in WalkTagged(line))
-            {
-                //if (!(value == null || value == string.Empty)) Console.WriteLine($"{tag} - {value}");
-                /*if (tag == "keyword" && value == "THEN")
-                {
-                    if (switches.BasicV && isLast)
-                        state.Indent--;
-                }
-                else*/ if (tag != null && ConsoleColorMap.TryGetColor(tag, out var c, switches.FlgDark))
+                if (tag != null && ConsoleColorMap.TryGetColor(tag, out var c, switches.FlgDark))
                 {
                     Console.ForegroundColor = c;
                     Console.Write(value);
-                    //Console.ResetColor();
-                    Console.BackgroundColor = switches.BackColor;
-                    Console.ForegroundColor = switches.ForeColor;
+                }
+                else
+                    Console.Write(ln);
+                Console.ForegroundColor = switches.ForeColor;
+            }
+            Console.Write(new string(' ',progline.IndentLevel * 2));
 
-                    if (value == "THEN" && switches.BasicV && isLast)
-                    {
-                        state.fMultiLineIf = true;
-                        state.Indent++;
-                    }
-                    else if (state.fMultiLineIf && value == "ELSE")
-                    {
-                        state.PendingIndent++;
-                        state.Indent--;
-                    }
-                    else if (state.fMultiLineIf && value == "ENDIF")
-                    {
-                        state.Indent--;
-                        state.fMultiLineIf = false;
-                    }
-                    else
-                    {
-                        if (tag == SemanticTags.IndentingKeyword) state.Indent++;
-                        if (tag == SemanticTags.OutdentingKeyword) state.Indent--;
-                        if (tag == SemanticTags.InOutKeyword)
-                        {
-                            state.Indent--; state.PendingIndent++;
-                        }
-                    }
+            // Line contents
+            foreach (var (value, tag, isLast) in BasToolsEngine.WalkTagged(progline.TaggedLineLineOrSegment))
+            {
+                if (tag != null && ConsoleColorMap.TryGetColor(tag, out var c, switches.FlgDark))
+                {
+                    Console.ForegroundColor = c;
+
+                    Console.Write(value);
+
+                    Console.BackgroundColor = switches.BackColor;
+                    Console.ForegroundColor = switches.ForeColor;                    
                 }
                 else
                 {
@@ -453,163 +434,9 @@
                 }
             }
 
-
-
-            /*for (int i = 0; i < ss.Count(); i++)
-            {
-                var s = ss[i];
-                //Console.WriteLine($"[{s}]");
-
-                bool isLast = (i == ss.Count() - 1);
-            
-                if (s.Equals("/"))
-                {
-                    //Console.ResetColor();
-                    Console.BackgroundColor = switches.BackColor;
-                    Console.ForegroundColor = switches.ForeColor;
-                }
-                else
-                {
-                    try
-                    {
-                        string tag = '{' + s + '}';
-                        if (s.StartsWith('=') && ConsoleColorMap.TryGetColor(tag, out ConsoleColor c, switches.FlgDark))
-                        {
-                            Console.ForegroundColor = c;
-                            if (tag == SemanticTags.IndentingKeyword) state.Indent++;
-                            if (tag == SemanticTags.OutdentingKeyword) state.Indent--;
-                            if (tag == SemanticTags.InOutKeyword)
-                            {
-                                state.Indent--; state.PendingIndent++;
-                            }
-                        }
-                        else
-                        {
-                            if (s == "THEN")  // && !isLast || !switches.BasicV)
-                                state.Indent--;
-                            Console.Write(s);
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        Console.Write($" !! {s}");
-                    }
-                }
-            }*/
-           
            Console.WriteLine("");
         }
-        static string formatLineNumber(ProcessedLine progline, CommandSwitches switches, ListerState State)
-        {
-            string linenumber = progline.LineNumber.ToString();
-
-            if (progline.LineNumber == 0 && State.Z80)
-            {
-                linenumber = string.Empty;
-                if (switches.FlgAddNums) linenumber = (State.LineCount * 10).ToString();
-            }
-            else if (switches.Align)
-                linenumber = linenumber.PadLeft(5);
-            if (switches.Pretty) linenumber = "{=ListingLineNo}" + linenumber + SemanticTags.Reset;
-            if (!switches.NoSpaces)
-            {
-                if (linenumber != string.Empty) linenumber += " "; // only space if number present
-            }
-            return linenumber;
-        }
-
-        /*public static IEnumerable<(string value, string? tag)> WalkTagged(string line)
-        {
-            int i = 0;
-
-            while (i < line.Length)
-            {
-                // Tagged token?
-                if (line[i] == '{' && i + 2 < line.Length && line[i + 1] == '=')
-                {
-                    int tagStart = i;
-                    int tagEnd = line.IndexOf('}', tagStart);
-                    if (tagEnd < 0) yield break;
-
-                    string tag = line.Substring(tagStart, tagEnd - tagStart+1);
-
-                    int valueStart = tagEnd + 1;
-                    int close = line.IndexOf("{/}", valueStart);
-                    if (close < 0) yield break;
-
-                    string value = line.Substring(valueStart, close - valueStart);
-
-                    yield return (value, tag);
-
-                    i = close + 3;
-                }
-                else
-                {
-                    // Untagged text — collect until next '{'
-                    int start = i;
-                    int next = line.IndexOf('{', i);
-                    if (next < 0) next = line.Length;
-
-                    string text = line.Substring(start, next - start);
-                    yield return (text, null);
-
-                    i = next;
-                }
-            }
-        }*/
-        public static IEnumerable<(string value, string? tag, bool isLast)> WalkTagged(string line)
-        {
-            int i = 0;
-
-            // First, collect all items into a temporary list
-            var items = new List<(string value, string? tag)>();
-
-            while (i < line.Length)
-            {
-                // Tagged token?
-                if (line[i] == '{' && i + 2 < line.Length && line[i + 1] == '=')
-                {
-                    int tagStart = i;
-                    int tagEnd = line.IndexOf('}', tagStart);
-                    if (tagEnd < 0) break;
-
-                    string tag = line.Substring(tagStart, tagEnd - tagStart + 1);
-
-                    int valueStart = tagEnd + 1;
-                    int close = line.IndexOf("{/}", valueStart);
-                    if (close < 0) break;
-
-                    string value = line.Substring(valueStart, close - valueStart);
-
-                    items.Add((value, tag));
-
-                    i = close + 3;
-                }
-                else
-                {
-                    // Untagged text — collect until next '{'
-                    int start = i;
-                    int next = line.IndexOf('{', i);
-                    if (next < 0) next = line.Length;
-
-                    string text = line.Substring(start, next - start);
-                    items.Add((text, null));
-
-                    i = next;
-                }
-            }
-
-            // Now yield with correct isLast flag
-            for (int n = 0; n < items.Count; n++)
-            {
-                var (value, tag) = items[n];
-                bool isLast = (n == items.Count - 1);
-                yield return (value, tag, isLast);
-            }
-        }
-
-
-
+       
         /*private bool isEndOfProc(ListerState s, CommandSwitches switches) // s is a CLONE so can use freely
         {
             string templine = getNextLine(s, switches);

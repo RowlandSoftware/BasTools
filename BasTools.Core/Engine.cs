@@ -30,28 +30,28 @@
             : base(message, inner) { }
     }
 
-    //***************** ParserState *****************
-    class ParserState
+    //***************** ProgInfo *****************
+    public class ProgInfo
     {
-        public byte[] Data;
-        public int Ptr;
         public bool Z80;
-        public int LineCount;
-        public bool InAsm;
-
-        public List<string> DirectiveParams = new();
-
-        public int DataSize;
-        public ParserState()
+        public bool BasicV;
+        public int NumberOfLines;
+        public int LengthInBytes;
+        public string Filename;
+        public string BasicDialect =>
+            Z80 ? "Z80 Basic"
+                : BasicV ? "Acorn Basic V"
+                    : "Acorn Basic I–IV";
+        public ProgInfo(bool z80, bool basicV, string filename)
         {
-            Data = Array.Empty<byte>();
-            Z80 = false;
-            Ptr = 0;
-            LineCount = 0;
-            DataSize = 0;
-            InAsm = false;
-        }       
+            Z80 = z80;
+            BasicV = basicV;
+            NumberOfLines = 0;
+            LengthInBytes = 0;
+            Filename = filename;
+        }
     }
+
     //***************** SemanticTags *****************
     public static class SemanticTags
     {
@@ -77,10 +77,10 @@
         public static string Reset => "{/}";
     }
 
+    //***************** Listing Classes and Records *****************
     public record Listing(
     List<ProcessedLine> ProgramLines //, List<Token> Tokens
     );
-
     public record class ProcessedLine
     {
         public int LineNumber { get; set; }
@@ -93,11 +93,95 @@
         string Value,
         string SemanticTag
     );
+    public record FormattedListing(
+    List<FormattedLine> FormattedLines
+    );
+    public record class FormattedLine
+    {
+        public int LineNumber { get; set; }
+        public string? FormattedLineNumber { get; set; }
+        public int IndentLevel { get; set; }
+        public string LineLineOrSegment { get; set; } = "";
+        public string TaggedLineLineOrSegment { get; set; } = "";
+    }
     public record LineRecord(
         int linenumber,
         byte[] lineContent
     );
+    //***************** ParserState *****************
+    class ParserState
+    {
+        public byte[] Data;
+        public int Ptr;
+        public bool Z80;
+        public int LineCount;
+        public bool InAsm;
 
+        public List<string> DirectiveParams = new();
+        public ParserState()
+        {
+            Data = Array.Empty<byte>();
+            Z80 = false;
+            Ptr = 0;
+            LineCount = 0;
+            InAsm = false;
+        }
+    }
+
+    //***************** FormatterState *****************
+    class FormatterState
+    {
+        public bool Z80;
+        public int LineCount;
+        private int _indent;
+        public int PendingIndent;
+        public bool fMultiLineIf;
+        public FormatterState()
+        {
+            Z80 = false;
+            LineCount = 0;
+            Indent = 0;
+            PendingIndent = 0;
+            fMultiLineIf = false;
+        }
+        public FormatterState(FormatterState other)
+        {
+            Z80 = other.Z80;
+            LineCount = other.LineCount;
+            Indent = other.Indent;
+            PendingIndent = other.PendingIndent;
+            fMultiLineIf |= other.fMultiLineIf;
+        }
+        public int Indent
+        {
+            get => _indent;
+            set => _indent = value < 0 ? 0 : value;
+        }
+    }
+
+    //***************** FormattingOptions *****************
+    public class FormattingOptions
+    {
+        public bool FlgAddNums;
+        public bool FlgIndent;
+        public bool FlgEmphDefs;
+        public bool Align;
+        public bool NoSpaces;
+        public bool Bare;
+        public bool BreakApart;
+        public FormattingOptions()
+        {
+            FlgAddNums = false;
+            FlgIndent = false;
+            FlgEmphDefs = false;
+            Align = false;
+            NoSpaces = false;
+            Bare = false;
+            BreakApart = false;
+        }
+    }
+
+    //***************** The Engine *****************
     public class BasToolsEngine
     {
         // These are FIELDS — they persist for the lifetime of the engine
@@ -131,7 +215,7 @@
             readTokenTable(Vtoken, "BasTools.Core.VTokenTable.txt");
         }
 
-        public bool Process(string fn, ref bool flgZ80, bool BasicV, Listing listing)
+        public bool ProcessRawProgram(string fn, Listing listing, ProgInfo progInfo)
         {
             ParserState State = new();
             bool result = LoadFile(fn, State);
@@ -151,10 +235,10 @@
                     throw new BasToolsException("\'" + fn + "\' is not a BASIC program");
                 }
             }
-            flgZ80 = State.Z80;
+            progInfo.Z80 = State.Z80;
 
             // Split the file into lines
-            foreach (LineRecord progline in ParseLines(State.Data, flgZ80, BasicV))
+            foreach (LineRecord progline in ParseLines(State.Data, progInfo))
             {
                 ProcessedLine thisline = new();
                 thisline.LineNumber = progline.linenumber;
@@ -162,7 +246,7 @@
 
                 // Line contents
 
-                processLineBody(State, thisline.TokenisedLine, thisline, BasicV);
+                processLineBody(State, thisline.TokenisedLine, thisline, progInfo);
 
                 listing.ProgramLines.Add(thisline);
 #if DEBUG
@@ -178,10 +262,96 @@
                 Console.WriteLine();*/
 #endif
             }
+            // update program metadata
+            progInfo.LengthInBytes = State.Data.Count();
+            progInfo.NumberOfLines = listing.ProgramLines.Count;
 
             return true;
 
-        } // End Process()
+        } // End ProcessRawProgram()
+        public bool FormatProgram(Listing lines, FormattedListing listing, FormattingOptions switches, bool BasicV)
+        {
+            FormatterState state = new();      // this sets initial conditions
+
+            foreach (ProcessedLine progline in lines.ProgramLines)
+            {
+                FormattedLine formattedLine = new FormattedLine();
+
+                formattedLine.LineNumber = progline.LineNumber;
+                string linenumber = formatLineNumber(progline.LineNumber, switches, state);
+                formattedLine.FormattedLineNumber = linenumber;
+
+                var tokens = BasToolsEngine.WalkTagged(progline.TaggedLine).ToList();
+                for (int i = 0; i < tokens.Count; i++)
+                {
+                    var (value, tag, isLast) = tokens[i];
+
+                    if (tag == SemanticTags.Keyword)
+                    {
+                        if (value == "THEN" && BasicV && isLast)
+                        {
+                            state.fMultiLineIf = true;
+                            state.PendingIndent++;
+                        }
+                        else if (state.fMultiLineIf && value == "ELSE")
+                        {
+                            state.PendingIndent++;
+                            state.Indent--;
+                        }
+                        else if (state.fMultiLineIf && value == "ENDIF")
+                        {
+                            state.Indent--;
+                            state.fMultiLineIf = false;
+                        }
+                    }
+                    else
+                    {
+                        if (tag == SemanticTags.IndentingKeyword) state.PendingIndent++;
+                        if (tag == SemanticTags.OutdentingKeyword) state.PendingIndent--;
+                        if (tag == SemanticTags.InOutKeyword && switches.BreakApart && false) // && NExt line not WHEN && not OTHERWISE && already indented
+                        {
+                            state.Indent--;
+                            state.PendingIndent++;
+                        }
+                        char nxtchar = i < tokens.Count - 1 ? tokens[i + 1].value[0] : '\0';
+                        char lastchar = i > 0 && tokens[i - 1].value.Length > 0 ? tokens[i - 1].value[^1] : '\0';
+                        bool nextStartsWithSpace = nxtchar == ' ';
+                        bool lastEndsWithSpace = lastchar == ' ' || i == 0;
+
+                        if (!switches.NoSpaces)
+                        {
+                            if (tag == SemanticTags.Operator)
+                            {
+                                if (!lastEndsWithSpace)
+                                    value = ' ' + value;
+                                if (!nextStartsWithSpace)
+                                    value += ' ';
+                            }
+                            if (tag == SemanticTags.Keyword)
+                            {
+                                value += "@";
+                                //if (true) //(value != "PROC" && value != "FN" && !value.EndsWith('(') && !(value == "TO" && nxtchar == 'P'))
+                                //if (!lastEndsWithSpace && !nextStartsWithSpace && nxtchar != ':' && nxtchar != '(')
+                                //    value += "@";
+                            }                        
+                        }
+                    }
+
+                    string temp = tag + value;
+                    if (tag != null)
+                        temp += "{/}";
+                    
+                    formattedLine.LineLineOrSegment += value;
+                    formattedLine.TaggedLineLineOrSegment += temp;                    
+                }
+                formattedLine.IndentLevel = state.Indent;
+                state.Indent += state.PendingIndent;
+                state.PendingIndent = 0;
+
+                listing.FormattedLines.Add(formattedLine);
+            }
+            return true;
+        }
         private bool LoadFile(string fn, ParserState State)
         {
             using (FileStream stream = new(fn, FileMode.Open, FileAccess.Read))
@@ -193,20 +363,20 @@
                 {
                     throw new IOException("File read incomplete.");
                 }
-                State.DataSize = size;
+                //State.DataSize = size;
             }
             return true;
         }
-        IEnumerable<LineRecord> ParseLines(byte[] data, bool flgZ80, bool BasicV)
+        IEnumerable<LineRecord> ParseLines(byte[] data, ProgInfo progInfo)
         {
-            int ptr = flgZ80 ? 0 : 1;   // skip initial CR for 6502
+            int ptr = progInfo.Z80 ? 0 : 1;   // skip initial CR for 6502
             int LineCount = 0;
 
             while (ptr < data.Length)
             {
                 bool endOfProg = false;
-                if (!flgZ80 && ((BasicV && data[ptr] == 255) || data[ptr] > 127)) endOfProg = true; // End of program marker (Acorn)
-                if (flgZ80 && data[ptr + 1] == 255 && data[ptr + 2] == 255) endOfProg = true; // End of program marker (Z80)
+                if (!progInfo.Z80 && ((progInfo.BasicV && data[ptr] == 255) || data[ptr] > 127)) endOfProg = true; // End of program marker (Acorn)
+                if (progInfo.Z80 && data[ptr + 1] == 255 && data[ptr + 2] == 255) endOfProg = true; // End of program marker (Z80)
                 if (endOfProg) break;
 
                 if (ptr + 3 > data.Length)
@@ -214,7 +384,7 @@
 
                 byte length;
                 ushort lineNumber;
-                if (flgZ80)
+                if (progInfo.Z80)
                 {
                     lineNumber = (ushort)(data[ptr + 1] | (data[ptr + 2] << 8));
                     length = data[ptr];
@@ -246,7 +416,7 @@
                 yield return new LineRecord(lineNumber, slice);
             }
         }
-        private void processLineBody(ParserState State, byte[] tokenisedLine, ProcessedLine returnObject, bool BasicV)
+        private void processLineBody(ParserState State, byte[] tokenisedLine, ProcessedLine returnObject, ProgInfo progInfo)
         {
             string plainline = string.Empty;
             string linenospaces = string.Empty;
@@ -344,7 +514,7 @@
                         if (mnemonic != string.Empty)
                         {
                             bool isMnemonic;
-                            if (BasicV)
+                            if (progInfo.BasicV)
                             {
                                 isMnemonic = ArmMnemonics.Contains(mnemonic);
                             }
@@ -368,7 +538,7 @@
                             }
                         }
                     }
-                    if (BasicV)
+                    if (progInfo.BasicV)
                     {
                         // ARM: Detect tokens like R0, R12, SP, LR, PC
                         char uchar = char.ToUpperInvariant(curchar);
@@ -452,7 +622,7 @@
                 else
                 // 4. Now deal with tokens
                 {
-                    string keyword = getKeywordOrLineNumber(tokenisedLine, curbyte, ref i, ref nxtchar, BasicV, State);
+                    string keyword = getKeywordOrLineNumber(tokenisedLine, curbyte, ref i, ref nxtchar, progInfo, State);
 
                     if (keyword == "THEN") startOfStatement = true; // THEN signals new statement
                     if (keyword == "FN" || keyword == "PROC") flgFnOrProc = true;
@@ -464,6 +634,7 @@
                         string tag = SemanticTags.Keyword;
                         switch (keyword)
                         {
+                            // No If ... Then ... Else; handles in code because depends on whether in multilineIf or not (unless /breakapart)
                             case "FOR":
                             case "REPEAT":
                             case "WHILE":
@@ -476,6 +647,8 @@
                             case "ENDCASE":
                                 tag = SemanticTags.OutdentingKeyword;
                                 break;
+                            // Ones we only want to affect indent when /breakapart used
+                            // These cancel 1 indent for the line they're on, and indent following lines
                             case "OTHERWISE":
                             case "WHEN":
                                 tag = SemanticTags.InOutKeyword;
@@ -517,18 +690,16 @@
 
             return;
         }
-        private string getKeywordOrLineNumber(byte[] tokenisedLine, byte curbyte, ref int ptr, ref char nxtchar, bool BasicV, ParserState s)
+        private string getKeywordOrLineNumber(byte[] tokenisedLine, byte curbyte, ref int ptr, ref char nxtchar, ProgInfo progInfo, ParserState s)
         {
             try
             {
-                if (BasicV)
+                if (curbyte > 197 && curbyte < 201)
                 {
-                    if (curbyte > 197 && curbyte < 201)
-                    {
-                        int token = curbyte * 256 + tokenisedLine[++ptr];
-                        nxtchar = (ptr == tokenisedLine.Length - 1) ? '\0' : (char)tokenisedLine[ptr+1];
-                        return Vtoken[token];
-                    }
+                    progInfo.BasicV = true;
+                    int token = curbyte * 256 + tokenisedLine[++ptr];
+                    nxtchar = (ptr == tokenisedLine.Length - 1) ? '\0' : (char)tokenisedLine[ptr+1];
+                    return Vtoken[token];
                 }
                 if (s.Z80) // RT Russell tokens that could not be included in tokentable
                 {
@@ -599,7 +770,24 @@
             return (curr == '+' || curr == '-') && char.ToUpper(prev) == 'E';
         }
         static bool IsOperator(char c) => c is '+' or '-' or '/' or '*' or '=' or '<' or '>' or '^';
+        static string formatLineNumber(int lineNumber, FormattingOptions switches, FormatterState State)
+        {
+            string linenumber = lineNumber.ToString();
 
+            if (lineNumber == 0 && State.Z80)
+            {
+                linenumber = string.Empty;
+                if (switches.FlgAddNums) linenumber = (State.LineCount * 10).ToString();
+            }
+            else if (switches.Align)
+                linenumber = linenumber.PadLeft(5);
+
+            if (!switches.NoSpaces) // consider leaving this for the prettyprinter
+            {
+                if (linenumber != string.Empty) linenumber += " "; // only space if number present
+            }
+            return linenumber;
+        }
 
         static HashSet<string> LoadMnemonicTable(string resourceName)
         {
@@ -644,6 +832,57 @@
                 {
                     throw new Exception($"Unexpected token table format in line: {tline}");
                 }
+            }
+        }
+        public static IEnumerable<(string value, string? tag, bool isLast)> WalkTagged(string? line)
+        {
+            if (line == null) yield break;
+            int i = 0;
+
+            // First, collect all items into a temporary list
+            var items = new List<(string value, string? tag)>();
+
+            while (i < line.Length)
+            {
+                // Tagged token?
+                if (line[i] == '{' && i + 2 < line.Length && line[i + 1] == '=')
+                {
+                    int tagStart = i;
+                    int tagEnd = line.IndexOf('}', tagStart);
+                    if (tagEnd < 0) break;
+
+                    string tag = line.Substring(tagStart, tagEnd - tagStart + 1);
+
+                    int valueStart = tagEnd + 1;
+                    int close = line.IndexOf("{/}", valueStart);
+                    if (close < 0) break;
+
+                    string value = line.Substring(valueStart, close - valueStart);
+
+                    items.Add((value, tag));
+
+                    i = close + 3;
+                }
+                else
+                {
+                    // Untagged text — collect until next '{'
+                    int start = i;
+                    int next = line.IndexOf('{', i);
+                    if (next < 0) next = line.Length;
+
+                    string text = line.Substring(start, next - start);
+                    items.Add((text, null));
+
+                    i = next;
+                }
+            }
+
+            // Now yield with correct isLast flag
+            for (int n = 0; n < items.Count; n++)
+            {
+                var (value, tag) = items[n];
+                bool isLast = (n == items.Count - 1);
+                yield return (value, tag, isLast);
             }
         }
         static string GetEmbeddedResourceContent(string resourceName)
