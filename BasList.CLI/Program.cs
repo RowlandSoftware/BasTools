@@ -10,11 +10,13 @@
     using System.Text.RegularExpressions;
     using System.CodeDom.Compiler;
     using System.ComponentModel.Design;
+    using System.Security.Cryptography.X509Certificates;
 
     //***************** CommandSwitches *****************
     public class CommandSwitches
     {
-        public bool BasicV;
+        private bool _basicV;
+        private bool _notBasicV;
         public bool FlgAddNums;
         public bool FlgIndent;
         public bool FlgEmphDefs;
@@ -39,7 +41,8 @@
         public List<string> DirectiveParams;
         public CommandSwitches()
         {
-            BasicV = false;
+            _basicV = false;
+            _notBasicV = false;
             FlgAddNums = false;
             FromLine = 0;
             ToLine = -1;
@@ -59,8 +62,15 @@
             FlgDark = true;
             DirectiveParams = new();
         }
-        // Deep copy so lookahead doesn't mutate the real list
-        //DirectiveParams = new List<string>(other.DirectiveParams);
+        public bool BasicV
+        {
+            get => _notBasicV ? false : _basicV;
+            set => _basicV = value;
+        }
+        public bool NotBasicV
+        {
+            set => _notBasicV = value;
+        }
         public bool FlgPause
         {
             get => !Console.IsOutputRedirected && _flgPause;
@@ -73,7 +83,7 @@
         public void SwopIfLight()
         {
             if (!FlgDark) (ForeColor, BackColor) = (BackColor, ForeColor);
-        }
+        }        
         public FormattingOptions copyToFormatOptions()
         {
             FormattingOptions opts= new FormattingOptions();
@@ -99,6 +109,8 @@
             [SemanticTags.OutdentingKeyword] = ConsoleColor.Blue,
             [SemanticTags.InOutKeyword] = ConsoleColor.Blue,
             [SemanticTags.StringLiteral] = ConsoleColor.Green,
+            [SemanticTags.Number] = ConsoleColor.DarkYellow,
+            [SemanticTags.HexNumber] = ConsoleColor.Magenta,
             [SemanticTags.Variable] = ConsoleColor.Magenta,
             [SemanticTags.StaticInteger] = ConsoleColor.DarkYellow,
             [SemanticTags.RemText] = ConsoleColor.Yellow,
@@ -109,7 +121,7 @@
             [SemanticTags.Label] = ConsoleColor.Magenta,
             [SemanticTags.Register] = ConsoleColor.Green,
             [SemanticTags.Mnemonic] = ConsoleColor.Blue,
-            [SemanticTags.Operator] = ConsoleColor.Red,
+            [SemanticTags.Operator] = ConsoleColor.White,
             [SemanticTags.LineNumber] = ConsoleColor.Gray,
             [SemanticTags.StarCommand] = ConsoleColor.White,
             ["{=ListingLineNo}"] = ConsoleColor.DarkGray
@@ -119,9 +131,14 @@
             //Console.WriteLine($" -- {tag} --");
             if (_map.TryGetValue(tag, out color))
             {
-                if (color == ConsoleColor.Yellow && !darkMode)
-                    color = ConsoleColor.DarkYellow;
-
+                if (!darkMode)
+                {
+                    switch (color)
+                    {
+                        case ConsoleColor.Yellow: color = ConsoleColor.DarkYellow; break;
+                        case ConsoleColor.White: color = ConsoleColor.Black; break;
+                    }
+                }
                 return true;
             }
             return false;
@@ -255,6 +272,7 @@
                         }
                     }
                     if (arg2 == "V") { switches.BasicV = true; recognised = true; }
+                    if ("NOTBASICV".StartsWith(arg2)) { switches.NotBasicV = true; recognised = true; }
                     if (arg2 == "?" || "HELP".StartsWith(arg2)) { help(); Environment.Exit(0); }
                     if ("ADDNUMBERS".StartsWith(arg2)) { switches.FlgAddNums = true; recognised = true; }
                     if ("BARE".StartsWith(arg2)) { switches.Bare = true; recognised = true; }
@@ -380,7 +398,7 @@
             // ******** LISTING STARTS HERE ********
             //
             string format = progInfo.BasicDialect;
-            if (!switches.Bare && !switches.FlgList) Console.WriteLine($"\nListing {progInfo.Filename} from line {switches.FromLine} to {switches.ToLine} ({format} format)\n");
+            if (!switches.Bare && !switches.FlgList) Console.WriteLine($"\nListing '{progInfo.Filename}' from line {switches.FromLine} to {switches.ToLine} ({format} format)\n");
 
             string sIndent = string.Empty;
             ListerState State = new();      // this sets initial conditions
@@ -531,14 +549,15 @@
 
             Console.WriteLine("\nOPTIONS");
             Console.WriteLine("-------");
-            Console.WriteLine("  /V               Allow BASIC V keywords");
+            Console.WriteLine("  /V               Interpret BASIC V assembler (May be auto-detected)");
+            Console.WriteLine("  /notBasicV       Disallow BASIC V assembler (overrides auto-detection)");
             Console.WriteLine("  /addnumbers      Supply missing line numbers (Z80 only)");
             Console.WriteLine("  /align           Right-align line numbers");
-            Console.WriteLine("  /indent          Indent listing of loops (unless Nospaces specified)");
+            Console.WriteLine("  /indent          Indent listing of loops");
             Console.WriteLine("  /indent=(loops | defs | all | none)");
             Console.WriteLine("                   Indent loops only, PROC & FN definitions, both, neither");
             Console.WriteLine("  /nonumbers       Omits line numbers");
-            Console.WriteLine("  /nospaces        Omits spaces and indent after line numbers");
+            Console.WriteLine("  /nospaces        Omits additional spaces and one space after line numbers");
             Console.WriteLine("  /bare            Omits additional messages (cancels pause)");
             Console.WriteLine("  /breakapart      Prints each statement on its own line");
             Console.WriteLine("  /pause           Pause at bottom of each screenful");
