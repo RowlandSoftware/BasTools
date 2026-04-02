@@ -109,8 +109,8 @@
             [SemanticTags.OutdentingKeyword] = ConsoleColor.Blue,
             [SemanticTags.InOutKeyword] = ConsoleColor.Blue,
             [SemanticTags.StringLiteral] = ConsoleColor.Green,
-            [SemanticTags.Number] = ConsoleColor.DarkYellow,
-            [SemanticTags.HexNumber] = ConsoleColor.Magenta,
+            [SemanticTags.Number] = ConsoleColor.White,
+            [SemanticTags.HexNumber] = ConsoleColor.White,
             [SemanticTags.Variable] = ConsoleColor.Magenta,
             [SemanticTags.StaticInteger] = ConsoleColor.DarkYellow,
             [SemanticTags.RemText] = ConsoleColor.Yellow,
@@ -202,9 +202,20 @@
             bool flgZ80 = false;
             ProgInfo progInfo = new(switches.BasicV, flgZ80, filename);
 
-            Listing listing = new(new List<ProcessedLine>()); //, new List<Token>());
+            FormattingOptions formatOptions = switches.copyToFormatOptions();
 
-            if (engine.ProcessRawProgram(filename, listing, progInfo))
+            FormattedListing formattedListing = engine.loadAndFormatFile(filename, formatOptions, progInfo);
+
+            if (formattedListing != null)
+            {
+                displayProgramLines(formattedListing, switches, progInfo);
+            }
+            else
+            {
+                Console.Error.WriteLine("Error while formatting the program");
+            }
+
+            /*if (engine.ProcessRawProgram(filename, listing, progInfo))
             {
                 //Console.WriteLine($"Prog type: {progInfo.BasicDialect}");
 
@@ -224,8 +235,8 @@
             else
             {
                 Console.Error.WriteLine($"Program '{filename}' could not be processed");
-            }
-            
+            }*/
+
         }
 
         //**************** Get User Input *****************
@@ -272,20 +283,21 @@
                         }
                     }
                     if (arg2 == "V") { switches.BasicV = true; recognised = true; }
-                    if ("NOTBASICV".StartsWith(arg2)) { switches.NotBasicV = true; recognised = true; }
+                    if ("NOTBASICV".StartsWith(arg2))           { switches.NotBasicV = true; recognised = true; }
                     if (arg2 == "?" || "HELP".StartsWith(arg2)) { help(); Environment.Exit(0); }
-                    if ("ADDNUMBERS".StartsWith(arg2)) { switches.FlgAddNums = true; recognised = true; }
-                    if ("BARE".StartsWith(arg2)) { switches.Bare = true; recognised = true; }
-                    if ("BREAKAPART".StartsWith(arg2)) { switches.BreakApart = true; recognised = true; }
-                    if ("PAUSE".StartsWith(arg2)) { switches.FlgPause = true; recognised = true; }
-                    if ("PRETTYPRINT".StartsWith(arg2)) { switches.Pretty = true; recognised = true; }
-                    if ("ALIGN".StartsWith(arg2)) { switches.Align = true; recognised = true; }
-                    if ("CLS".StartsWith(arg2)) { switches.Clear = true; recognised = true; }
-                    if ("INDENT".StartsWith(arg2)) { switches.FlgIndent = true; recognised = true; }
-                    if ("NONUMBERS".StartsWith(arg2)) { switches.NoLineNumbers = true; recognised = true; }
-                    if ("NOSPACES".StartsWith(arg2)) { switches.NoSpaces = true; recognised = true; }
-                    if ("DARK".StartsWith(arg2)) { switches.FlgDark = true; recognised = true; }
-                    if ("LIGHT".StartsWith(arg2)) { switches.FlgDark = false; recognised = true; }
+                    if ("ADDNUMBERS".StartsWith(arg2))          { switches.FlgAddNums = true; recognised = true; }
+                    if ("BARE".StartsWith(arg2))                { switches.Bare = true; recognised = true; }
+                    if ("BREAKAPART".StartsWith(arg2))          { switches.BreakApart = true; recognised = true; }
+                    if ("PAUSE".StartsWith(arg2))               { switches.FlgPause = true; recognised = true; }
+                    if ("PRETTYPRINT".StartsWith(arg2))         { switches.Pretty = true; recognised = true; }
+                    if ("ALIGN".StartsWith(arg2))               { switches.Align = true; recognised = true; }
+                    if ("CLS".StartsWith(arg2))                 { switches.Clear = true; recognised = true; }
+                    if ("CLEAR".StartsWith(arg2))               { switches.Clear = true; recognised = true; }
+                    if ("INDENT".StartsWith(arg2))              { switches.FlgIndent = true; recognised = true; }
+                    if ("NONUMBERS".StartsWith(arg2))           { switches.NoLineNumbers = true; recognised = true; }
+                    if ("NOSPACES".StartsWith(arg2))            { switches.NoSpaces = true; recognised = true; }
+                    if ("DARK".StartsWith(arg2))                { switches.FlgDark = true; recognised = true; }
+                    if ("LIGHT".StartsWith(arg2))               { switches.FlgDark = false; recognised = true; }
                     if (!recognised && !switches.Bare) Console.Error.WriteLine("Option " + arg.ToLower() + " not recognised");
                 }
                 // not a switch ...
@@ -411,7 +423,7 @@
                 }
                 else
                 {
-                    Console.WriteLine(progline.FormattedLineNumber + progline.LineLineOrSegment);
+                    Console.WriteLine(progline.FormattedLineNumber + progline.PlainLineOrSegment);
                 }
             }
         }
@@ -431,6 +443,11 @@
                 else
                     Console.Write(ln);
                 Console.ForegroundColor = switches.ForeColor;
+                
+                if (!switches.NoSpaces) // consider leaving this for the prettyprinter
+                {
+                    Console.Write(' ');
+                }
             }
             Console.Write(new string(' ',progline.IndentLevel * 2));
 

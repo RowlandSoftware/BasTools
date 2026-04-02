@@ -34,14 +34,43 @@
     //
     public partial class BasToolsEngine
     {
+        public FormattedListing loadAndFormatFile(string filename, FormattingOptions formatOptions, ProgInfo progInfo)
+        {
+            Listing detokenisedListing = new(new List<ProcessedLine>()); //, new List<Token>());
+
+            if (ProcessRawProgram(filename, detokenisedListing, progInfo))
+            {
+                //AnnotatedListing annotatedListing = new();
+                //if 
+                {
+
+                }
+                FormattedListing formattedListing = new(new List<FormattedLine>());
+
+                if (FormatProgram(detokenisedListing, formattedListing, formatOptions, progInfo.BasicV))
+                {
+                    return formattedListing;
+                }
+                else
+                {
+                    Console.Error.WriteLine("Error while formatting the program");
+                    return null!;
+                }
+            }
+            else
+            {
+                Console.Error.WriteLine($"Program '{filename}' could not be processed");
+                return null!;
+            }
+        }
         //public BasToolsEngine()
-        public static IEnumerable<(string value, string? tag, bool isLast)> WalkTagged(string? line)
+        public static IEnumerable<(string value, string tag, bool isLast)> WalkTagged(string line)
         {
             if (line == null) yield break;
             int i = 0;
 
             // First, collect all items into a temporary list
-            var items = new List<(string value, string? tag)>();
+            var items = new List<(string value, string tag)>();
 
             while (i < line.Length)
             {
@@ -60,7 +89,7 @@
 
                     string value = line.Substring(valueStart, close - valueStart);
 
-                    items.Add((value, tag));
+                    items.Add((value.Trim(), tag));
 
                     i = close + 3;
                 }

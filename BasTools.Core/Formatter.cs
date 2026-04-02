@@ -6,7 +6,21 @@ namespace BasTools.Core
 {
     public partial class BasToolsEngine
     {
-        public bool FormatProgram(Listing lines, FormattedListing listing, FormattingOptions switches, bool BasicV)
+        internal static class BasSpacingRules
+        {
+            internal static readonly Dictionary<SemanticTags, (bool, bool)> Rules =
+                new()
+                {
+            { SemanticTags.Operator, (true, true) },
+            { SemanticTags.Keyword,  (true, true) },
+            { SemanticTags.Comma,    (false, true) },
+            { SemanticTags.Colon,    (false, true) },
+            { SemanticTags.Identifier, (false, false) },
+                    // etc.
+                };
+        }
+
+        internal bool FormatProgram(Listing lines, FormattedListing listing, FormattingOptions switches, bool BasicV)
         {
             FormatterState state = new();      // this sets initial conditions
 
@@ -80,7 +94,7 @@ namespace BasTools.Core
                     if (tag != null)
                         temp += "{/}";
 
-                    formattedLine.LineLineOrSegment += value;
+                    formattedLine.PlainLineOrSegment += value;
                     formattedLine.TaggedLineLineOrSegment += temp;
                 }
                 formattedLine.IndentLevel = state.Indent;
@@ -103,10 +117,6 @@ namespace BasTools.Core
             else if (switches.Align)
                 linenumber = linenumber.PadLeft(5);
 
-            if (!switches.NoSpaces) // consider leaving this for the prettyprinter
-            {
-                if (linenumber != string.Empty) linenumber += " "; // only space if number present
-            }
             return linenumber;
         }
     }

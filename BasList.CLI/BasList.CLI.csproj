@@ -9,6 +9,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Include="RSlogo.bmp" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\BasTools.Core\BasTools.Core.csproj" />
   </ItemGroup>
 

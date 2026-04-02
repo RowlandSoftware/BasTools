@@ -116,5 +116,38 @@ namespace BasTools.Core
 
             return true;
         }
+        static string readRegister(byte[] tokenisedLine, int index)
+        {
+            int i = index;
+            while (i < tokenisedLine.Length - 1 && char.IsAsciiLetterOrDigit((char)tokenisedLine[i]))
+                i++;
+
+            return Encoding.ASCII.GetString(tokenisedLine, index, i - index);
+        }
+        static bool IsOperatorChar(char c) => c is '+' or '-' or '/' or '*' or '=' or '<' or '>' or '^';
+        static HashSet<string> LoadMnemonicTable(string resourceName)
+        {
+            string fileContent = GetEmbeddedResourceContent(resourceName);
+
+            var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            string[] mnemonics = fileContent.Split("\r\n");
+
+            foreach (string mnemonic in mnemonics)
+            {
+                if (!string.IsNullOrEmpty(mnemonic))
+                    set.Add(mnemonic.Trim());
+            }
+            return set;
+        }
+        static string readMnemonic(byte[] tokenisedLine, int ptr)
+        {
+            string result = string.Empty;
+
+            while (ptr <= tokenisedLine.Length - 1 && (char.IsAsciiLetterOrDigit((char)tokenisedLine[ptr]) || ((char)tokenisedLine[ptr] is '%' or '$' or '_'))) // if we capture MORE than a mnemonic, it is a variable, e.g. lda123, opt%
+            {
+                result += (char)tokenisedLine[ptr++];
+            }
+            return result;
+        }
     }
 }

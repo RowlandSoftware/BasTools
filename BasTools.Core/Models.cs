@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.Metrics;
 using System.Text;
 
 namespace BasTools.Core
@@ -26,7 +27,43 @@ namespace BasTools.Core
         }
     }
 
+    static readonly Dictionary<string, (bool before, bool after)> SpacingRules =
+    new()
+    {
+        { SemanticTags.Operator, (true, true) },
+        { SemanticTags.Keyword,  (true, true) },
+        { SemanticTags.Comma,    (false, true) },
+        { SemanticTags.Colon,    (false, true) },
+        { SemanticTags.Identifier, (false, false) },
+        // etc.
+    };
+        //var(before, after) = BasSpacingRules.Rules.GetValueOrDefault(tag, (false, false));
+
     //***************** SemanticTags *****************
+    public enum SemanticTypes
+    {
+        Keyword,
+        IndentingKeyword,
+        OutdentingKeyword,
+        InOutKeyword,
+        StringLiteral,
+        Number,
+        HexNumber,
+        Variable,
+        StaticInteger,
+        RemText,
+        AssemblerComment,
+        StarCommand,
+        EmbeddedData,
+        Proc,
+        Function,
+        Label,
+        Register,
+        Mnemonic,
+        LineNumber,
+        Operator,
+        Reset
+    }
     public static class SemanticTags
     {
         // These are the literal tags you insert into the output
@@ -54,6 +91,33 @@ namespace BasTools.Core
     }
 
     //***************** Listing Classes and Records *****************
+
+    // ----------- The New Model -----------
+   /* public record class ProgramLine
+    {
+        // Stage 0: Raw input
+        public int LineNumber { get; set; }
+        public byte[] TokenisedLine { get; set; } = Array.Empty<byte>();
+
+        // Stage 1: Detokeniser
+        public string NoSpacesLine { get; set; } = "";
+        public string PlainDetokenisedLine { get; set; } = "";
+        public string TaggedLine { get; set; } = "";
+
+        // Stage 2: Lexer
+        public List<Token> Tokens { get; set; } = new();
+
+        // Stage 3: Annotator
+        public List<AnnotatedToken> AnnotatedTokens { get; set; } = new();
+
+        // Stage 4: Formatter
+        public string FormattedPlain { get; set; } = "";
+        public string FormattedTagged { get; set; } = "";
+        public int IndentLevel { get; set; }
+    }
+    public record Listing(List<ProgramLine> Lines);*/
+
+    // --------- Old Models TO GO ---------
     public record Listing(
     List<ProcessedLine> ProgramLines //, List<Token> Tokens
     );
@@ -65,19 +129,16 @@ namespace BasTools.Core
         public string PlainDetokenisedLine { get; set; } = "";
         public string TaggedLine { get; set; } = "";
     }
-    internal record Token(
-        string Value,
-        string SemanticTag
-    );
+    
     public record FormattedListing(
     List<FormattedLine> FormattedLines
     );
     public record class FormattedLine
     {
         public int LineNumber { get; set; }
-        public string? FormattedLineNumber { get; set; }
+        public string FormattedLineNumber { get; set; }
         public int IndentLevel { get; set; }
-        public string LineLineOrSegment { get; set; } = "";
+        public string PlainLineOrSegment { get; set; } = "";
         public string TaggedLineLineOrSegment { get; set; } = "";
     }
     internal record LineRecord(
