@@ -108,9 +108,11 @@
             [SemanticTags.IndentingKeyword] = ConsoleColor.Blue,
             [SemanticTags.OutdentingKeyword] = ConsoleColor.Blue,
             [SemanticTags.InOutKeyword] = ConsoleColor.Blue,
+            [SemanticTags.BuiltInFn] = ConsoleColor.Blue,            
             [SemanticTags.StringLiteral] = ConsoleColor.Green,
             [SemanticTags.Number] = ConsoleColor.White,
             [SemanticTags.HexNumber] = ConsoleColor.White,
+            [SemanticTags.BinaryNumber] = ConsoleColor.White,
             [SemanticTags.Variable] = ConsoleColor.Magenta,
             [SemanticTags.StaticInteger] = ConsoleColor.DarkYellow,
             [SemanticTags.RemText] = ConsoleColor.Yellow,
@@ -124,6 +126,10 @@
             [SemanticTags.Operator] = ConsoleColor.White,
             [SemanticTags.LineNumber] = ConsoleColor.Gray,
             [SemanticTags.StarCommand] = ConsoleColor.White,
+            [SemanticTags.StatementSep] = ConsoleColor.White,
+            [SemanticTags.ListSep] = ConsoleColor.White,
+            [SemanticTags.OpenBracket] = ConsoleColor.White,
+            [SemanticTags.CloseBracket] = ConsoleColor.White,
             ["{=ListingLineNo}"] = ConsoleColor.DarkGray
         };
         public static bool TryGetColor(string tag, out ConsoleColor color, bool darkMode)
@@ -204,39 +210,17 @@
 
             FormattingOptions formatOptions = switches.copyToFormatOptions();
 
-            FormattedListing formattedListing = engine.loadAndFormatFile(filename, formatOptions, progInfo);
-
-            if (formattedListing != null)
+            try
             {
+                Listing formattedListing = engine.loadAndFormatFile(filename, formatOptions, progInfo);
+                Console.WriteLine($"I got {formattedListing.Lines.Count} lines");
+
                 displayProgramLines(formattedListing, switches, progInfo);
             }
-            else
+            catch (BasToolsException ex)
             {
-                Console.Error.WriteLine("Error while formatting the program");
+                Console.Error.WriteLine($"{ex.Message}\n\n{ex.InnerException?.Message ?? ""}");
             }
-
-            /*if (engine.ProcessRawProgram(filename, listing, progInfo))
-            {
-                //Console.WriteLine($"Prog type: {progInfo.BasicDialect}");
-
-                FormattedListing formattedListing = new(new List<FormattedLine>());
-                FormattingOptions formatOptions = switches.copyToFormatOptions();
-
-                if (engine.FormatProgram(listing, formattedListing, formatOptions, progInfo.BasicV))
-                {
-                    displayProgramLines(formattedListing, switches, progInfo);
-                }
-                else
-                {
-                    Console.Error.WriteLine("Error while formatting the program");
-                }
-                
-            }
-            else
-            {
-                Console.Error.WriteLine($"Program '{filename}' could not be processed");
-            }*/
-
         }
 
         //**************** Get User Input *****************
@@ -390,7 +374,7 @@
         }
 
         //****************** Display the Output ***********
-        private static void displayProgramLines(FormattedListing formattedListing, CommandSwitches switches, ProgInfo progInfo)
+        private static void displayProgramLines(Listing formattedListing, CommandSwitches switches, ProgInfo progInfo)
         {
             ListerState state = new();
 
@@ -415,7 +399,7 @@
             string sIndent = string.Empty;
             ListerState State = new();      // this sets initial conditions
 
-            foreach (FormattedLine progline in formattedListing.FormattedLines)
+            foreach (ProgramLine progline in formattedListing.Lines)
             {
                 if (switches.Pretty)
                 {
@@ -423,12 +407,12 @@
                 }
                 else
                 {
-                    Console.WriteLine(progline.FormattedLineNumber + progline.PlainLineOrSegment);
+                    Console.WriteLine(progline.LineNumber.ToString() + (!switches.NoSpaces ? ' ' : "") + new string(' ', progline.IndentLevel * 2) + progline.FormattedPlain); // FormattedPlain FormattedTagged
                 }
             }
         }
         // ******** PrettyPrint ********
-        static void PrettyPrint(FormattedLine progline, ListerState state, CommandSwitches switches)
+        static void PrettyPrint(ProgramLine progline, ListerState state, CommandSwitches switches)
         {
             // Line preamble
             string? ln = progline.FormattedLineNumber;
@@ -444,15 +428,13 @@
                     Console.Write(ln);
                 Console.ForegroundColor = switches.ForeColor;
                 
-                if (!switches.NoSpaces) // consider leaving this for the prettyprinter
-                {
+                if (!switches.NoSpaces)
                     Console.Write(' ');
-                }
             }
             Console.Write(new string(' ',progline.IndentLevel * 2));
 
             // Line contents
-            foreach (var (value, tag, isLast) in BasToolsEngine.WalkTagged(progline.TaggedLineLineOrSegment))
+            foreach (var (value, tag, isLast) in BasToolsEngine.WalkTagged(progline.FormattedTagged))
             {
                 if (tag != null && ConsoleColorMap.TryGetColor(tag, out var c, switches.FlgDark))
                 {

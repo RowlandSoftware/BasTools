@@ -6,7 +6,20 @@
 	<UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <ApplicationIcon>RS_lg.ico</ApplicationIcon>
+    <PackageIcon>RSlogo_78x78.png</PackageIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="RS_lg.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\BasList.CLI\RSlogo_78x78.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\BasTools.Core\BasTools.Core.csproj" />

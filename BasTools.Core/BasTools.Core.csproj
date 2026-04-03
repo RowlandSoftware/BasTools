@@ -3,8 +3,13 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
-    <PackageIcon></PackageIcon>
+    <PackageIcon>RSlogo_78x78.png</PackageIcon>
+    <ApplicationIcon>RS_lg.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="BasSpacingRules.cs" />
+  </ItemGroup>
 
   <ItemGroup>
     <None Remove="ArmMnemonics.txt" />
@@ -13,9 +18,20 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="RS_lg.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
     <EmbeddedResource Include="ArmMnemonics.txt"></EmbeddedResource>
     <EmbeddedResource Include="TokenTable.txt"></EmbeddedResource>
     <EmbeddedResource Include="VTokenTable.txt"></EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\BasList.CLI\RSlogo_78x78.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>

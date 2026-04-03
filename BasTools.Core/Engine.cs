@@ -10,6 +10,7 @@
     using System.Drawing;
     using System.IO;
     using System.Linq;
+    using System.Linq.Expressions;
     using System.Numerics;
     using System.Reflection;
     using System.Reflection.Emit;
@@ -34,33 +35,30 @@
     //
     public partial class BasToolsEngine
     {
-        public FormattedListing loadAndFormatFile(string filename, FormattingOptions formatOptions, ProgInfo progInfo)
+        public Listing loadAndFormatFile(string filename, FormattingOptions formatOptions, ProgInfo progInfo)
         {
-            Listing detokenisedListing = new(new List<ProcessedLine>()); //, new List<Token>());
+            Listing listing = new(new List<ProgramLine>());
 
-            if (ProcessRawProgram(filename, detokenisedListing, progInfo))
+            try
             {
-                //AnnotatedListing annotatedListing = new();
-                //if 
+                Console.WriteLine($"ProcessRaw = {ProcessRawProgram(filename, listing, progInfo)}, {listing.Lines.Count}");
                 {
-
-                }
-                FormattedListing formattedListing = new(new List<FormattedLine>());
-
-                if (FormatProgram(detokenisedListing, formattedListing, formatOptions, progInfo.BasicV))
-                {
-                    return formattedListing;
-                }
-                else
-                {
-                    Console.Error.WriteLine("Error while formatting the program");
-                    return null!;
+                    try
+                    {
+                        Console.WriteLine($"FormatProgram = {FormatProgram(listing, formatOptions, progInfo.BasicV)}, {listing.Lines.Count}");
+                        {
+                            return listing;
+                        }
+                    }
+                    catch (Exception e1)
+                    {
+                        throw new BasToolsException("Error while formatting the program", e1);
+                    }
                 }
             }
-            else
+            catch (Exception e2)
             {
-                Console.Error.WriteLine($"Program '{filename}' could not be processed");
-                return null!;
+                throw new BasToolsException($"Program '{filename}' could not be processed", e2);
             }
         }
         //public BasToolsEngine()
@@ -89,7 +87,7 @@
 
                     string value = line.Substring(valueStart, close - valueStart);
 
-                    items.Add((value.Trim(), tag));
+                    items.Add((value, tag));
 
                     i = close + 3;
                 }

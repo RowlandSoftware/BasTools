@@ -6,6 +6,7 @@ using System.Text;
 namespace BasTools.Core
 {
     //***************** ProgInfo *****************
+    
     public class ProgInfo
     {
         public bool Z80;
@@ -27,28 +28,18 @@ namespace BasTools.Core
         }
     }
 
-    static readonly Dictionary<string, (bool before, bool after)> SpacingRules =
-    new()
-    {
-        { SemanticTags.Operator, (true, true) },
-        { SemanticTags.Keyword,  (true, true) },
-        { SemanticTags.Comma,    (false, true) },
-        { SemanticTags.Colon,    (false, true) },
-        { SemanticTags.Identifier, (false, false) },
-        // etc.
-    };
-        //var(before, after) = BasSpacingRules.Rules.GetValueOrDefault(tag, (false, false));
-
     //***************** SemanticTags *****************
-    public enum SemanticTypes
+    public enum SemanticTypes // not used
     {
         Keyword,
         IndentingKeyword,
         OutdentingKeyword,
         InOutKeyword,
+        BuiltInFn,
         StringLiteral,
         Number,
         HexNumber,
+        BinaryNumber,
         Variable,
         StaticInteger,
         RemText,
@@ -62,38 +53,48 @@ namespace BasTools.Core
         Mnemonic,
         LineNumber,
         Operator,
+        StatementSep,
+        ListSep,
+        OpenBracket,
+        CloseBracket,
         Reset
     }
     public static class SemanticTags
     {
         // These are the literal tags you insert into the output
-        public static string Keyword => "{=keyword}";
-        public static string IndentingKeyword => "{=indentingkeyword}";
-        public static string OutdentingKeyword => "{=outdentingkeyword}";
-        public static string InOutKeyword => "{=inout_keyword}";
-        public static string StringLiteral => "{=string}";
-        public static string Number => "{=number}";
-        public static string HexNumber => "{=hexnumber}";
-        public static string Variable => "{=var}";
-        public static string StaticInteger => "{=staticint}";
-        public static string RemText => "{=remtext}";
-        public static string AssemblerComment => "{=assemcomment}";
-        public static string StarCommand => "{=starcommand}";
-        public static string EmbeddedData => "{=embeddeddata}";
-        public static string Proc => "{=proc}";
-        public static string Function => "{=fn}";
-        public static string Label => "{=label}";
-        public static string Register => "{=register}";
-        public static string Mnemonic => "{=mnemonic}";
-        public static string LineNumber => "{=linenumber}";
-        public static string Operator => "{=operator}";
-        public static string Reset => "{/}";
+        public const string Keyword = "{=keyword}";
+        public const string IndentingKeyword = "{=indentingkeyword}";
+        public const string OutdentingKeyword = "{=outdentingkeyword}";
+        public const string InOutKeyword = "{=inout_keyword}";
+        public const string BuiltInFn = "{=builtinfn}";
+        public const string StringLiteral = "{=string}";
+        public const string Number = "{=number}";
+        public const string HexNumber = "{=hexnumber}";
+        public const string BinaryNumber = "{=binarynumber}";
+        public const string Variable = "{=var}";
+        public const string StaticInteger = "{=staticint}";
+        public const string RemText = "{=remtext}";
+        public const string AssemblerComment = "{=assemcomment}";
+        public const string StarCommand = "{=starcommand}";
+        public const string EmbeddedData = "{=embeddeddata}";
+        public const string Proc = "{=proc}";
+        public const string Function = "{=fn}";
+        public const string Label = "{=label}";
+        public const string Register = "{=register}";
+        public const string Mnemonic = "{=mnemonic}";
+        public const string LineNumber = "{=linenumber}";
+        public const string Operator = "{=operator}";
+        public const string StatementSep = "{=statementsep}";
+        public const string ListSep = "{=listsep}";
+        public const string OpenBracket = "{=openbracket}";
+        public const string CloseBracket = "{=closebracket}";
+        public const string Reset = "{/}";
     }
 
     //***************** Listing Classes and Records *****************
 
     // ----------- The New Model -----------
-   /* public record class ProgramLine
+    public record class ProgramLine
     {
         // Stage 0: Raw input
         public int LineNumber { get; set; }
@@ -105,42 +106,15 @@ namespace BasTools.Core
         public string TaggedLine { get; set; } = "";
 
         // Stage 2: Lexer
-        public List<Token> Tokens { get; set; } = new();
+        //public List<Token> Tokens { get; set; } = new();
 
-        // Stage 3: Annotator
-        public List<AnnotatedToken> AnnotatedTokens { get; set; } = new();
-
-        // Stage 4: Formatter
+        // Stage 3: Formatter
+        public string FormattedLineNumber { get; set; }
         public string FormattedPlain { get; set; } = "";
         public string FormattedTagged { get; set; } = "";
         public int IndentLevel { get; set; }
     }
-    public record Listing(List<ProgramLine> Lines);*/
-
-    // --------- Old Models TO GO ---------
-    public record Listing(
-    List<ProcessedLine> ProgramLines //, List<Token> Tokens
-    );
-    public record class ProcessedLine
-    {
-        public int LineNumber { get; set; }
-        public byte[] TokenisedLine { get; set; } = Array.Empty<byte>();
-        public string NoSpacesLine { get; set; } = "";
-        public string PlainDetokenisedLine { get; set; } = "";
-        public string TaggedLine { get; set; } = "";
-    }
-    
-    public record FormattedListing(
-    List<FormattedLine> FormattedLines
-    );
-    public record class FormattedLine
-    {
-        public int LineNumber { get; set; }
-        public string FormattedLineNumber { get; set; }
-        public int IndentLevel { get; set; }
-        public string PlainLineOrSegment { get; set; } = "";
-        public string TaggedLineLineOrSegment { get; set; } = "";
-    }
+    public record Listing(List<ProgramLine> Lines);
     internal record LineRecord(
         int linenumber,
         byte[] lineContent

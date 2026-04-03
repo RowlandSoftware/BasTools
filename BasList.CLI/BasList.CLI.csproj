@@ -6,10 +6,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AssemblyName>BasList</AssemblyName>
+    <ApplicationIcon>RS_lg.ico</ApplicationIcon>
+    <PackageIcon>RSlogo_78x78.png</PackageIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <Content Include="RSlogo.bmp" />
+    <Content Include="RS_lg.ico" />
   </ItemGroup>
 
   <ItemGroup>
@@ -20,6 +23,13 @@
     <Reference Include="System.Windows.Forms">
       <HintPath>C:\Program Files\Microsoft Visual Studio\18\Community\dotnet\net10.0\runtime\shared\Microsoft.WindowsDesktop.App\10.0.4\System.Windows.Forms.dll</HintPath>
     </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="RSlogo_78x78.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>

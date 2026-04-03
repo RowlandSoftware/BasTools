@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Reflection.PortableExecutable;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -60,17 +61,17 @@ namespace BasTools.Core
             progInfo.Z80 = State.Z80;
 
             // Split the file into lines
-            foreach (LineRecord progline in ParseLines(State.Data, progInfo))
+            foreach (LineRecord progline in ParseLines(State.Data, progInfo)) // LineRecord is a temporary structure to hold int linenumber, byte[] lineContent here only
             {
-                ProcessedLine thisline = new();
+                ProgramLine thisline = new();                                 // This is where our ProgramLine object is created, to be added to the List listing
                 thisline.LineNumber = progline.linenumber;
-                thisline.TokenisedLine = progline.lineContent.ToArray(); // Because we need to _copy_ the array
+                thisline.TokenisedLine = progline.lineContent.ToArray();      // Because we need to _copy_ the array
 
                 // Line contents
 
                 processLineBody(State, thisline.TokenisedLine, thisline, progInfo);
 
-                listing.ProgramLines.Add(thisline);
+                listing.Lines.Add(thisline);
 #if DEBUG
                 /*Console.WriteLine($"{progline.linenumber}" + ' ' + thisline.PlainDetokenisedLine);
                 Console.WriteLine($"{progline.linenumber}" + ' ' + thisline.NoSpacesLine);
@@ -83,10 +84,11 @@ namespace BasTools.Core
                 }
                 Console.WriteLine();*/
 #endif
-            }
+            } // end foreach
+
             // update program metadata
             progInfo.LengthInBytes = State.Data.Count();
-            progInfo.NumberOfLines = listing.ProgramLines.Count;
+            progInfo.NumberOfLines = listing.Lines.Count;
 
             return true;
 
@@ -156,7 +158,7 @@ namespace BasTools.Core
                 yield return new LineRecord(lineNumber, slice);
             }
         }
-        private void processLineBody(ParserState State, byte[] tokenisedLine, ProcessedLine returnObject, ProgInfo progInfo)
+        private void processLineBody(ParserState State, byte[] tokenisedLine, ProgramLine returnObject, ProgInfo progInfo)
         {
             string plainline = string.Empty;
             string linenospaces = string.Empty;
@@ -170,6 +172,7 @@ namespace BasTools.Core
             bool startOfStatement = true;
             bool asmComment = false;
             int prevbyte = 0;
+            bool closeTag = false;
 
             for (int i = 0; i <= tokenisedLine.Length - 1; i++)
             {
@@ -221,7 +224,39 @@ namespace BasTools.Core
                     {
                         continue;
                     }
+                    /* Binary (Basic V)
+                    if (LexToken(
+                    tokenisedLine, ref i,
+                    startCondition: c => c == '%',
+                    continueCondition: c => curchar == '0' || curchar == '1',
+                    tag: SemanticTags.HexNumber,
+                    ref plainline, ref linenospaces, ref taggedline))
+                    {
+                        continue;
+                    }*/
+
+                    if (curchar == ':') // include other conditions like implied : or space
+                    {
+                        taggedline += SemanticTags.StatementSep;
+                        closeTag = true;
+                    }
+                    else if (curchar == ',' || curchar == ';')
+                    {
+                        taggedline += SemanticTags.ListSep;
+                        closeTag = true;
+                    }
+                    if (curchar == '(')
+                    {
+                        taggedline += SemanticTags.OpenBracket;
+                        closeTag = true;
+                    }
+                    else if (curchar == ')')
+                    {
+                        taggedline += SemanticTags.CloseBracket;
+                        closeTag = true;
+                    }
                 }
+                #region number walker
                 // Numbers
                 if ((char.IsAsciiDigit(curchar) || curchar == '.') && !rem && !quote && !flgHex)
                 {
@@ -275,6 +310,7 @@ namespace BasTools.Core
                             curchar = next;
                             i++;
                             addtoall(curchar, ref plainline, ref linenospaces, ref taggedline);
+                            seenE = false;
                             continue;
                         }
 
@@ -285,6 +321,7 @@ namespace BasTools.Core
                     taggedline += SemanticTags.Reset;
                     continue;
                 }
+                #endregion
                 // Operators (+ - * / >> etc)
                 if (!rem && !quote)
                 {
@@ -294,19 +331,20 @@ namespace BasTools.Core
                         continue;
                     }
                 }
-                /* Variables
-                if (!rem && !quote)
+                // FN / PROC names
+                if (flgFnOrProc)// (!rem && !quote)
                 {
                     LexToken(
                         tokenisedLine, ref i,
                         startCondition: c => char.IsLetter(c) || c == '_',
                         continueCondition: c => char.IsLetterOrDigit(c) || c == '_',
-                        tag: SemanticTags.Variable,
+                        tag: "",
                         ref plainline, ref linenospaces, ref taggedline);
                     {
+                        flgFnOrProc = false;
                         continue;
                     }
-                }*/
+                }
 
                 #region Assembler
                 //if (State.InAsm) Console.WriteLine("In asm");
@@ -411,13 +449,17 @@ namespace BasTools.Core
                 // *** 2. Printable characters - NOW we add to listings ***
                 if ((curbyte < 127 && curbyte > 31) || rem || quote) // Anything not a BASIC token
                 {
-                    if (curbyte > 32 || rem || quote)
-                        linenospaces += curchar;
+                    if (curbyte > 32 || rem || quote) { linenospaces += curchar; }
                     plainline += curchar;
                     taggedline += curchar;
 
                     // 3. Things we do AFTER adding the character to the listings
 
+                    if (closeTag) // catch single character tokens like : , ; ( )
+                    {
+                        taggedline += SemanticTags.Reset;
+                        closeTag = false;
+                    }
                     if (flgFnOrProc && !char.IsAsciiLetterOrDigit(curchar) && curbyte != '_')
                     {
                         flgFnOrProc = false;
@@ -433,14 +475,13 @@ namespace BasTools.Core
                         startOfStatement = true;  // a colon outside of quotes or REM is new statement; so is assembler delimiter
                     else if (curchar != ' ')
                         startOfStatement = false; // anything else isn't
-
                 }
                 else
                 // 4. Now deal with tokens
                 {
                     string keyword = getKeywordOrLineNumber(tokenisedLine, curbyte, ref i, ref nxtchar, progInfo, State);
 
-                    if (keyword == "THEN") startOfStatement = true; // THEN signals new statement
+                    if (keyword == "THEN") startOfStatement = true; // THEN signals new statement - ? ADD ELSE ?
                     if (keyword == "FN" || keyword == "PROC") flgFnOrProc = true;
 
                     if (curbyte == 0x8D)
@@ -450,7 +491,7 @@ namespace BasTools.Core
                         string tag = SemanticTags.Keyword;
                         switch (keyword)
                         {
-                            // No If ... Then ... Else; handles in code because depends on whether in multilineIf or not (unless /breakapart)
+                            // No If ... Then ... Else; handled in code because depends on whether in multiLineIf or not (unless /breakapart)
                             case "FOR":
                             case "REPEAT":
                             case "WHILE":
@@ -468,6 +509,31 @@ namespace BasTools.Core
                             case "OTHERWISE":
                             case "WHEN":
                                 tag = SemanticTags.InOutKeyword;
+                                break;
+                            case "INKEY": // ?
+                            case "GET":   // List of bracket optional function keywords
+                            case "GET$":
+                            case "CHR$":
+                            case "ASC":
+                            case "VAL":
+                            case "LEN":
+                            case "SQR":
+                            case "ABS":
+                            case "SGN":
+                            case "EXP":
+                            case "LOG":
+                            case "SIN":
+                            case "COS":
+                            case "TAN":
+                            case "ATN":
+                            case "RND":
+                            case "EOF":
+                            case "PTR":
+                            case "EXT":
+                            case "TIME":
+                            case "TIME$":
+                            case "EVAL":
+                                tag = SemanticTags.BuiltInFn;
                                 break;
                         }
                         taggedline += tag + keyword + SemanticTags.Reset;
@@ -498,7 +564,7 @@ namespace BasTools.Core
                 }
                 prevbyte = curbyte;
             }
-            if (rem || flgFnOrProc || flgVar || asmComment) taggedline += SemanticTags.Reset; // close hanging tags at end of line
+            if (rem || flgFnOrProc || flgVar || asmComment || closeTag) taggedline += SemanticTags.Reset; // close hanging tags at end of line
 
             returnObject.PlainDetokenisedLine = plainline;
             returnObject.TaggedLine = taggedline;
