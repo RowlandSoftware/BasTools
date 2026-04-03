@@ -160,7 +160,7 @@ namespace BasTools.Core
                         if (spacebefore && i > 0 && !BasSpacingRules.NoSpaceBetween(prevTag, tag))
                             value = " " + value;
 
-                        if (spaceafter && !isLast && !nextTokenStartsWithSpace && !BasSpacingRules.NoSpaceBetween(tag, nextTag))
+                        if (spaceafter && !isLast && !nextTokenStartsWithSpace(tokens[i+1]) && !BasSpacingRules.NoSpaceBetween(tag, nextTag))
                             value += " ";
 
                         /*if (tag == SemanticTags.Keyword)
