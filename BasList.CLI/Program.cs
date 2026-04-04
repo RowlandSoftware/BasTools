@@ -123,7 +123,9 @@
             [SemanticTags.Label] = ConsoleColor.Magenta,
             [SemanticTags.Register] = ConsoleColor.Green,
             [SemanticTags.Mnemonic] = ConsoleColor.Blue,
-            [SemanticTags.Operator] = ConsoleColor.White,
+            [SemanticTags.Operator] = ConsoleColor.Red,
+            [SemanticTags.IndirectionOperator] = ConsoleColor.White,
+            [SemanticTags.ImmediateOperator] = ConsoleColor.White,            
             [SemanticTags.LineNumber] = ConsoleColor.Gray,
             [SemanticTags.StarCommand] = ConsoleColor.White,
             [SemanticTags.StatementSep] = ConsoleColor.White,
@@ -387,7 +389,7 @@
             state.CurrentForeground = switches.ForeColor;
             state.CurrentBackground = switches.BackColor;
 
-            if (switches.Clear) Console.Clear();
+            if (switches.Clear && !Console.IsOutputRedirected) Console.Clear();
             //int linesprinted = 0;
 
             //
@@ -407,7 +409,7 @@
                 }
                 else
                 {
-                    Console.WriteLine(progline.LineNumber.ToString() + (!switches.NoSpaces ? ' ' : "") + new string(' ', progline.IndentLevel * 2) + progline.FormattedPlain); // FormattedPlain FormattedTagged
+                    Console.WriteLine(progline.FormattedLineNumber + (!switches.NoSpaces ? ' ' : "") + new string(' ', progline.IndentLevel * 2) + progline.FormattedPlain); // FormattedPlain FormattedTagged
                 }
             }
         }
@@ -486,12 +488,13 @@
         //**** Utility functions ******
         private static void ClearCurrentConsoleLine()
        {
+            if (Console.IsOutputRedirected) return;
            int currentLineCursor = Console.CursorTop;
            Console.SetCursorPosition(0, Console.CursorTop);
            for (int i = 0; i < Console.WindowWidth; i++)
                Console.Write(" ");
            Console.SetCursorPosition(0, currentLineCursor);
-       }/*
+       }
        
         /*private bool nameMatch(int ptr, ListerState s, CommandSwitches switches)
         {

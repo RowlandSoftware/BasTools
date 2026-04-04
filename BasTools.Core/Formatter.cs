@@ -11,7 +11,7 @@ namespace BasTools.Core
             switch (tag)
             {
                 case SemanticTags.Keyword:
-                    if (value == "PROC" || value == "FN" || value == "INKEY")
+                    if (value == "PROC" || value == "FN")
                         return (true, false);
                     else return (true, true);
                 case SemanticTags.IndentingKeyword:
@@ -25,16 +25,18 @@ namespace BasTools.Core
                 case SemanticTags.Variable: return (true, true);
                 case SemanticTags.StaticInteger: return (true, true);
                 case SemanticTags.RemText: return (true, false);
-                case SemanticTags.AssemblerComment: return (false, false);
+                case SemanticTags.AssemblerComment: return (true, false);
                 case SemanticTags.StarCommand: return (false, false);
-                case SemanticTags.EmbeddedData: return (false, false);
+                case SemanticTags.EmbeddedData: return (true, false);
                 case SemanticTags.Proc: return (false, false);
                 case SemanticTags.Function: return (false, false);
-                case SemanticTags.Label: return (false, false);
-                case SemanticTags.Register: return (false, true);
+                case SemanticTags.Label: return (false, true);
+                case SemanticTags.Register: return (true, true);
                 case SemanticTags.Mnemonic: return (true, true);
                 case SemanticTags.LineNumber: return (true, true);
                 case SemanticTags.Operator: return (true, true);
+                case SemanticTags.IndirectionOperator: return (false, false);
+                case SemanticTags.ImmediateOperator: return (true, false);
                 case SemanticTags.StatementSep: return (false, false);
                 case SemanticTags.ListSep: return (false, true);
                 case SemanticTags.OpenBracket: return (false, false);
@@ -48,54 +50,71 @@ namespace BasTools.Core
             if (prevTag == null || tag == null)
                 return false;
 
-            // (1) Identifier/function → '('
+            // 0. Keywords (and structured keywords) must NOT glue to '('
+            if ((prevTag == SemanticTags.Keyword ||
+                 prevTag == SemanticTags.IndentingKeyword ||
+                 prevTag == SemanticTags.OutdentingKeyword ||
+                 prevTag == SemanticTags.InOutKeyword) &&
+                 tag == SemanticTags.OpenBracket)
+                return false;
+            
+            // (1) Function keywords never followed by space
+            if (prevTag == SemanticTags.BuiltInFn)
+                return true;
+
+            // (2a) Mnemonic → '('// Prevent gluing Mnemonic → '(' in either direction
+            if ((tag == SemanticTags.OpenBracket && prevTag == SemanticTags.Mnemonic) ||
+                (tag == SemanticTags.Mnemonic && prevTag == SemanticTags.OpenBracket))
+                return false;
+
+            
+
+            // (2b) Identifier/function → '('
             if (tag == SemanticTags.OpenBracket &&
                 (prevTag == SemanticTags.Variable ||
                  prevTag == SemanticTags.Proc ||
                  prevTag == SemanticTags.Function ||
                  prevTag == SemanticTags.BuiltInFn ||
-                 prevTag == SemanticTags.Operator ||
-                 prevTag == SemanticTags.Keyword))
+                 prevTag == SemanticTags.Operator))
                 return true;
 
-            // (2) '(' → number/string/variable
-            if (prevTag == SemanticTags.OpenBracket &&
-                (tag == SemanticTags.Number ||
-                 tag == SemanticTags.StringLiteral ||
-                 tag == SemanticTags.Variable))
+            // (3) '(' → number/string/variable
+            if (prevTag == SemanticTags.OpenBracket)
                 return true;
 
-            // (3) number/string/variable/closeBracket → ')'
-            if (tag == SemanticTags.CloseBracket &&
-                (prevTag == SemanticTags.Number ||
-                 prevTag == SemanticTags.StringLiteral ||
-                 prevTag == SemanticTags.Variable ||
-                 prevTag == SemanticTags.CloseBracket))
+            // (4) number/string/variable/closeBracket → ')'
+            if (tag == SemanticTags.CloseBracket)
                 return true;
 
-            // (4) number/string/variable/closeBracket → list separator
-            if (tag == SemanticTags.ListSep &&
-                (prevTag == SemanticTags.Number ||
-                 prevTag == SemanticTags.StringLiteral ||
-                 prevTag == SemanticTags.Variable ||
-                 prevTag == SemanticTags.CloseBracket))
+            // (5) indexed addressing e.g. LDA hi,X  LDA (&70),Y
+            if (prevTag == SemanticTags.ListSep && tag == SemanticTags.Register) // exceptionally do not follow listSep with space
                 return true;
 
-            // (5) list separator → number/string/variable/openBracket
-            if (prevTag == SemanticTags.ListSep &&
-                (tag == SemanticTags.Number ||
-                 tag == SemanticTags.StringLiteral ||
-                 tag == SemanticTags.Variable ||
-                 tag == SemanticTags.OpenBracket))
+            // (6) list separator
+            if (prevTag == SemanticTags.ListSep) // always follow listSep with space (except as above)
+                return false;
+            if (tag == SemanticTags.ListSep) // never precede listSep with space
                 return true;
 
-            // (6) '#' → number   (file numbers)
-            if (prevTag == SemanticTags.Operator && prevTag == "#" &&
-                tag == SemanticTags.Number)
+            // (7) '#' → number (file numbers) and indirection operators ? ! $
+            /*if (prevTag == SemanticTags.IndirectionOperator || tag == SemanticTags.IndirectionOperator)
+                return true;*/
+
+            // Indirection operators glue only to what FOLLOWS, not what precedes
+            // (7) '?' '!' '$' as indirection operators
+            if (prevTag == SemanticTags.IndirectionOperator)
+                return true;   // glue '$' to its operand (B%, (B%+X%), etc.)
+
+            if (tag == SemanticTags.IndirectionOperator)
+                return false;  // never glue *before* '$' — keep space before it
+
+
+            // (8) e.g. LDA #&80, LDA #17
+            if (prevTag == SemanticTags.ImmediateOperator && (tag == SemanticTags.HexNumber || tag == SemanticTags.Number))
                 return true;
 
-            // (7) statement separator ':' → next token
-            if (prevTag == SemanticTags.StatementSep)
+            // (9) statement separator ':' → next token
+            if (tag == SemanticTags.StatementSep || prevTag == SemanticTags.StatementSep)
                 return true;
 
             return false;
@@ -118,8 +137,30 @@ namespace BasTools.Core
                 for (int i = 0; i < tokens.Count; i++)
                 {
                     var (value, tag, isLast) = tokens[i];
-                    string prevTag = i > 0 ? tokens[i - 1].tag : null; // previous token
-                    string nextTag = i < tokens.Count-1 ? tokens[i + 1].tag : null; // next token
+                    string prevTag = i > 0 ? tokens[i - 1].tag : null;  // previous token
+                    string nextTag = GetNextNonSpaceTag(tokens, i);     // next token skipping null tags (e.g. white space)
+
+                    // Detect preserved whitespace before assembler comment
+                    bool preserveWhitespace =
+                        tag == SemanticTags.AssemblerComment &&
+                        i > 0 &&
+                        string.IsNullOrWhiteSpace(tokens[i - 1].value);
+
+                    // If preserving whitespace, do NOT trim or re-space
+                    if (preserveWhitespace)
+                    {
+                        // Emit the previous whitespace exactly as-is
+                        progline.FormattedPlain += tokens[i - 1].value;
+                        progline.FormattedTagged += tokens[i - 1].value;
+
+                        // Then emit the comment normally
+                        progline.FormattedPlain += value;
+                        progline.FormattedTagged += tag + value + "{/}";
+
+                        // Skip the whitespace token next iteration
+                        continue;
+                    }
+
 
                     // Indenting
                     if (tag == SemanticTags.Keyword)
@@ -152,16 +193,18 @@ namespace BasTools.Core
                     }
 
                     // Spacing out keywords
+                    bool spacebefore = false; // dummy values
+                    bool spaceafter = false;
                     value = value.Trim();
                     if (!switches.NoSpaces)
                     {
-                        (bool spacebefore, bool spaceafter) = BasSpacingRules.GetSpacingRule(tag, value);
+                        (spacebefore, spaceafter) = BasSpacingRules.GetSpacingRule(tag, value);
 
-                        if (spacebefore && i > 0 && !BasSpacingRules.NoSpaceBetween(prevTag, tag))
-                            value = " " + value;
+                        spacebefore = (spacebefore && i > 0 && !BasSpacingRules.NoSpaceBetween(prevTag, tag));
+                        // value = " " + value;
 
-                        if (spaceafter && !isLast && !nextTokenStartsWithSpace(tokens[i+1]) && !BasSpacingRules.NoSpaceBetween(tag, nextTag))
-                            value += " ";
+                        spaceafter = (spaceafter && !isLast && !nextTokenStartsWithSpace(tokens[i + 1]) && !BasSpacingRules.NoSpaceBetween(tag, nextTag));
+                             //value = value += " ";
 
                         /*if (tag == SemanticTags.Keyword)
                     {
@@ -171,9 +214,11 @@ namespace BasTools.Core
                     }*/
                     }
 
-                    string temp = tag + value;
+                    string temp = spacebefore ? " " : string.Empty;
+                    temp += tag + value;
                     if (tag != null)
                         temp += "{/}";
+                    if (spaceafter) temp += " ";
 
                     progline.FormattedPlain += value;
                     progline.FormattedTagged += temp;
@@ -183,6 +228,14 @@ namespace BasTools.Core
                 state.PendingIndent = 0;
 
                 //lines.FormattedLines.Add(formattedLine);
+                /////////////////////////////////////////////////////////////////////
+                if (progline.TaggedLine != progline.FormattedTagged)
+                {
+                    Console.WriteLine($"{linenumber} {progline.TaggedLine}");
+                    Console.WriteLine($"{linenumber} {progline.FormattedTagged}");
+                    Console.WriteLine("");
+                }
+                
             }
             return true;
         }
@@ -199,6 +252,16 @@ namespace BasTools.Core
                 linenumber = linenumber.PadLeft(5);
 
             return linenumber;
+        }
+        static string GetNextNonSpaceTag(List<(string value, string tag, bool isLast)> tokens, int i)
+        {
+            for (int j = i + 1; j < tokens.Count; j++)
+            {
+                var (v, t, _) = tokens[j];
+                if (!string.IsNullOrWhiteSpace(v))
+                    return t;
+            }
+            return null;
         }
         private bool nextTokenStartsWithSpace((string value, string tag, bool isLast) token)
         {

@@ -53,6 +53,8 @@ namespace BasTools.Core
         Mnemonic,
         LineNumber,
         Operator,
+        IndirectionOperator,
+        ImmediateOperator,
         StatementSep,
         ListSep,
         OpenBracket,
@@ -84,6 +86,8 @@ namespace BasTools.Core
         public const string Mnemonic = "{=mnemonic}";
         public const string LineNumber = "{=linenumber}";
         public const string Operator = "{=operator}";
+        public const string IndirectionOperator = "{=indirectionoperator}";
+        public const string ImmediateOperator = "{=immediateoperator}";        
         public const string StatementSep = "{=statementsep}";
         public const string ListSep = "{=listsep}";
         public const string OpenBracket = "{=openbracket}";

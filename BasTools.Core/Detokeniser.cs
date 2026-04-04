@@ -173,6 +173,7 @@ namespace BasTools.Core
             bool asmComment = false;
             int prevbyte = 0;
             bool closeTag = false;
+            //bool flgLabel = false;
 
             for (int i = 0; i <= tokenisedLine.Length - 1; i++)
             {
@@ -255,73 +256,17 @@ namespace BasTools.Core
                         taggedline += SemanticTags.CloseBracket;
                         closeTag = true;
                     }
-                }
-                #region number walker
-                // Numbers
-                if ((char.IsAsciiDigit(curchar) || curchar == '.') && !rem && !quote && !flgHex)
-                {
-                    taggedline += SemanticTags.Number;
-
-                    bool seenE = false;
-
-                    // Process first character of the number
-                    addtoall(curchar, ref plainline, ref linenospaces, ref taggedline);
-
-                    // Now walk forward
-                    while (true)
+                    else if (!flgVar && curchar is '!' or '?' or '$')
                     {
-                        // Look ahead safely
-                        if (i + 1 >= tokenisedLine.Length)
-                            break;
-
-                        char next = (char)tokenisedLine[i + 1];
-
-                        // Digits always allowed
-                        if (char.IsAsciiDigit(next))
-                        {
-                            curchar = next;
-                            i++;
-                            addtoall(curchar, ref plainline, ref linenospaces, ref taggedline);
-                            continue;
-                        }
-
-                        // Decimal point allowed (BBC BASIC allows multiple, but we don't need to)
-                        if (next == '.')
-                        {
-                            curchar = next;
-                            i++;
-                            addtoall(curchar, ref plainline, ref linenospaces, ref taggedline);
-                            continue;
-                        }
-
-                        // Exponent marker (only uppercase E)
-                        if (next == 'E' && !seenE)
-                        {
-                            seenE = true;
-                            curchar = next;
-                            i++;
-                            addtoall(curchar, ref plainline, ref linenospaces, ref taggedline);
-                            continue;
-                        }
-
-                        // Sign allowed only immediately after E
-                        if ((next == '+' || next == '-') && seenE)
-                        {
-                            curchar = next;
-                            i++;
-                            addtoall(curchar, ref plainline, ref linenospaces, ref taggedline);
-                            seenE = false;
-                            continue;
-                        }
-
-                        // Anything else ends the number
-                        break;
+                        taggedline += SemanticTags.IndirectionOperator;
+                        closeTag = true;
                     }
-
-                    taggedline += SemanticTags.Reset;
-                    continue;
+                    else if (!flgVar && curchar is '#')
+                    {
+                        taggedline += State.InAsm ? SemanticTags.ImmediateOperator : SemanticTags.IndirectionOperator;
+                        closeTag = true;
+                    }
                 }
-                #endregion
                 // Operators (+ - * / >> etc)
                 if (!rem && !quote)
                 {
@@ -345,7 +290,6 @@ namespace BasTools.Core
                         continue;
                     }
                 }
-
                 #region Assembler
                 //if (State.InAsm) Console.WriteLine("In asm");
                 if (State.InAsm && !quote)
@@ -367,6 +311,13 @@ namespace BasTools.Core
 
                     if (!asmComment)
                     {
+                        if (curchar == '.')
+                        {
+                            taggedline += SemanticTags.Label;
+                            //don't need a special label flag
+                            flgVar = true;
+                            // fall through
+                        }
                         string mnemonic = readMnemonic(tokenisedLine, i);
                         if (mnemonic != string.Empty)
                         {
@@ -438,12 +389,78 @@ namespace BasTools.Core
                     }
                 } //end of assembler section
                 #endregion
+                #region number walker
+                // Numbers
+                if ((char.IsAsciiDigit(curchar) || curchar == '.') && !flgVar && !rem && !quote && !flgHex) // && !State.InAsm 
+                {
+                    taggedline += SemanticTags.Number;
 
+                    bool seenE = false;
+
+                    // Process first character of the number
+                    addtoall(curchar, ref plainline, ref linenospaces, ref taggedline);
+
+                    // Now walk forward
+                    while (true)
+                    {
+                        // Look ahead safely
+                        if (i + 1 >= tokenisedLine.Length)
+                            break;
+
+                        char next = (char)tokenisedLine[i + 1];
+
+                        // Digits always allowed
+                        if (char.IsAsciiDigit(next))
+                        {
+                            curchar = next;
+                            i++;
+                            addtoall(curchar, ref plainline, ref linenospaces, ref taggedline);
+                            continue;
+                        }
+
+                        // Decimal point allowed (BBC BASIC allows multiple, but we don't need to)
+                        if (next == '.')
+                        {
+                            curchar = next;
+                            i++;
+                            addtoall(curchar, ref plainline, ref linenospaces, ref taggedline);
+                            continue;
+                        }
+
+                        // Exponent marker (only uppercase E)
+                        if (next == 'E' && !seenE)
+                        {
+                            seenE = true;
+                            curchar = next;
+                            i++;
+                            addtoall(curchar, ref plainline, ref linenospaces, ref taggedline);
+                            continue;
+                        }
+
+                        // Sign allowed only immediately after E
+                        if ((next == '+' || next == '-') && seenE)
+                        {
+                            curchar = next;
+                            i++;
+                            addtoall(curchar, ref plainline, ref linenospaces, ref taggedline);
+                            seenE = false;
+                            continue;
+                        }
+
+                        // Anything else ends the number
+                        break;
+                    }
+
+                    taggedline += SemanticTags.Reset;
+                    continue;
+                }
+                #endregion
                 // Variables
                 if (!flgVar && !rem && (char.IsAsciiLetter(curchar) || curbyte == '_') && !flgFnOrProc && !quote && !flgHex) // variables may start with letter or underline
                 {
                     flgVar = true;
-                    taggedline += SemanticTags.Variable;
+                    //if (!flgLabel) 
+                        taggedline += SemanticTags.Variable;
                 }
 
                 // *** 2. Printable characters - NOW we add to listings ***
@@ -468,6 +485,7 @@ namespace BasTools.Core
                     if (flgVar && !(char.IsAsciiLetterOrDigit(nxtchar) || nxtchar is '%' or '$' or '_'))
                     {
                         flgVar = false;
+                        //flgLabel = false;
                         taggedline += SemanticTags.Reset;
                     }
 
@@ -491,6 +509,10 @@ namespace BasTools.Core
                         string tag = SemanticTags.Keyword;
                         switch (keyword)
                         {
+                            /*case "CASE":
+                                tag = SemanticTags.Mnemonic;
+                                break;
+                            */
                             // No If ... Then ... Else; handled in code because depends on whether in multiLineIf or not (unless /breakapart)
                             case "FOR":
                             case "REPEAT":
@@ -510,11 +532,18 @@ namespace BasTools.Core
                             case "WHEN":
                                 tag = SemanticTags.InOutKeyword;
                                 break;
-                            case "INKEY": // ?
-                            case "GET":   // List of bracket optional function keywords
+                            case "TAB(":  // no space after these
+                            case "INSTR(":
+                            case "POINT(":
+                            case "LEFT$(":
+                            case "MID$(":
+                            case "RIGHT$(":
+                            case "STRING$(":
+                            case "GET":   // no space after bracket-optional function keywords
                             case "GET$":
                             case "CHR$":
                             case "ASC":
+                            case "INKEY":
                             case "VAL":
                             case "LEN":
                             case "SQR":
@@ -527,12 +556,12 @@ namespace BasTools.Core
                             case "TAN":
                             case "ATN":
                             case "RND":
-                            case "EOF":
+                            case "EOF":  //?
                             case "PTR":
                             case "EXT":
-                            case "TIME":
-                            case "TIME$":
-                            case "EVAL":
+                            case "TIME": //?
+                            case "TIME$"://?
+                            case "EVAL": //?
                                 tag = SemanticTags.BuiltInFn;
                                 break;
                         }
