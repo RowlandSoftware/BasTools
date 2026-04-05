@@ -34,6 +34,7 @@
         public bool FlgDark;
         public int FromLine;
         public int ToLine;
+        public bool Debug;
 
         public ConsoleColor ForeColor;
         public ConsoleColor BackColor;
@@ -61,6 +62,7 @@
             FlgPause = false;
             FlgDark = true;
             DirectiveParams = new();
+            Debug = false;
         }
         public bool BasicV
         {
@@ -284,6 +286,7 @@
                     if ("NOSPACES".StartsWith(arg2))            { switches.NoSpaces = true; recognised = true; }
                     if ("DARK".StartsWith(arg2))                { switches.FlgDark = true; recognised = true; }
                     if ("LIGHT".StartsWith(arg2))               { switches.FlgDark = false; recognised = true; }
+                    if ("DEBUG".StartsWith(arg2))               { switches.Debug = true; recognised = true; }
                     if (!recognised && !switches.Bare) Console.Error.WriteLine("Option " + arg.ToLower() + " not recognised");
                 }
                 // not a switch ...
@@ -411,6 +414,42 @@
                 {
                     Console.WriteLine(progline.FormattedLineNumber + (!switches.NoSpaces ? ' ' : "") + new string(' ', progline.IndentLevel * 2) + progline.FormattedPlain); // FormattedPlain FormattedTagged
                 }
+                #region debug
+                if (switches.Debug)
+                {
+                    Console.WriteLine($"{progline.LineNumber} -");
+
+                    Console.ForegroundColor = ConsoleColor.DarkYellow;
+                    Console.Write($"  Plain:     ");
+                    Console.ForegroundColor = State.CurrentForeground;
+                    Console.WriteLine($"{progline.PlainDetokenisedLine}");                   
+
+                    Console.ForegroundColor = ConsoleColor.DarkYellow;
+                    Console.Write($"  Formatted: ");
+                    Console.ForegroundColor = State.CurrentForeground;
+                    Console.WriteLine($"{progline.FormattedPlain}");
+                    
+                    Console.ForegroundColor = ConsoleColor.DarkYellow;
+                    Console.Write($"  Tagged:    ");
+                    Console.ForegroundColor = State.CurrentForeground;
+                    Console.WriteLine($"{progline.TaggedLine}");
+                    
+                    Console.ForegroundColor = ConsoleColor.DarkYellow;
+                    Console.Write($"  Formatted: ");
+                    Console.ForegroundColor = State.CurrentForeground;
+                    Console.WriteLine($"{progline.FormattedTagged}");
+                    
+                    string untaggedline = Regex.Replace(progline.TaggedLine, @"\{.*?\}", "");
+                    if (untaggedline != progline.PlainDetokenisedLine)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine("Mismatch");
+                        Console.ForegroundColor = State.CurrentForeground;
+                        Console.WriteLine(untaggedline);
+                    }
+                    Console.WriteLine();
+                }
+                #endregion
             }
         }
         // ******** PrettyPrint ********

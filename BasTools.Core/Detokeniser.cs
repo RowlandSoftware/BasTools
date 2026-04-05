@@ -72,18 +72,7 @@ namespace BasTools.Core
                 processLineBody(State, thisline.TokenisedLine, thisline, progInfo);
 
                 listing.Lines.Add(thisline);
-#if DEBUG
-                /*Console.WriteLine($"{progline.linenumber}" + ' ' + thisline.PlainDetokenisedLine);
-                Console.WriteLine($"{progline.linenumber}" + ' ' + thisline.NoSpacesLine);
-                Console.WriteLine($"{progline.linenumber}" + ' ' + thisline.TaggedLine);
-                string untaggedline = Regex.Replace(thisline.TaggedLine, @"\{.*?\}", "");
-                if (untaggedline != thisline.PlainDetokenisedLine)
-                {
-                    Console.WriteLine("Mismatch");
-                    Console.WriteLine(untaggedline);
-                }
-                Console.WriteLine();*/
-#endif
+
             } // end foreach
 
             // update program metadata
@@ -557,6 +546,7 @@ namespace BasTools.Core
                             case "ATN":
                             case "RND":
                             case "EOF":  //?
+                            case "SPC":
                             case "PTR":
                             case "EXT":
                             case "TIME": //?
@@ -627,7 +617,16 @@ namespace BasTools.Core
                         case 0xCE: return "ENDWHILE";
                     }
                 }
-                if (curbyte != 0x8D) return token[curbyte];
+                if (curbyte != 0x8D) // 'line number' marker
+                {
+                    string keyword = token[curbyte];
+                    if (keyword == "TO" && nxtchar == 'P')
+                    {
+                        keyword = "TOP";
+                        nxtchar = (++ptr == tokenisedLine.Length - 1) ? '\0' : (char)tokenisedLine[ptr + 1];
+                    }
+                    return keyword;
+                }
 
                 int byte1 = tokenisedLine[++ptr];
                 int byte2 = tokenisedLine[++ptr];

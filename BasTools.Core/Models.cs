@@ -151,6 +151,7 @@ namespace BasTools.Core
         private int _indent;
         public int PendingIndent;
         public bool fMultiLineIf;
+        public bool InIfCondition;
         public FormatterState()
         {
             Z80 = false;
@@ -158,6 +159,7 @@ namespace BasTools.Core
             Indent = 0;
             PendingIndent = 0;
             fMultiLineIf = false;
+            InIfCondition = false;
         }
         public FormatterState(FormatterState other)
         {
@@ -165,7 +167,8 @@ namespace BasTools.Core
             LineCount = other.LineCount;
             Indent = other.Indent;
             PendingIndent = other.PendingIndent;
-            fMultiLineIf |= other.fMultiLineIf;
+            fMultiLineIf = other.fMultiLineIf;
+            InIfCondition = other.InIfCondition;
         }
         public int Indent
         {
