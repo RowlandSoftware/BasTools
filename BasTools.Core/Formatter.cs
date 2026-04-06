@@ -33,8 +33,8 @@ namespace BasTools.Core
                 case SemanticTags.AssemblerComment: return (true, false);
                 case SemanticTags.StarCommand: return (false, false);
                 case SemanticTags.EmbeddedData: return (true, false);
-                case SemanticTags.Proc: return (false, true);
-                case SemanticTags.Function: return (false, true);
+                case SemanticTags.ProcName: return (false, true);
+                case SemanticTags.FunctionName: return (false, true);
                 case SemanticTags.Label: return (false, true);
                 case SemanticTags.Register: return (false, true);
                 case SemanticTags.Mnemonic: return (true, true);
@@ -61,7 +61,6 @@ namespace BasTools.Core
                 return spaceafter;
             }
             // and now the exception rules
-            Console.WriteLine($"Token1: {token1.tag}, {token1.value} - Token2: {token2.tag}, {token2.value}");
             switch (token1.tag)
             {
                 case SemanticTags.Keyword:
@@ -176,14 +175,14 @@ namespace BasTools.Core
                 state.Indent += state.PendingIndent;
                 state.PendingIndent = 0;
 
-                //lines.FormattedLines.Add(formattedLine);
+                /*lines.FormattedLines.Add(formattedLine);
                 /////////////////////////////////////////////////////////////////////
                 if (progline.TaggedLine != progline.FormattedTagged)
                 {
                     Console.WriteLine($"{linenumber} {progline.TaggedLine}");
                     Console.WriteLine($"{linenumber} {progline.FormattedTagged}");
                     Console.WriteLine("");
-                }
+                }*/
                 
             }
             state.InIfCondition = false;

@@ -1,16 +1,17 @@
 ﻿namespace BasList.CLI
 {
     using BasTools.Core;
+    using System.CodeDom.Compiler;
     using System.Collections;
+    using System.ComponentModel.Design;
     using System.Diagnostics;
     using System.Reflection;
+    using System.Security.Cryptography.X509Certificates;
+    using System.Text.RegularExpressions;
     using static System.Runtime.InteropServices.JavaScript.JSType;
     using static System.Windows.Forms.AxHost;
+    using static System.Windows.Forms.LinkLabel;
     using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
-    using System.Text.RegularExpressions;
-    using System.CodeDom.Compiler;
-    using System.ComponentModel.Design;
-    using System.Security.Cryptography.X509Certificates;
 
     //***************** CommandSwitches *****************
     public class CommandSwitches
@@ -120,8 +121,8 @@
             [SemanticTags.RemText] = ConsoleColor.Yellow,
             [SemanticTags.AssemblerComment] = ConsoleColor.Yellow,
             [SemanticTags.EmbeddedData] = ConsoleColor.White,
-            [SemanticTags.Proc] = ConsoleColor.Cyan,
-            [SemanticTags.Function] = ConsoleColor.Cyan,
+            [SemanticTags.ProcName] = ConsoleColor.Cyan,
+            [SemanticTags.FunctionName] = ConsoleColor.Cyan,
             [SemanticTags.Label] = ConsoleColor.Magenta,
             [SemanticTags.Register] = ConsoleColor.Green,
             [SemanticTags.Mnemonic] = ConsoleColor.Blue,
@@ -217,7 +218,7 @@
             try
             {
                 Listing formattedListing = engine.loadAndFormatFile(filename, formatOptions, progInfo);
-                Console.WriteLine($"I got {formattedListing.Lines.Count} lines");
+                //Console.WriteLine($"I got {formattedListing.Lines.Count} lines");
 
                 displayProgramLines(formattedListing, switches, progInfo);
             }
@@ -263,10 +264,6 @@
                                     switches.FlgIndent = false;
                                     switches.FlgEmphDefs = true;
                                     break;
-                                case "NONE":
-                                    switches.FlgIndent = false;
-                                    switches.FlgEmphDefs = false;
-                                    break;
                             }
                         }
                     }
@@ -281,7 +278,7 @@
                     if ("ALIGN".StartsWith(arg2))               { switches.Align = true; recognised = true; }
                     if ("CLS".StartsWith(arg2))                 { switches.Clear = true; recognised = true; }
                     if ("CLEAR".StartsWith(arg2))               { switches.Clear = true; recognised = true; }
-                    if ("INDENT".StartsWith(arg2))              { switches.FlgIndent = true; recognised = true; }
+                    if ("INDENT".StartsWith(arg2))              { switches.FlgIndent = true; switches.FlgEmphDefs = true; recognised = true; }
                     if ("NONUMBERS".StartsWith(arg2))           { switches.NoLineNumbers = true; recognised = true; }
                     if ("NOSPACES".StartsWith(arg2))            { switches.NoSpaces = true; recognised = true; }
                     if ("DARK".StartsWith(arg2))                { switches.FlgDark = true; recognised = true; }
@@ -381,7 +378,7 @@
         //****************** Display the Output ***********
         private static void displayProgramLines(Listing formattedListing, CommandSwitches switches, ProgInfo progInfo)
         {
-            ListerState state = new();
+            ListerState state = new(); // this sets initial conditions
 
             switches.BackColor = ConsoleColor.Black;
             switches.ForeColor = ConsoleColor.White;
@@ -393,7 +390,7 @@
             state.CurrentBackground = switches.BackColor;
 
             if (switches.Clear && !Console.IsOutputRedirected) Console.Clear();
-            //int linesprinted = 0;
+            int linesprinted = 0;
 
             //
             // ******** LISTING STARTS HERE ********
@@ -402,76 +399,134 @@
             if (!switches.Bare && !switches.FlgList) Console.WriteLine($"\nListing '{progInfo.Filename}' from line {switches.FromLine} to {switches.ToLine} ({format} format)\n");
 
             string sIndent = string.Empty;
-            ListerState State = new();      // this sets initial conditions
 
             foreach (ProgramLine progline in formattedListing.Lines)
             {
-                if (switches.Pretty)
+                if (progline.LineNumber >= switches.FromLine && progline.LineNumber <= switches.ToLine)
                 {
-                    PrettyPrint(progline, state, switches);
-                }
-                else
-                {
-                    Console.WriteLine(progline.FormattedLineNumber + (!switches.NoSpaces ? ' ' : "") + new string(' ', progline.IndentLevel * 2) + progline.FormattedPlain); // FormattedPlain FormattedTagged
-                }
-                #region debug
-                if (switches.Debug)
-                {
-                    Console.WriteLine($"{progline.LineNumber} -");
-
-                    Console.ForegroundColor = ConsoleColor.DarkYellow;
-                    Console.Write($"  Plain:     ");
-                    Console.ForegroundColor = State.CurrentForeground;
-                    Console.WriteLine($"{progline.PlainDetokenisedLine}");                   
-
-                    Console.ForegroundColor = ConsoleColor.DarkYellow;
-                    Console.Write($"  Formatted: ");
-                    Console.ForegroundColor = State.CurrentForeground;
-                    Console.WriteLine($"{progline.FormattedPlain}");
-                    
-                    Console.ForegroundColor = ConsoleColor.DarkYellow;
-                    Console.Write($"  Tagged:    ");
-                    Console.ForegroundColor = State.CurrentForeground;
-                    Console.WriteLine($"{progline.TaggedLine}");
-                    
-                    Console.ForegroundColor = ConsoleColor.DarkYellow;
-                    Console.Write($"  Formatted: ");
-                    Console.ForegroundColor = State.CurrentForeground;
-                    Console.WriteLine($"{progline.FormattedTagged}");
-                    
-                    string untaggedline = Regex.Replace(progline.TaggedLine, @"\{.*?\}", "");
-                    if (untaggedline != progline.PlainDetokenisedLine)
+                    // set flags
+                    state.Printme = false;
+                    if (switches.FlgIf)
                     {
-                        Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine("Mismatch");
-                        Console.ForegroundColor = State.CurrentForeground;
-                        Console.WriteLine(untaggedline);
+                        foreach (string param in switches.DirectiveParams)
+                        {
+                            if (progline.PlainDetokenisedLine.Contains(param, StringComparison.OrdinalIgnoreCase)) { state.Printme = true; continue; }
+                        }
                     }
-                    Console.WriteLine();
+                    if (switches.FlgIfX)
+                    {
+                        string cleanline = progline.NoSpacesLine;
+                        foreach (string param in switches.DirectiveParams)
+                        {
+                            if (cleanline.Contains(param, StringComparison.Ordinal)) { state.Printme = true; continue; }
+                        }
+                    }
+                    if (switches.FlgList)
+                    {
+                        if (progline.FormattedTagged.StartsWith(SemanticTags.Keyword + "DEF"))
+                        {
+                            state.Listme = nameMatch(progline.TaggedLine, switches); // automatically cancels ListMe at DEF if no match
+                        }
+                    }
+
+                    bool insideIf = switches.FlgIf || switches.FlgIfX;
+                    bool shouldPrint =
+                        (!insideIf && !switches.FlgList) ||
+                        (insideIf && state.Printme) ||
+                        (switches.FlgList && state.Listme);
+
+                    if (shouldPrint)
+                    {
+                        linesprinted++;
+                        if (switches.Pretty)
+                        {
+                            PrettyPrint(progline, state, switches);
+                        }
+                        else
+                        {
+                            Console.WriteLine((switches.NoLineNumbers ? "" : (progline.FormattedLineNumber +
+                                (!switches.NoSpaces ? ' ' : ""))) +
+                                new string(' ', progline.IndentLevel * 2) + 
+                                (switches.NoSpaces ? progline.PlainDetokenisedLine : progline.FormattedPlain));
+                        }
+                        // Deal with pausing
+                        if (switches.FlgPause)
+                        {
+                            if (linesprinted == Console.WindowHeight - 4)
+                            {
+                                Console.ForegroundColor = switches.ForeColor;
+                                Console.Write(" -- Enter - next line | Space - Continue | Esc - End --");
+                                System.ConsoleKeyInfo key = Console.ReadKey(false);
+                                ClearCurrentConsoleLine();
+                                switch (key.Key)
+                                {
+                                    case ConsoleKey.Spacebar: linesprinted = 0; break;
+                                    case ConsoleKey.Enter: linesprinted--; break;
+                                    case ConsoleKey.Escape: ResetAndExit(switches); break;
+                                }
+                            }
+                        }
+                    }
+                    #region debug
+                    if (switches.Debug)
+                    {
+                        Console.WriteLine($"{progline.LineNumber} -");
+
+                        Console.ForegroundColor = ConsoleColor.DarkYellow;
+                        Console.Write($"  Plain:     ");
+                        Console.ForegroundColor = state.CurrentForeground;
+                        Console.WriteLine($"{progline.PlainDetokenisedLine}");
+
+                        Console.ForegroundColor = ConsoleColor.DarkYellow;
+                        Console.Write($"  Formatted: ");
+                        Console.ForegroundColor = state.CurrentForeground;
+                        Console.WriteLine($"{progline.FormattedPlain}");
+
+                        Console.ForegroundColor = ConsoleColor.DarkYellow;
+                        Console.Write($"  Tagged:    ");
+                        Console.ForegroundColor = state.CurrentForeground;
+                        Console.WriteLine($"{progline.TaggedLine}");
+
+                        Console.ForegroundColor = ConsoleColor.DarkYellow;
+                        Console.Write($"  Formatted: ");
+                        Console.ForegroundColor = state.CurrentForeground;
+                        Console.WriteLine($"{progline.FormattedTagged}");
+
+                        string untaggedline = Regex.Replace(progline.TaggedLine, @"\{.*?\}", "");
+                        if (untaggedline != progline.PlainDetokenisedLine)
+                        {
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            Console.WriteLine("Mismatch");
+                            Console.ForegroundColor = state.CurrentForeground;
+                            Console.WriteLine(untaggedline);
+                        }
+                        Console.WriteLine();
+                    }
+                    #endregion
                 }
-                #endregion
             }
         }
         // ******** PrettyPrint ********
         static void PrettyPrint(ProgramLine progline, ListerState state, CommandSwitches switches)
         {
             // Line preamble
-            string? ln = progline.FormattedLineNumber;
-            ln = "{=ListingLineNo}" + ln + "{/}";
-            foreach (var (value, tag, isLast) in BasToolsEngine.WalkTagged(ln))
-            {
-                if (tag != null && ConsoleColorMap.TryGetColor(tag, out var c, switches.FlgDark))
+            if (!switches.NoLineNumbers) {
+                string? ln = progline.FormattedLineNumber;
+                ln = "{=ListingLineNo}" + ln + "{/}";
+                foreach (var (value, tag, isLast) in BasToolsEngine.WalkTagged(ln))
                 {
-                    Console.ForegroundColor = c;
-                    Console.Write(value);
-                }
-                else
-                    Console.Write(ln);
-                Console.ForegroundColor = switches.ForeColor;
-                
-                if (!switches.NoSpaces)
-                    Console.Write(' ');
-            }
+                    if (tag != null && ConsoleColorMap.TryGetColor(tag, out var c, switches.FlgDark))
+                    {
+                        Console.ForegroundColor = c;
+                        Console.Write(value);
+                    }
+                    else
+                        Console.Write(ln);
+                    Console.ForegroundColor = switches.ForeColor;
+
+                    if (!switches.NoSpaces)
+                        Console.Write(' ');
+                } }
             Console.Write(new string(' ',progline.IndentLevel * 2));
 
             // Line contents
@@ -494,77 +549,70 @@
 
            Console.WriteLine("");
         }
-       
-        /*private bool isEndOfProc(ListerState s, CommandSwitches switches) // s is a CLONE so can use freely
+        static bool nameMatch(string taggedline, CommandSwitches switches)
         {
-            string templine = getNextLine(s, switches);
+            if (!switches.FlgList) return false;
 
-            if (templine == null) return true; // End of program
+            var (type, procName) = readProcFnName(taggedline);
 
-            templine = Regex.Replace(templine, @"\{.*?\}", "");
-            templine = templine.Replace(" ", "").ToUpper();
-            templine = templine.Replace(":", "");
-            templine = Regex.Replace(templine, @"REM.*$", "", RegexOptions.IgnoreCase);
+            if (procName == null) return false;
+            procName = (type == SemanticTags.ProcName ? "PROC" : "FN") + procName;
 
-            if (templine.Length == 0) return isEndOfProc(s, switches);
-
-            return templine.StartsWith("DEF");
+            for (int i = 0; i < switches.DirectiveParams.Count; i++)
+            {
+                //Console.WriteLine($"Matching {procName} - {switches.DirectiveParams[i]}");
+                if (procName.Equals(switches.DirectiveParams[i], StringComparison.InvariantCultureIgnoreCase)) return true;
+            }
+            return false;
         }
-        /*private string getNextLine(ListerState s, CommandSwitches switches)
+        static (string type, string ProcFnName) readProcFnName(string taggedline)
         {
-            // End of program?
-            if (!s.Z80 && ((switches.BasicV && s.Data[s.Ptr + 1] == 255) || s.Data[s.Ptr + 1] > 127)) return null;
-            if (s.Z80 && s.Data[s.Ptr + 2] == 255 && s.Data[s.Ptr + 3] == 255) return null;
+            foreach (var (value, tag, isLast) in BasToolsEngine.WalkTagged(taggedline))
+            {
+                if (tag is SemanticTags.ProcName or SemanticTags.FunctionName) return (tag, value);
+            }
+            return (null!, null!);
+        }
 
-            // compute Bound for the clone (saved in s.Bound)
-            int dummy = GetLineNumber(s, switches);
+       /*private bool isEndOfProc(ListerState s, CommandSwitches switches) // s is a CLONE so can use freely
+       {
+           string templine = getNextLine(s, switches);
 
-            processLineBody(s, switches, out string line);
+           if (templine == null) return true; // End of program
 
-            return line;
-        }*/
+           templine = Regex.Replace(templine, @"\{.*?\}", "");
+           templine = templine.Replace(" ", "").ToUpper();
+           templine = templine.Replace(":", "");
+           templine = Regex.Replace(templine, @"REM.*$", "", RegexOptions.IgnoreCase);
+
+           if (templine.Length == 0) return isEndOfProc(s, switches);
+
+           return templine.StartsWith("DEF");
+       }
+       /*private string getNextLine(ListerState s, CommandSwitches switches)
+       {
+           // End of program?
+           if (!s.Z80 && ((switches.BasicV && s.Data[s.Ptr + 1] == 255) || s.Data[s.Ptr + 1] > 127)) return null;
+           if (s.Z80 && s.Data[s.Ptr + 2] == 255 && s.Data[s.Ptr + 3] == 255) return null;
+
+           // compute Bound for the clone (saved in s.Bound)
+           int dummy = GetLineNumber(s, switches);
+
+           processLineBody(s, switches, out string line);
+
+           return line;
+       }*/
 
         //**** Utility functions ******
         private static void ClearCurrentConsoleLine()
-       {
+        {
             if (Console.IsOutputRedirected) return;
            int currentLineCursor = Console.CursorTop;
            Console.SetCursorPosition(0, Console.CursorTop);
            for (int i = 0; i < Console.WindowWidth; i++)
                Console.Write(" ");
            Console.SetCursorPosition(0, currentLineCursor);
-       }
-       
-        /*private bool nameMatch(int ptr, ListerState s, CommandSwitches switches)
-        {
-            if (!switches.FlgList) return false;
-
-            string procName = readProcFnName(++ptr, s, switches);
-            if (procName == null) return false;
-
-            for (int i = 0; i < s.DirectiveParams.Count; i++)
-            {
-                //Console.WriteLine($"Matching {procName} - {s.DirectiveParams[i]}");
-                if (procName.Equals(s.DirectiveParams[i], StringComparison.InvariantCultureIgnoreCase)) return true;
-            }
-            return false;
         }
-        private string readProcFnName(int ptr, ListerState s, CommandSwitches switches)
-        {
-            while (s.Data[ptr] == 32) ptr++; // this is correct: leave ptr pointing at first non-space char
-
-            char dummy = ' ';
-            string result = getKeywordOrLineNumber(s.Data[ptr], ref ptr, ref dummy, s, switches);
-
-            if (result == null) return null;
-            if (result != "FN" && result != "PROC") throw new Exception("Invalid DEF"); // return null;
-
-            ptr++;
-            result += readNextToken(ptr, s);
-            //Console.WriteLine(result);
-            return result;
-        }
-        /**** Utility functions ******/
         static bool IsNumeric(string s)
         {
             for (int i = 0; i < s.Length; i++)
@@ -580,8 +628,8 @@
             Console.WriteLine($"\nBasList vs {vs} (C) Andrew Rowland 2022-26");
             Console.WriteLine("\nLists a BBC BASIC program file\n");
             Console.WriteLine("BasList [/file=]filename ([[from line] [to line]) | [line,line]]) [Options] ([IF ...] | [IFX ...] | [LIST ...])");
-            //Console.WriteLine("BasList [/file=]filename [/V] [/addnumbers] [/align] [/indent] [/nonumbers] [/nospaces] [/bare] [/pause] [/prettyprint] [cls]");
-            //Console.WriteLine("BasList [/file=]filename [/mode=(dark | light | none)]");
+            //Console.WriteLine("BasList [/file=]filename [/V] [/addnumbers] [/align] [/indent] [/nonumbers] [/nospaces] [/bare] [/pause] [/prettyprint] [(cls | clear)]");
+            //Console.WriteLine("BasList [/file=]filename [(/dark | /light)]");
             Console.WriteLine("BasList [/? | -h]  Display help\n");
             Console.WriteLine("  [/file=]filename");
             Console.WriteLine("                   Specifies filename of tokenised BASIC program.");
@@ -594,9 +642,9 @@
             Console.WriteLine("  /notBasicV       Disallow BASIC V assembler (overrides auto-detection)");
             Console.WriteLine("  /addnumbers      Supply missing line numbers (Z80 only)");
             Console.WriteLine("  /align           Right-align line numbers");
-            Console.WriteLine("  /indent          Indent listing of loops");
-            Console.WriteLine("  /indent=(loops | defs | all | none)");
-            Console.WriteLine("                   Indent loops only, PROC & FN definitions, both, neither");
+            Console.WriteLine("  /indent          Indent listing of loops and subprocedures");
+            Console.WriteLine("  /indent=(loops | defs | all)");
+            Console.WriteLine("                   Indent loops only | PROC & FN definitions | both");
             Console.WriteLine("  /nonumbers       Omits line numbers");
             Console.WriteLine("  /nospaces        Omits additional spaces and one space after line numbers");
             Console.WriteLine("  /bare            Omits additional messages (cancels pause)");
@@ -616,7 +664,7 @@
             Console.WriteLine("  BasList program LIST FNinp  - List named function(s)/procedure(s)");
             Console.WriteLine("\nOptions may be specified in any order, may start with / or - and can be abbreviated.");
             Console.WriteLine("Parameters containing spaces must be enclosed by double quotes.");
-            Console.WriteLine("IF, IFX or LIST clauses must be at the end, after options. Multiple matches may be\nentered and BasList will list any line containing at least one of them.");
+            Console.WriteLine("IF, IFX or LIST clauses must be at the end, after options. Multiple matches may be \nentered and BasList will list any line containing at least one of them.");
             Console.WriteLine("\nFor further help, see ReadMe.");
         }
         static void ResetAndExit(CommandSwitches s)

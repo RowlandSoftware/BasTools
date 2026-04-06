@@ -558,9 +558,9 @@ namespace BasTools.Core
                         taggedline += tag + keyword + SemanticTags.Reset;
 
                         if (keyword == "PROC")
-                            taggedline += SemanticTags.Proc;
+                            taggedline += SemanticTags.ProcName;
                         if (keyword == "FN")
-                            taggedline += SemanticTags.Function;
+                            taggedline += SemanticTags.FunctionName;
 
                         if (keyword == "DATA")
                         {

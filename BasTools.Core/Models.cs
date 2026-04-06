@@ -79,8 +79,8 @@ namespace BasTools.Core
         public const string AssemblerComment = "{=assemcomment}";
         public const string StarCommand = "{=starcommand}";
         public const string EmbeddedData = "{=embeddeddata}";
-        public const string Proc = "{=proc}";
-        public const string Function = "{=fn}";
+        public const string ProcName = "{=proc}";
+        public const string FunctionName = "{=fn}";
         public const string Label = "{=label}";
         public const string Register = "{=register}";
         public const string Mnemonic = "{=mnemonic}";

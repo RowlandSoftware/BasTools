@@ -41,11 +41,11 @@
 
             try
             {
-                Console.WriteLine($"ProcessRaw = {ProcessRawProgram(filename, listing, progInfo)}, {listing.Lines.Count}");
+                ProcessRawProgram(filename, listing, progInfo);
                 {
                     try
                     {
-                        Console.WriteLine($"FormatProgram = {FormatProgram(listing, formatOptions, progInfo.BasicV)}, {listing.Lines.Count}");
+                        FormatProgram(listing, formatOptions, progInfo.BasicV);
                         {
                             return listing;
                         }
