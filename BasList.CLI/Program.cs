@@ -245,25 +245,24 @@
                     {
                         arg1 = arg2.Substring(0, x);
                         arg3 = arg2.Substring(x + 1);
-
                         if ("FILE".StartsWith(arg1)) { filename = arg3; recognised = true; }
                         if ("INDENT".StartsWith(arg1))
                         {
                             recognised = true;
-                            switch (arg3)
+                            if ("ALL".StartsWith(arg3))
                             {
-                                case "ALL":
-                                    switches.FlgIndent = true;
-                                    switches.FlgEmphDefs = true;
-                                    break;
-                                case "LOOPS":
-                                    switches.FlgIndent = true;
-                                    switches.FlgEmphDefs = false;
-                                    break;
-                                case "DEFS":
-                                    switches.FlgIndent = false;
-                                    switches.FlgEmphDefs = true;
-                                    break;
+                                switches.FlgIndent = true;
+                                switches.FlgEmphDefs = true;
+                            }
+                            else if ("LOOPS".StartsWith(arg3))
+                            {
+                                switches.FlgIndent = true;
+                                switches.FlgEmphDefs = false;
+                            }
+                            else if ("DEFS".StartsWith(arg3))
+                            {
+                                switches.FlgIndent = false;
+                                switches.FlgEmphDefs = true;
                             }
                         }
                     }
@@ -446,7 +445,8 @@
                         {
                             Console.WriteLine((switches.NoLineNumbers ? "" : (progline.FormattedLineNumber +
                                 (!switches.NoSpaces ? ' ' : ""))) +
-                                new string(' ', progline.IndentLevel * 2) + 
+                                (switches.FlgIndent ? new string(' ', progline.IndentLevel * 2) : "") +
+                                (switches.FlgEmphDefs ? new string(' ', progline.DefIndent * 2) : "") +
                                 (switches.NoSpaces ? progline.PlainDetokenisedLine : progline.FormattedPlain));
                         }
                         // Deal with pausing
@@ -456,9 +456,24 @@
                             {
                                 Console.ForegroundColor = switches.ForeColor;
                                 Console.Write(" -- Enter - next line | Space - Continue | Esc - End --");
-                                System.ConsoleKeyInfo key = Console.ReadKey(false);
+                                // Read until a valid key is pressed
+                                ConsoleKey key;
+                                while (true)
+                                {
+                                    var info = Console.ReadKey(intercept: true);
+                                    key = info.Key;
+
+                                    if (key == ConsoleKey.Spacebar ||
+                                        key == ConsoleKey.Enter ||
+                                        key == ConsoleKey.Escape)
+                                    {
+                                        break; // valid key
+                                    }
+                                }
+
+                                // Clear the prompt once
                                 ClearCurrentConsoleLine();
-                                switch (key.Key)
+                                switch (key)
                                 {
                                     case ConsoleKey.Spacebar: linesprinted = 0; break;
                                     case ConsoleKey.Enter: linesprinted--; break;
@@ -513,7 +528,7 @@
             if (!switches.NoLineNumbers) {
                 string? ln = progline.FormattedLineNumber;
                 ln = "{=ListingLineNo}" + ln + "{/}";
-                foreach (var (value, tag, isLast) in BasToolsEngine.WalkTagged(ln))
+                foreach (var (value, tag, isLast) in BasToolsEngine.WalkTagged(ln)) // retrieve line no. colour
                 {
                     if (tag != null && ConsoleColorMap.TryGetColor(tag, out var c, switches.FlgDark))
                     {
@@ -527,7 +542,10 @@
                     if (!switches.NoSpaces)
                         Console.Write(' ');
                 } }
+
+            // Indents
             Console.Write(new string(' ',progline.IndentLevel * 2));
+            Console.Write(switches.FlgEmphDefs ? new string(' ', progline.DefIndent * 2) : "");
 
             // Line contents
             foreach (var (value, tag, isLast) in BasToolsEngine.WalkTagged(progline.FormattedTagged))
@@ -573,35 +591,6 @@
             }
             return (null!, null!);
         }
-
-       /*private bool isEndOfProc(ListerState s, CommandSwitches switches) // s is a CLONE so can use freely
-       {
-           string templine = getNextLine(s, switches);
-
-           if (templine == null) return true; // End of program
-
-           templine = Regex.Replace(templine, @"\{.*?\}", "");
-           templine = templine.Replace(" ", "").ToUpper();
-           templine = templine.Replace(":", "");
-           templine = Regex.Replace(templine, @"REM.*$", "", RegexOptions.IgnoreCase);
-
-           if (templine.Length == 0) return isEndOfProc(s, switches);
-
-           return templine.StartsWith("DEF");
-       }
-       /*private string getNextLine(ListerState s, CommandSwitches switches)
-       {
-           // End of program?
-           if (!s.Z80 && ((switches.BasicV && s.Data[s.Ptr + 1] == 255) || s.Data[s.Ptr + 1] > 127)) return null;
-           if (s.Z80 && s.Data[s.Ptr + 2] == 255 && s.Data[s.Ptr + 3] == 255) return null;
-
-           // compute Bound for the clone (saved in s.Bound)
-           int dummy = GetLineNumber(s, switches);
-
-           processLineBody(s, switches, out string line);
-
-           return line;
-       }*/
 
         //**** Utility functions ******
         private static void ClearCurrentConsoleLine()

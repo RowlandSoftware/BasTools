@@ -117,6 +117,12 @@ namespace BasTools.Core
         public string FormattedPlain { get; set; } = "";
         public string FormattedTagged { get; set; } = "";
         public int IndentLevel { get; set; }
+        public bool IsDef {  get; set; }
+        public bool IsInDef { get; set; }
+        public int DefIndent
+        {
+            get => IsInDef ? 1 : 0;
+        }
     }
     public record Listing(List<ProgramLine> Lines);
     internal record LineRecord(
@@ -152,6 +158,9 @@ namespace BasTools.Core
         public int PendingIndent;
         public bool fMultiLineIf;
         public bool InIfCondition;
+        public bool InDefInition;
+        public bool IsDef;
+        public bool SeenFirstWhen;
         public FormatterState()
         {
             Z80 = false;
@@ -160,6 +169,9 @@ namespace BasTools.Core
             PendingIndent = 0;
             fMultiLineIf = false;
             InIfCondition = false;
+            IsDef = false;
+            InDefInition = false;
+            SeenFirstWhen = false;
         }
         public FormatterState(FormatterState other)
         {
@@ -169,6 +181,9 @@ namespace BasTools.Core
             PendingIndent = other.PendingIndent;
             fMultiLineIf = other.fMultiLineIf;
             InIfCondition = other.InIfCondition;
+            IsDef = other.IsDef;
+            InDefInition = other.InDefInition;
+            SeenFirstWhen = other.SeenFirstWhen;
         }
         public int Indent
         {

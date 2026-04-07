@@ -498,11 +498,7 @@ namespace BasTools.Core
                         string tag = SemanticTags.Keyword;
                         switch (keyword)
                         {
-                            /*case "CASE":
-                                tag = SemanticTags.Mnemonic;
-                                break;
-                            */
-                            // No If ... Then ... Else; handled in code because depends on whether in multiLineIf or not (unless /breakapart)
+                            // No If ... Then ... Else - handled in code because depends on whether in multiLineIf or not (unless /breakapart)
                             case "FOR":
                             case "REPEAT":
                             case "WHILE":
@@ -515,7 +511,6 @@ namespace BasTools.Core
                             case "ENDCASE":
                                 tag = SemanticTags.OutdentingKeyword;
                                 break;
-                            // Ones we only want to affect indent when /breakapart used
                             // These cancel 1 indent for the line they're on, and indent following lines
                             case "OTHERWISE":
                             case "WHEN":
@@ -545,13 +540,11 @@ namespace BasTools.Core
                             case "TAN":
                             case "ATN":
                             case "RND":
-                            case "EOF":  //?
+                            //case "EOF":  //? illegal without #
                             case "SPC":
-                            case "PTR":
-                            case "EXT":
-                            case "TIME": //?
-                            case "TIME$"://?
-                            case "EVAL": //?
+                            //case "PTR":
+                            //case "EXT":
+                            case "EVAL":
                                 tag = SemanticTags.BuiltInFn;
                                 break;
                         }

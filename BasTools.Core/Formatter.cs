@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Security.Permissions;
 using System.Text;
+using System.Text.RegularExpressions;
 using Token = (string value, string tag, bool isLast);
 
 namespace BasTools.Core
@@ -97,12 +98,26 @@ namespace BasTools.Core
 
                 var tokens = BasToolsEngine.WalkTagged(progline.TaggedLine).ToList();
 
+                state.InIfCondition = false; // start of line, no IF's
+
                 for (int i = 0; i < tokens.Count; i++)
                 {
                     var token1 = tokens[i];
 
                     // Indenting
                     HandleIndents(token1, state, switches, BasicV);
+
+                    if (state.IsDef)
+                    {
+                        progline.IsDef = true;      // This line starts with DEF
+                        state.IsDef = false;        // noted; cancel the condition
+                        state.InDefInition = true;  // note that future lines are InDef
+                    }
+                    else if (state.InDefInition)
+                    {
+                        state.InDefInition = !isEndOfProc(lines,  counter);
+                    }
+                    progline.IsInDef = !progline.IsDef && state.InDefInition;
 
                     if (i == tokens.Count - 1)
                     {
@@ -221,31 +236,68 @@ namespace BasTools.Core
                     state.Indent--;
                     state.fMultiLineIf = false;
                 }
+                if (token1.value == "DEF")
+                {
+                    state.IsDef = true;
+                }
             }
             else
             {
-                if (token1.tag == SemanticTags.IndentingKeyword) state.PendingIndent++;
-                if (token1.tag == SemanticTags.OutdentingKeyword) state.Indent--;
-                if (token1.tag == SemanticTags.InOutKeyword && switches.BreakApart && false) // && NExt line not WHEN && not OTHERWISE && already indented
+                if (token1.tag == SemanticTags.IndentingKeyword)
                 {
-                    state.Indent--;
+                    state.PendingIndent++;
+                    if (token1.value == "CASE")
+                        state.SeenFirstWhen = false;
+                }
+                if (token1.tag == SemanticTags.OutdentingKeyword)
+                {
+                    // don't cancel indent in 'IF x NEXT'
+                    if (!state.InIfCondition)
+                        state.Indent--; // Limit to NEXT and UNTIL?
+
+                    if (token1.value == "ENDCASE")
+                    {
+                        //state.Indent--;           // undo CASE indent
+                        if (state.SeenFirstWhen)
+                            state.Indent--;         // undo last WHEN indent
+                        state.SeenFirstWhen = false;
+                    }
+                }
+                if (token1.tag == SemanticTags.InOutKeyword)
+                {
+                    // WHEN and OTHERWISE
+                    if (!state.SeenFirstWhen)
+                    {
+                        // First WHEN: no outdent
+                        state.SeenFirstWhen = true;
+                    }
+                    else
+                    {
+                        // Subsequent WHEN: outdent this line
+                        state.Indent--;
+                    }
+
+                    // All WHEN/OTHERWISE indent the next line
                     state.PendingIndent++;
                 }
             }
+        }
+        static bool isEndOfProc(Listing lines, int i) // Line lookahead to see whether next significant line is end-of-proc
+        {
+            for (int j = ++i; i < lines.Lines.Count - 1; i++)
+            {
+                ProgramLine line = lines.Lines[j];
+                string temp = line.NoSpacesLine.Replace(":", ""); // skip empty lines and just colons
+                if (temp.Trim() != string.Empty)
+                    return line.TaggedLine.StartsWith(SemanticTags.Keyword + "DEF");
+            }
+            return true; // End of program
         }
         static void AddToBoth(ProgramLine progline, Token token)
         {
             progline.FormattedPlain += token.value;
             progline.FormattedTagged += token.tag + token.value;
             if (!string.IsNullOrEmpty(token.tag)) progline.FormattedTagged += "{/}";
-        }       
-        private bool nextTokenStartsWithSpace((string value, string tag, bool isLast) token)
-        {
-            var (value, tag, _) = token; // not using isLast
-
-            (bool spacebefore, bool spaceafter) = BasSpacingRules.GetSpacingRule(tag, value);
-
-            return spacebefore || value.StartsWith(' ');
         }
         static Token GetNextNonSpaceTag(List<(string value, string tag, bool isLast)> tokens, int i)
         {
