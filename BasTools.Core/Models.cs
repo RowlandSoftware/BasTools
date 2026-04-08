@@ -94,10 +94,9 @@ namespace BasTools.Core
         public const string CloseBracket = "{=closebracket}";
         public const string Reset = "{/}";
     }
-
+    //
     //***************** Listing Classes and Records *****************
-
-    // ----------- The New Model -----------
+    //
     public record class ProgramLine
     {
         // Stage 0: Raw input
@@ -108,9 +107,6 @@ namespace BasTools.Core
         public string NoSpacesLine { get; set; } = "";
         public string PlainDetokenisedLine { get; set; } = "";
         public string TaggedLine { get; set; } = "";
-
-        // Stage 2: Lexer
-        //public List<Token> Tokens { get; set; } = new();
 
         // Stage 3: Formatter
         public string FormattedLineNumber { get; set; }
@@ -129,6 +125,12 @@ namespace BasTools.Core
         int linenumber,
         byte[] lineContent
     );
+    public record Token(
+        string tag,
+        string value,
+        bool isLast
+    );
+
     //***************** ParserState *****************
     internal class ParserState
     {
@@ -158,6 +160,7 @@ namespace BasTools.Core
         public int PendingIndent;
         public bool fMultiLineIf;
         public bool InIfCondition;
+        public int IfConditionStartIndex;
         public bool InDefInition;
         public bool IsDef;
         public bool SeenFirstWhen;
@@ -169,6 +172,7 @@ namespace BasTools.Core
             PendingIndent = 0;
             fMultiLineIf = false;
             InIfCondition = false;
+            IfConditionStartIndex = 0;
             IsDef = false;
             InDefInition = false;
             SeenFirstWhen = false;
@@ -181,6 +185,7 @@ namespace BasTools.Core
             PendingIndent = other.PendingIndent;
             fMultiLineIf = other.fMultiLineIf;
             InIfCondition = other.InIfCondition;
+            IfConditionStartIndex = other.IfConditionStartIndex;
             IsDef = other.IsDef;
             InDefInition = other.InDefInition;
             SeenFirstWhen = other.SeenFirstWhen;

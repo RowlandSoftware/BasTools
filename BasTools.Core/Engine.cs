@@ -61,8 +61,7 @@
                 throw new BasToolsException($"Program '{filename}' could not be processed", e2);
             }
         }
-        //public BasToolsEngine()
-        public static IEnumerable<(string value, string tag, bool isLast)> WalkTagged(string line)
+        public static IEnumerable<Token> WalkTagged(string line)
         {
             if (line == null) yield break;
             int i = 0;
@@ -107,9 +106,8 @@
             // Now yield with correct isLast flag
             for (int n = 0; n < items.Count; n++)
             {
-                var (value, tag) = items[n];
-                bool isLast = (n == items.Count - 1);
-                yield return (value, tag, isLast);
+                Token token = new(items[n].tag, items[n].value, (n == items.Count - 1));
+                yield return token;
             }
         }
         static void DumpResourceNames()
@@ -118,5 +116,5 @@
             foreach (var name in asm.GetManifestResourceNames())
                 Console.WriteLine(name);
         }
-    }
+    }//public BasToolsEngine()
 }
