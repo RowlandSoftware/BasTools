@@ -35,13 +35,14 @@
     //
     public partial class BasToolsEngine
     {
+        // The public 'pipeline' for BasList
         public Listing loadAndFormatFile(string filename, FormattingOptions formatOptions, ProgInfo progInfo)
         {
             Listing listing = new(new List<ProgramLine>());
 
             try
             {
-                ProcessRawProgram(filename, listing, progInfo);
+                ProcessRawProgram(filename, listing, progInfo); // load, detokenise and tag
                 {
                     try
                     {

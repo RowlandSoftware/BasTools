@@ -47,7 +47,8 @@ namespace BasTools.Core
             ref int i,
             ref string plainline,
             ref string linenospaces,
-            ref string taggedline)
+            ref string taggedline,
+            ParserState parserState)
         {
             char c = (char)line[i];
 
@@ -55,22 +56,28 @@ namespace BasTools.Core
                 return false;
 
             taggedline += SemanticTags.Operator;
+            string op = string.Empty;
 
             // Try multi-operator first
             if (TryGetMultiOperator(line, i, out var multi))
             {
                 foreach (char ch in multi)
+                {
+                    op += ch;
                     addtoall(ch, ref plainline, ref linenospaces, ref taggedline);
-
+                }
                 i += multi.Length - 1; // advance past operator
             }
             else
             {
                 // Single-character operator
                 addtoall(c, ref plainline, ref linenospaces, ref taggedline);
+                op = c.ToString();
             }
 
             taggedline += SemanticTags.Reset;
+            NoteExprTokenInIf(SemanticTags.Operator, op, parserState);
+
             return true;
         }
         static bool LexToken(
@@ -81,7 +88,8 @@ namespace BasTools.Core
             string tag,
             ref string plainline,
             ref string linenospaces,
-            ref string taggedline)
+            ref string taggedline,
+            ParserState parserState)
         {
             char c = (char)line[i];
 
@@ -90,6 +98,7 @@ namespace BasTools.Core
                 return false;
 
             // Begin tag
+            string keyword = string.Empty;
             taggedline += tag;
 
             // Consume first character
@@ -100,6 +109,7 @@ namespace BasTools.Core
             while (pos < line.Length)
             {
                 char next = (char)line[pos];
+                keyword += (char)line[pos];
 
                 if (!continueCondition(next))
                     break;
@@ -113,6 +123,7 @@ namespace BasTools.Core
 
             // End tag
             taggedline += SemanticTags.Reset;
+            if (tag != "") NoteExprTokenInIf(tag, keyword, parserState);
 
             return true;
         }

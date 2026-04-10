@@ -139,6 +139,9 @@ namespace BasTools.Core
         public bool Z80;
         public int LineCount;
         public bool InAsm;
+        public bool InIfCondition;
+        public int IfParenDepth;
+        public bool ExprComplete;
 
         public List<string> DirectiveParams = new();
         public ParserState()
@@ -148,6 +151,9 @@ namespace BasTools.Core
             Ptr = 0;
             LineCount = 0;
             InAsm = false;
+            InIfCondition = false;
+            IfParenDepth = 0;
+            ExprComplete = false;
         }
     }
 
