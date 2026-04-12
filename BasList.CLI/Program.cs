@@ -26,7 +26,7 @@ namespace BasList.CLI
         public bool FlgIndent;
         public bool FlgEmphDefs;
         public bool Align;
-        public bool NoSpaces;
+        public bool NoFormat;
         public bool NoLineNumbers;
         public bool Bare;
         public bool BreakApart;
@@ -55,7 +55,7 @@ namespace BasList.CLI
             FlgIndent = false;
             FlgEmphDefs = false;
             Align = false;
-            NoSpaces = false;
+            NoFormat = false;
             NoLineNumbers = false;
             Bare = false;
             BreakApart = false;
@@ -94,7 +94,7 @@ namespace BasList.CLI
         public FormattingOptions copyToFormatOptions()
         {
             FormattingOptions opts= new FormattingOptions();
-            opts.NoSpaces = NoSpaces;
+            opts.NoFormat = NoFormat;
             opts.Align = Align;
             opts.FlgAddNums = FlgAddNums;
             opts.BreakApart = BreakApart;
@@ -283,7 +283,7 @@ namespace BasList.CLI
                     if ("CLEAR".StartsWith(arg2))               { switches.Clear = true; recognised = true; }
                     if ("INDENT".StartsWith(arg2))              { switches.FlgIndent = true; switches.FlgEmphDefs = true; recognised = true; }
                     if ("NONUMBERS".StartsWith(arg2))           { switches.NoLineNumbers = true; recognised = true; }
-                    if ("NOSPACES".StartsWith(arg2))            { switches.NoSpaces = true; recognised = true; }
+                    if ("NOFORMAT".StartsWith(arg2))            { switches.NoFormat = true; recognised = true; }
                     if ("DARK".StartsWith(arg2))                { switches.FlgDark = true; recognised = true; }
                     if ("LIGHT".StartsWith(arg2))               { switches.FlgDark = false; recognised = true; }
                     if ("DEBUG".StartsWith(arg2))               { switches.Debug = true; recognised = true; }
@@ -413,12 +413,12 @@ namespace BasList.CLI
                     {
                         foreach (string param in switches.DirectiveParams)
                         {
-                            if (progline.PlainDetokenisedLine.Contains(param, StringComparison.OrdinalIgnoreCase)) { state.Printme = true; continue; }
+                            if (progline.NoSpacesLine.Contains(param, StringComparison.OrdinalIgnoreCase)) { state.Printme = true; continue; }
                         }
                     }
                     if (switches.FlgIfX)
                     {
-                        string cleanline = progline.NoSpacesLine;
+                        string cleanline = progline.PlainDetokenisedLine;
                         foreach (string param in switches.DirectiveParams)
                         {
                             if (cleanline.Contains(param, StringComparison.Ordinal)) { state.Printme = true; continue; }
@@ -444,20 +444,23 @@ namespace BasList.CLI
 
                         if (!switches.BreakApart)
                         {
-                            // Normal behaviour
-                            PrintLineNumber(progline, switches, true);
-                            PrintIndents(progline, switches);
-                            PrintOut(progline.FormattedTagged, state, switches, ref linesprinted);
-
-                            /* // plain printout for debug
+                            if (!switches.NoFormat)
                             {
+                                // Normal behaviour
+                                PrintLineNumber(progline, switches, true);
+                                PrintIndents(progline, switches);
+                                PrintOut(progline.FormattedTagged, state, switches, ref linesprinted);
+                            }
+                            else
+                            {
+                                // plain printout without additional spaces
                                 Console.WriteLine((switches.NoLineNumbers ? "" : (progline.FormattedLineNumber +
-                                    (!switches.NoSpaces ? ' ' : ""))) +
+                                    (!switches.NoFormat ? ' ' : ""))) +
                                     (switches.FlgIndent ? new string(' ', progline.IndentLevel * 2) : "") +
                                     (switches.FlgEmphDefs ? new string(' ', progline.DefIndent * 2) : "") +
-                                    (switches.NoSpaces ? progline.PlainDetokenisedLine : progline.FormattedPlain));
-                            }*/
-
+                                    (switches.NoFormat ? progline.PlainDetokenisedLine : progline.FormattedPlain));
+                                linesprinted++;
+                            }
                             // Deal with pausing
                             if (switches.FlgPause)
                             {
@@ -480,7 +483,7 @@ namespace BasList.CLI
                                 
                                 PrintIndents(progline, switches);
 
-                                PrintOut(taggedSection, state, switches, ref linesprinted);
+                                PrintOut(taggedSection.TrimStart(), state, switches, ref linesprinted);
 
                                 if (switches.FlgPause)
                                 {
@@ -565,6 +568,7 @@ namespace BasList.CLI
                 string? ln = progline.FormattedLineNumber;
                 if (!first) ln = new string(' ', ln.Length);
                 ln = "{=ListingLineNo}" + ln + "{/}";
+
                 foreach (Token tok in BasToolsEngine.WalkTagged(ln)) // retrieve line no. colour
                 {
                     if (tok.tag != null && ConsoleColorMap.TryGetColor(tok.tag, out var c, switches.FlgDark))
@@ -576,7 +580,7 @@ namespace BasList.CLI
                         Console.Write(ln);
                     Console.ForegroundColor = switches.ForeColor;
 
-                    if (!switches.NoSpaces)
+                    if (!switches.NoFormat)
                         Console.Write(' ');
                 }
             }
@@ -681,7 +685,7 @@ namespace BasList.CLI
             Console.WriteLine($"\nBasList vs {vs} (C) Andrew Rowland 2022-26");
             Console.WriteLine("\nLists a BBC BASIC program file\n");
             Console.WriteLine("BasList [/file=]filename ([[from line] [to line]) | [line,line]]) [Options] ([IF ...] | [IFX ...] | [LIST ...])");
-            //Console.WriteLine("BasList [/file=]filename [/V] [/addnumbers] [/align] [/indent] [/nonumbers] [/nospaces] [/bare] [/pause] [/prettyprint] [(cls | clear)]");
+            //Console.WriteLine("BasList [/file=]filename [/V] [/addnumbers] [/align] [/indent] [/nonumbers] [/NoFormat] [/bare] [/pause] [/prettyprint] [(cls | clear)]");
             //Console.WriteLine("BasList [/file=]filename [(/dark | /light)]");
             Console.WriteLine("BasList [/? | -h]  Display help\n");
             Console.WriteLine("  [/file=]filename");
@@ -699,7 +703,7 @@ namespace BasList.CLI
             Console.WriteLine("  /indent=(loops | defs | all)");
             Console.WriteLine("                   Indent loops only | PROC & FN definitions | both");
             Console.WriteLine("  /nonumbers       Omits line numbers");
-            Console.WriteLine("  /nospaces        Omits additional spaces and one space after line numbers");
+            Console.WriteLine("  /noformat        List program as entered (cancels prettyprint, breakapart and all additional spaces)");
             Console.WriteLine("  /bare            Omits additional messages (cancels pause)");
             Console.WriteLine("  /breakapart      Prints each statement on its own line");
             Console.WriteLine("  /pause           Pause at bottom of each screenful");

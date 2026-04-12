@@ -29,10 +29,10 @@ namespace BasTools.Core
                 case SemanticTags.BinaryNumber: return (true, false);
                 case SemanticTags.Variable: return (true, true);
                 case SemanticTags.StaticInteger: return (true, true);
-                case SemanticTags.RemText: return (true, false);
+                case SemanticTags.RemText: return (false, false);
                 case SemanticTags.AssemblerComment: return (true, false);
                 case SemanticTags.StarCommand: return (false, false);
-                case SemanticTags.EmbeddedData: return (true, false);
+                case SemanticTags.EmbeddedData: return (false, false);
                 case SemanticTags.ProcName: return (false, true);
                 case SemanticTags.FunctionName: return (false, true);
                 case SemanticTags.Label: return (false, true);
@@ -52,6 +52,9 @@ namespace BasTools.Core
         }
         internal static bool IsSpaceBetween(Token token1, Token token2)
         {
+            // special rule for null Statement separators
+            if (token1.tag == SemanticTags.StatementSep && token1.value == "") return true;
+
             (bool dummy, bool spaceafter) = GetSpacingRule(token1.tag, token1.value);
             (bool spacebefore, dummy)     = GetSpacingRule(token2.tag, token2.value);
 
@@ -119,7 +122,11 @@ namespace BasTools.Core
                     }
                     else if (state.InDefInition)
                     {
-                        state.InDefInition = !isEndOfProc(lines, counter);
+                        if (counter == lines.Lines.Count - 1)
+                            state.InDefInition = false; 
+                        else
+                            state.InDefInition = !isEndOfProc(lines, counter);
+                        
                     }
                     progline.IsInDef = !progline.IsDef && state.InDefInition;
 
@@ -132,10 +139,11 @@ namespace BasTools.Core
                     }
 
                     // track when we're in the expression following IF
+                    // so we can suppress outdent in expressions like IF x THEN NEXT
                     if (token1.tag == SemanticTags.Keyword && token1.value == "IF") // starting an IF...        
                     {
                         state.InIfCondition = true;
-                        state.IfConditionStartIndex = i + 1;
+                        //state.IfConditionStartIndex = i + 1;
                     }
 
                     if (token1.tag == SemanticTags.Keyword &&                       // reached end of the expression
@@ -150,7 +158,7 @@ namespace BasTools.Core
 
                     // Detect preserved whitespace before assembler comment
                     // An exception to preserve lined-up comments
-                    if (string.IsNullOrWhiteSpace(token1.value))
+                    if (string.IsNullOrWhiteSpace(token1.value) && token1.tag == null)
                     {
                         if (token2.tag == SemanticTags.AssemblerComment)
                         {
@@ -168,26 +176,16 @@ namespace BasTools.Core
                     AddToBoth(progline, token1);
 
                     // Spacing out keywords
-                    if (!switches.NoSpaces)
+                    bool spaceafter = BasSpacingRules.IsSpaceBetween(token1, token2);
+                    //Console.WriteLine($"{token1.tag}[{token1.value}] {token2.tag}[{token2.value}] - {spaceafter}");
+                    // Special check for unary minus
+                    if (token1.tag == SemanticTags.Operator && token1.value == "-" && IsUnaryMinus(tokens, i))
+                        spaceafter = false;
+
+                    if (spaceafter)
                     {
-                        bool spaceafter = BasSpacingRules.IsSpaceBetween(token1, token2);
-                        // 1. Special check for unary minus
-                        if (token1.tag == SemanticTags.Operator && token1.value == "-" && IsUnaryMinus(tokens, i))
-                            spaceafter = false;
-
-                        // 2. Check for implied THEN followed by indirection operator
-                        //    IF <expr> <indirection>  → force a space
-                        if (state.InIfCondition && (token2.tag == SemanticTags.IndirectionOperator) && IsEndOfIfExpression(tokens, state.IfConditionStartIndex, i))
-                        {
-                            spaceafter = true;
-                            state.InIfCondition = false;
-                        }
-
-                        if (spaceafter)
-                        {
-                            progline.FormattedPlain += ' ';
-                            progline.FormattedTagged += ' ';
-                        }
+                        progline.FormattedPlain += ' ';
+                        progline.FormattedTagged += ' ';
                     }
                 } // NEXT i
 
@@ -195,15 +193,13 @@ namespace BasTools.Core
                 state.Indent += state.PendingIndent;
                 state.PendingIndent = 0;
 
-                /*lines.FormattedLines.Add(formattedLine);
-                /////////////////////////////////////////////////////////////////////
+                /*///////////////////////////////////////////////////////
                 if (progline.TaggedLine != progline.FormattedTagged)
                 {
                     Console.WriteLine($"{linenumber} {progline.TaggedLine}");
                     Console.WriteLine($"{linenumber} {progline.FormattedTagged}");
                     Console.WriteLine("");
                 }*/
-
             }
             state.InIfCondition = false;
             return true;
@@ -293,10 +289,11 @@ namespace BasTools.Core
             {
                 ProgramLine line = lines.Lines[j];
                 string temp = line.NoSpacesLine.Replace(":", ""); // skip empty lines and just colons
+
                 if (temp.Trim() != string.Empty)
                     return line.TaggedLine.StartsWith(SemanticTags.Keyword + "DEF");
             }
-            return true; // End of program
+            return false;
         }
         static void AddToBoth(ProgramLine progline, Token token)
         {
@@ -309,6 +306,8 @@ namespace BasTools.Core
             for (int j = start; j < tokens.Count; j++)
             {
                 var (t, v, _) = tokens[j];
+                if (t != null)
+                    return tokens[j];
                 if (!string.IsNullOrWhiteSpace(v))
                     return tokens[j];
             }

@@ -65,10 +65,21 @@
         public static IEnumerable<Token> WalkTagged(string line)
         {
             if (line == null) yield break;
-            int i = 0;
 
             // First, collect all items into a temporary list
+            List<(string value, string tag)> items = tokenListFromTaggedLine(line);
+
+            // Now yield with correct isLast flag
+            for (int n = 0; n < items.Count; n++)
+            {
+                Token token = new(items[n].tag, items[n].value, (n == items.Count - 1));
+                yield return token;
+            }
+        }
+        private static List<(string value, string tag)> tokenListFromTaggedLine(string line)
+        {
             var items = new List<(string value, string tag)>();
+            int i = 0;
 
             while (i < line.Length)
             {
@@ -104,12 +115,7 @@
                     i = next;
                 }
             }
-            // Now yield with correct isLast flag
-            for (int n = 0; n < items.Count; n++)
-            {
-                Token token = new(items[n].tag, items[n].value, (n == items.Count - 1));
-                yield return token;
-            }
+            return items;
         }
         static void DumpResourceNames()
         {

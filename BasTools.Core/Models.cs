@@ -166,7 +166,7 @@ namespace BasTools.Core
         public int PendingIndent;
         public bool fMultiLineIf;
         public bool InIfCondition;
-        public int IfConditionStartIndex;
+        //public int IfConditionStartIndex;
         public bool InDefInition;
         public bool IsDef;
         public bool SeenFirstWhen;
@@ -178,7 +178,7 @@ namespace BasTools.Core
             PendingIndent = 0;
             fMultiLineIf = false;
             InIfCondition = false;
-            IfConditionStartIndex = 0;
+            //IfConditionStartIndex = 0;
             IsDef = false;
             InDefInition = false;
             SeenFirstWhen = false;
@@ -191,7 +191,7 @@ namespace BasTools.Core
             PendingIndent = other.PendingIndent;
             fMultiLineIf = other.fMultiLineIf;
             InIfCondition = other.InIfCondition;
-            IfConditionStartIndex = other.IfConditionStartIndex;
+            //IfConditionStartIndex = other.IfConditionStartIndex;
             IsDef = other.IsDef;
             InDefInition = other.InDefInition;
             SeenFirstWhen = other.SeenFirstWhen;
@@ -210,7 +210,7 @@ namespace BasTools.Core
         public bool FlgIndent;
         public bool FlgEmphDefs;
         public bool Align;
-        public bool NoSpaces;
+        public bool NoFormat;
         public bool Bare;
         public bool BreakApart;
         public FormattingOptions()
@@ -219,7 +219,7 @@ namespace BasTools.Core
             FlgIndent = false;
             FlgEmphDefs = false;
             Align = false;
-            NoSpaces = false;
+            NoFormat = false;
             Bare = false;
             BreakApart = false;
         }

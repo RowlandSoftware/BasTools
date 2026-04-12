@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.PortableExecutable;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using static System.Net.Mime.MediaTypeNames;
@@ -126,7 +127,7 @@ namespace BasTools.Core
                     lineNumber = (ushort)(data[ptr] << 8 | (data[ptr + 1]));
                     length = data[ptr + 2];
                 }
-
+                DBG($">>>>> {lineNumber} ------");
                 LineCount++;
                 if (data[ptr + length - 1] != 13)
                 {
@@ -150,6 +151,22 @@ namespace BasTools.Core
         }
         private void processLineBody(ParserState parserState, byte[] tokenisedLine, ProgramLine returnObject, ProgInfo progInfo)
         {
+            firstPass(parserState, tokenisedLine, returnObject, progInfo);
+            // For diagnosis
+            string pass1 = returnObject.TaggedLine;
+
+            secondPass(returnObject);
+
+            /*/ Diagnosis
+            if (returnObject.TaggedLine != pass1)
+            {
+                Console.WriteLine(pass1);
+                Console.WriteLine(returnObject.TaggedLine);
+                Console.WriteLine("");
+            }*/
+        }
+        private void firstPass(ParserState parserState, byte[] tokenisedLine, ProgramLine returnObject, ProgInfo progInfo)
+        {
             string plainline = string.Empty;
             string linenospaces = string.Empty;
             string taggedline = string.Empty;
@@ -158,12 +175,10 @@ namespace BasTools.Core
             bool rem = false;
             bool flgFnOrProc = false;
             bool flgVar = false;
-            //bool flgHex = false;
             bool startOfStatement = true;
             bool asmComment = false;
             int prevbyte = 0;
             bool closeTag = false;
-            //bool flgLabel = false;
 
             for (int i = 0; i <= tokenisedLine.Length - 1; i++)
             {
@@ -254,7 +269,7 @@ namespace BasTools.Core
                         if (parserState.InIfCondition)
                         {
                             parserState.IfParenDepth++;
-                            DBG($"[IF] Paren depth++ → {parserState.IfParenDepth + 1} at i={i}");
+                            DBG($"[IF] Paren depth++ → {parserState.IfParenDepth} at i={i}");
                         }
 
                         }
@@ -262,10 +277,19 @@ namespace BasTools.Core
                     {
                         taggedline += SemanticTags.CloseBracket;
                         closeTag = true;
-                        if (parserState.InIfCondition && parserState.IfParenDepth > 0)
+                        
+                        if (parserState.InIfCondition)
                         {
-                            parserState.IfParenDepth--;
-                            DBG($"[IF] Paren depth-- → {parserState.IfParenDepth - 1} at i={i}");
+                            if (parserState.IfParenDepth > 0)
+                                parserState.IfParenDepth--;
+
+                            // now at depth 0: this can complete the expression
+                            if (parserState.IfParenDepth == 0)
+                            {
+                                var (t, v) = getTagAndValueFromTaggedLine(taggedline);
+                                NoteExprTokenInIf(SemanticTags.CloseBracket, v, parserState);
+                                DBG($"[IF] Token complete: tag={SemanticTags.CloseBracket}, value={v}, ExprComplete={parserState.ExprComplete}");
+                            }
                         }
                     }
                     else if (!flgVar && curchar is '!' or '?' or '$')
@@ -601,6 +625,9 @@ namespace BasTools.Core
                             case "PTR":
                             case "EXT":
                             case "EVAL":
+                            case "OPENIN":
+                            case "OPENOUT":
+                            case "OPENUP":
                                 tag = SemanticTags.BuiltInFn;
                                 break;
                         }
@@ -613,7 +640,7 @@ namespace BasTools.Core
                         if (tag == SemanticTags.Keyword && keyword is not "IF" and not "THEN" and not "ELSE")
                         {
                             NoteExprTokenInIf(tag, keyword, parserState);
-                            Console.WriteLine($"[IF] Token complete: tag: {tag}, value: {keyword}, ExprComplete={parserState.ExprComplete}");
+                            DBG($"[IF] Token complete: tag: {tag}, value: {keyword}, ExprComplete={parserState.ExprComplete}");
                         }
 
                         if (keyword == "PROC")
@@ -628,17 +655,17 @@ namespace BasTools.Core
                             taggedline += SemanticTags.EmbeddedData;
                         }
 
+                        if (keyword == "REM")
+                        {
+                            rem = true;
+                            startOfStatement = false;
+                            taggedline += SemanticTags.RemText;
+                        }
+
                         plainline += keyword;
                     }
 
                     linenospaces += keyword;
-
-                    if (keyword == "REM")
-                    {
-                        rem = true;
-                        startOfStatement = false;
-                        taggedline += SemanticTags.RemText;
-                    }
                 }
                 prevbyte = curbyte;
             }
@@ -649,6 +676,162 @@ namespace BasTools.Core
             returnObject.NoSpacesLine = linenospaces;
 
             return;
+        }
+        private void secondPass(ProgramLine returnObject)
+        {
+            var tokens = tokenListFromTaggedLine(returnObject.TaggedLine);
+            var sb = new StringBuilder();
+
+            bool inIf = false;
+            int parenDepth = 0;
+
+            for (int i = 0; i < tokens.Count; i++)
+            {
+                var t = tokens[i];
+
+                // Always emit the current token
+                sb.Append(t.tag);
+                sb.Append(t.value);
+                if (t.tag != null)
+                    sb.Append(SemanticTags.Reset);
+
+                // Track IF/THEN/ELSE
+                if (t.tag == SemanticTags.Keyword && t.value == "IF")
+                {
+                    inIf = true;
+                    parenDepth = 0;
+                    continue;
+                }
+
+                if (t.tag == SemanticTags.Keyword && (t.value == "THEN" || t.value == "ELSE"))
+                {
+                    inIf = false;
+                    continue;
+                }
+
+                // Track parentheses
+                if (t.tag == SemanticTags.OpenBracket || (t.tag == SemanticTags.BuiltInFn && t.value.EndsWith('(')))
+                    parenDepth++;
+                if (t.tag == SemanticTags.CloseBracket)
+                    parenDepth--;
+
+                // Only consider implied THEN if inside IF and not inside parentheses
+                if (!inIf || parenDepth != 0)
+                    continue;
+
+                // Expression is complete if this token is a terminal
+                bool exprComplete =
+                    t.tag == SemanticTags.Variable ||
+                    t.tag == SemanticTags.Number ||
+                    t.tag == SemanticTags.StringLiteral ||
+                    t.tag == SemanticTags.CloseBracket ||
+                    (t.tag == SemanticTags.Keyword &&
+                     t.value != "AND" &&
+                     t.value != "OR" &&
+                     t.value != "EOR" &&
+                     t.value != "NOT" &&
+                     t.value != "FN");
+
+                if (!exprComplete)
+                    continue;
+
+                var (nextIndex, next) = NextSignificantToken(tokens, i);
+
+                if (nextIndex == -1)
+                    continue;   // no implied THEN at end of line
+
+                // Continuation tokens
+                bool continuation =
+                    next.tag == SemanticTags.Operator ||
+                    //next.tag == SemanticTags.IndirectionOperator ||
+                    next.tag == SemanticTags.OpenBracket ||
+                    next.tag == SemanticTags.Variable ||
+                    next.tag == SemanticTags.Number ||
+                    next.tag == SemanticTags.StringLiteral ||
+                    next.tag == SemanticTags.BuiltInFn;
+
+                if (next.tag == SemanticTags.Keyword && (next.value == "AND" || next.value == "OR" || next.value == "EOR"))
+                {
+                    continuation = true;
+                }
+
+                // NEW RULE: A variable does NOT continue the expression if the current token is terminal
+                bool currentIsTerminal =
+                    t.tag == SemanticTags.Variable ||
+                    t.tag == SemanticTags.Number ||
+                    t.tag == SemanticTags.StringLiteral ||
+                    t.tag == SemanticTags.CloseBracket ||
+                    t.tag == SemanticTags.FunctionName ||
+                    (t.tag == SemanticTags.Keyword &&
+                     t.value != "AND" &&
+                     t.value != "OR" &&
+                     t.value != "EOR" &&
+                     t.value != "NOT" &&
+                     t.value != "FN");
+
+                if (currentIsTerminal && next.tag == SemanticTags.Variable)
+                {
+                    continuation = false;
+                }
+
+                // Chained IF
+                if (next.tag == SemanticTags.Keyword && next.value == "IF")
+                    continuation = true;
+
+                if (continuation)
+                    continue;
+
+                // Explicit separators already present
+                //if (next.tag == SemanticTags.StatementSep)
+                    //continue;
+                // If the next token is an original separator (space or colon), do NOT insert implied THEN
+                if (next.tag == SemanticTags.StatementSep &&
+                    (next.value == " " || next.value == ":"))
+                {
+                    continue;
+                }
+
+                // Insert implied THEN
+                next = tokens[i + 1];
+                if (next.tag != SemanticTags.StatementSep)
+                {
+                    sb.Append($"{SemanticTags.StatementSep}{SemanticTags.Reset}");
+                    // Skip literal whitespace after an inserted null separator
+                    int j = nextIndex;
+                    while (j < tokens.Count && tokens[j].tag == null && string.IsNullOrWhiteSpace(tokens[j].value))
+                    {
+                        j++;
+                    }
+                    // Continue processing from the first non-whitespace token
+                    i = j - 1;
+                }
+
+                inIf = false;
+            }
+
+            returnObject.TaggedLine = sb.ToString();
+        }
+        // Returns (index, token) where token is (value, tag)
+        // If none found, returns (-1, (null, null))
+        private (int index, (string value, string tag) token)
+            NextSignificantToken(List<(string Value, string Tag)> tokens, int start)
+        {
+            for (int j = start + 1; j < tokens.Count; j++)
+            {
+                var tok = tokens[j];
+
+                // Skip null-tag tokens
+                if (tok.Tag == null)
+                    continue;
+
+                // Skip whitespace-only values
+                if (string.IsNullOrWhiteSpace(tok.Value))
+                    continue;
+
+                return (j, tok);
+            }
+
+            return (-1, (null, null));
         }
         private string getKeywordOrLineNumber(byte[] tokenisedLine, byte curbyte, ref int ptr, ref char nxtchar, ProgInfo progInfo, ParserState s)
         {
@@ -708,8 +891,8 @@ namespace BasTools.Core
             }
         }
         static void NoteExprTokenInIf(string tag, string keyword, ParserState parserState)
-        {
-            Console.WriteLine($"Checking {tag} {keyword}, InIfCondition = {parserState.InIfCondition}, starting paren depth {parserState.IfParenDepth}");
+        { /*
+            DBG($"Checking {tag} {keyword}, InIfCondition = {parserState.InIfCondition}, starting paren depth {parserState.IfParenDepth}");
             if (!parserState.InIfCondition) return;
             
             if (parserState.IfParenDepth > 0)
@@ -733,7 +916,7 @@ namespace BasTools.Core
             }
 
             // Variables, numbers, string literals, closing ) at depth 0 → potentially complete
-            parserState.ExprComplete = true;
+            parserState.ExprComplete = true;*/
         }
         private (string tag, string value) getTagAndValueFromTaggedLine(string taggedline)
         {
@@ -801,9 +984,9 @@ namespace BasTools.Core
             using var reader = new StreamReader(stream);
             return reader.ReadToEnd();
         }
-        void DBG(string msg)
+        static void DBG(string msg)
         {
-            Console.WriteLine(msg);
+            //Console.WriteLine(msg);
         }
 
     }
