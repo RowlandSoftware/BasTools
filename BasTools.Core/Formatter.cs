@@ -95,6 +95,13 @@ namespace BasTools.Core
         {
             FormatterState state = new();      // this sets initial conditions
 
+            formatLines(lines, switches, state, BasicV);
+
+            state.InIfCondition = false;
+            return true;
+        }
+        internal void formatLines(Listing lines, FormattingOptions switches, FormatterState state, bool BasicV)
+        {
             for (int counter = 0; counter < lines.Lines.Count; counter++)
             {
                 ProgramLine progline = lines.Lines[counter];
@@ -113,24 +120,7 @@ namespace BasTools.Core
                     // Indenting
                     HandleIndents(token1, state, switches, BasicV);
 
-                    // Track whether in DEF or not
-                    if (state.IsDef)
-                    {
-                        progline.IsDef = true;      // This line starts with DEF
-                        state.IsDef = false;        // noted; cancel the condition
-                        state.InDefInition = true;  // note that future lines are InDef
-                    }
-                    else if (state.InDefInition)
-                    {
-                        if (counter == lines.Lines.Count - 1)
-                            state.InDefInition = false; 
-                        else
-                            state.InDefInition = !isEndOfProc(lines, counter);
-                        
-                    }
-                    progline.IsInDef = !progline.IsDef && state.InDefInition;
-
-                    // Reached end of list?
+                    // Reached end of token list?
                     if (i == tokens.Count - 1)
                     {
                         // Add and move on
@@ -193,36 +183,40 @@ namespace BasTools.Core
                 state.Indent += state.PendingIndent;
                 state.PendingIndent = 0;
 
-                /*///////////////////////////////////////////////////////
-                if (progline.TaggedLine != progline.FormattedTagged)
+                // Track whether in DEF or not
+                if (state.IsDef)
                 {
-                    Console.WriteLine($"{linenumber} {progline.TaggedLine}");
-                    Console.WriteLine($"{linenumber} {progline.FormattedTagged}");
-                    Console.WriteLine("");
-                }*/
+                    progline.IsDef = true;      // This line starts with DEF
+                    state.IsDef = false;        // noted; cancel the condition
+                    state.InDefInition = true;  // note that future lines are InDef
+                }
+                else if (state.InDefInition)
+                {
+                    state.InDefInition = !isEndOfProc(lines, counter);
+                }
+                progline.IsInDef = !progline.IsDef && state.InDefInition; // update progline flags from state
             }
-            state.InIfCondition = false;
-            return true;
-        }            
-        static string formatLineNumber(int lineNumber, FormattingOptions switches, FormatterState State)
-        {
-            string linenumber = lineNumber.ToString();
 
-            if (lineNumber == 0 && State.Z80)
+            static string formatLineNumber(int lineNumber, FormattingOptions switches, FormatterState State)
             {
-                linenumber = string.Empty;
-                if (switches.FlgAddNums) linenumber = (State.LineCount * 10).ToString();
-            }
-            else if (switches.Align)
-                linenumber = linenumber.PadLeft(5);
+                string linenumber = lineNumber.ToString();
 
-            return linenumber;
+                if (lineNumber == 0 && State.Z80)
+                {
+                    linenumber = string.Empty;
+                    if (switches.FlgAddNums) linenumber = (State.LineCount * 10).ToString();
+                }
+                else if (switches.Align)
+                    linenumber = linenumber.PadLeft(5);
+
+                return linenumber;
+            }
         }
         private void HandleIndents(Token token1, FormatterState state, FormattingOptions switches, bool BasicV)
         {
             if (token1.tag == SemanticTags.Keyword)
             {
-                if (token1.value == "THEN" && BasicV && token1.isLast)
+                if (token1.value == "THEN" && BasicV && token1.isLast) // TODO ... THEN: is legal
                 {
                     state.fMultiLineIf = true;
                     state.PendingIndent++;
@@ -277,7 +271,6 @@ namespace BasTools.Core
                         // Subsequent WHEN: outdent this line
                         state.Indent--;
                     }
-
                     // All WHEN/OTHERWISE indent the next line
                     state.PendingIndent++;
                 }
@@ -285,15 +278,40 @@ namespace BasTools.Core
         }
         static bool isEndOfProc(Listing lines, int i) // Line lookahead to see whether next significant line is end-of-proc
         {
-            for (int j = ++i; j < lines.Lines.Count - 1; j++)
+            // dumb checks
+            if (lines.Lines[i].TaggedLine.Trim().StartsWith(SemanticTags.Keyword + "ENDPROC" + SemanticTags.Reset))
+                return true;
+
+            if (lines.Lines[i].TaggedLine.Trim().StartsWith(SemanticTags.Keyword + "=" + SemanticTags.Reset))
+                return true;
+
+            // lookahead
+            for (int j = ++i; j < lines.Lines.Count ; j++)
             {
                 ProgramLine line = lines.Lines[j];
-                string temp = line.NoSpacesLine.Replace(":", ""); // skip empty lines and just colons
 
-                if (temp.Trim() != string.Empty)
-                    return line.TaggedLine.StartsWith(SemanticTags.Keyword + "DEF");
+                string temp = line.NoSpacesLine.Replace(":", ""); // skip empty lines and just colons
+                
+                int remPos = temp.IndexOf("REM");
+                int dataPos = temp.IndexOf("DATA");
+
+                int pos = (remPos == -1) ? dataPos :
+                          (dataPos == -1) ? remPos :
+                          Math.Min(remPos, dataPos);
+
+                if (pos != -1)
+                    temp = temp.Substring(0, pos);
+
+                if (temp.Trim() == string.Empty)
+                    continue;
+
+                // so we're looking at the next significant line
+                if (line.TaggedLine.StartsWith(SemanticTags.Keyword + "DEF"))
+                    return true;
+                else
+                    return false;
             }
-            return false;
+            return true; // last line always closes the indent
         }
         static void AddToBoth(ProgramLine progline, Token token)
         {

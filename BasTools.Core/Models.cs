@@ -169,6 +169,7 @@ namespace BasTools.Core
         //public int IfConditionStartIndex;
         public bool InDefInition;
         public bool IsDef;
+        //public bool PendingDefUnindent;
         public bool SeenFirstWhen;
         public FormatterState()
         {
@@ -181,6 +182,7 @@ namespace BasTools.Core
             //IfConditionStartIndex = 0;
             IsDef = false;
             InDefInition = false;
+            //PendingDefUnindent = false;
             SeenFirstWhen = false;
         }
         public FormatterState(FormatterState other)
@@ -194,6 +196,7 @@ namespace BasTools.Core
             //IfConditionStartIndex = other.IfConditionStartIndex;
             IsDef = other.IsDef;
             InDefInition = other.InDefInition;
+            //PendingDefUnindent = other.PendingDefUnindent;
             SeenFirstWhen = other.SeenFirstWhen;
         }
         public int Indent
@@ -212,7 +215,7 @@ namespace BasTools.Core
         public bool Align;
         public bool NoFormat;
         public bool Bare;
-        public bool BreakApart;
+        public bool SplitLines;
         public FormattingOptions()
         {
             FlgAddNums = false;
@@ -221,7 +224,7 @@ namespace BasTools.Core
             Align = false;
             NoFormat = false;
             Bare = false;
-            BreakApart = false;
+            SplitLines = false;
         }
     }
 }
