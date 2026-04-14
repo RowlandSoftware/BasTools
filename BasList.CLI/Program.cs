@@ -20,31 +20,35 @@ namespace BasList.CLI
     //***************** CommandSwitches *****************
     public class CommandSwitches
     {
+        // swtiches for detokenisation
         private bool _basicV;
         private bool _notBasicV;
+        // switches for formatting
         public bool FlgAddNums;
         public bool FlgIndent;
         public bool FlgEmphDefs;
         public bool Align;
+        // swtiches for listing
         public bool NoFormat;
         public bool NoLineNumbers;
         public bool Bare;
         public bool SplitLines;
         public bool Pretty;
-        public bool Clear;
+        private bool _flgPause;
+        // switches for filtering listings
+        public int FromLine;
+        public int ToLine;
         public bool FlgIf;
         public bool FlgIfX;
         public bool FlgList;
-        private bool _flgPause;
+        public List<string> DirectiveParams;
+        // swtiches for appearance
+        public bool Clear;
         public bool FlgDark;
-        public int FromLine;
-        public int ToLine;
-        public bool Debug;
-
         public ConsoleColor ForeColor;
         public ConsoleColor BackColor;
-
-        public List<string> DirectiveParams;
+        // debug
+        public bool Debug;
         public CommandSwitches()
         {
             _basicV = false;
@@ -394,7 +398,6 @@ namespace BasList.CLI
 
             if (switches.Clear && !Console.IsOutputRedirected) Console.Clear();
             int linesprinted = 0;
-
             //
             // ******** LISTING STARTS HERE ********
             //
@@ -440,99 +443,96 @@ namespace BasList.CLI
 
                     if (shouldPrint)
                     {
-                        //******************* WRITE TO CONSOLE ************************
+                        //******************* WRITE ONE LINE TO CONSOLE ************************
 
                         if (!switches.SplitLines)
                         {
-                            if (!switches.NoFormat)
-                            {
-                                // Normal behaviour
-                                PrintLineNumber(progline, switches, true);
-                                PrintIndents(progline, switches);
-                                PrintOut(progline.FormattedTagged, state, switches, ref linesprinted);
-                            }
-                            else
-                            {
-                                // plain printout without additional spaces
-                                Console.WriteLine((switches.NoLineNumbers ? "" : (progline.FormattedLineNumber +
-                                    (!switches.NoFormat ? ' ' : ""))) +
-                                    (switches.FlgIndent ? new string(' ', progline.IndentLevel * 2) : "") +
-                                    (switches.FlgEmphDefs ? new string(' ', progline.DefIndent * 2) : "") +
-                                    (switches.NoFormat ? progline.PlainDetokenisedLine : progline.FormattedPlain));
-                                linesprinted++;
-                            }
-                            // Deal with pausing
-                            if (switches.FlgPause)
-                            {
-                                switch (CheckForPause(switches, ref linesprinted))
-                                {
-                                    case ConsoleKey.Spacebar: linesprinted = 0; break;
-                                    case ConsoleKey.Enter: linesprinted--; break;
-                                    case ConsoleKey.Escape: ResetAndExit(switches); break;
-                                }
-                            }
+                            printLineOut(progline, switches, state, ref linesprinted);
                         }
                         else // SplitLines
                         {
                             bool first = true;
 
+                            Listing sections = new(new List<ProgramLine>());
+
+                            // generate a 'min-program-listing' from the sections
                             foreach (string taggedSection in SplitStatements(progline.FormattedTagged))
                             {
-                                PrintLineNumber(progline, switches, first);
-                                first = false;
+                                ProgramLine line = new(progline);
+                                line.TaggedLine = taggedSection;
+                                sections.Lines.Add(line);
+                            }
 
-                                PrintIndents(progline, switches);
+                            // Print normally if only one section
+                            if (sections.Lines.Count == 1)
+                            {
+                                printLineOut(progline, switches, state, ref linesprinted);
+                            }
+                            else
+                            {
+                                // Call the Formatter to format these 'lines'
+                                FormatterState formatterState = new FormatterState(progline);
+                                BasToolsEngine engine = new BasToolsEngine();
 
-                                PrintOut(taggedSection.TrimStart(), state, switches, ref linesprinted);
+                                engine.formatLines(sections, switches.copyToFormatOptions(), formatterState, progInfo.BasicV, true);
 
-                                if (switches.FlgPause)
+                                foreach (ProgramLine line in sections.Lines)
                                 {
-                                    switch (CheckForPause(switches, ref linesprinted))
+                                    PrintLineNumber(line, switches, first);
+                                    first = false;
+                                    PrintIndents(line, switches);
+
+                                    PrintOut(line.TaggedLine.TrimStart(), state, switches, ref linesprinted);
+
+                                    if (switches.FlgPause)
                                     {
-                                        case ConsoleKey.Spacebar: linesprinted = 0; break;
-                                        case ConsoleKey.Enter: linesprinted--; break;
-                                        case ConsoleKey.Escape: ResetAndExit(switches); break;
+                                        switch (CheckForPause(switches, ref linesprinted))
+                                        {
+                                            case ConsoleKey.Spacebar: linesprinted = 0; break;
+                                            case ConsoleKey.Enter: linesprinted--; break;
+                                            case ConsoleKey.Escape: ResetAndExit(switches); break;
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
-                    #region debug
-                    if (switches.Debug)
-                    {
-                        Console.WriteLine($"{progline.LineNumber} -");
-
-                        Console.ForegroundColor = ConsoleColor.DarkYellow;
-                        Console.Write($"  Plain:     ");
-                        Console.ForegroundColor = state.CurrentForeground;
-                        Console.WriteLine($"{progline.PlainDetokenisedLine}");
-
-                        Console.ForegroundColor = ConsoleColor.DarkYellow;
-                        Console.Write($"  Formatted: ");
-                        Console.ForegroundColor = state.CurrentForeground;
-                        Console.WriteLine($"{progline.FormattedPlain}");
-
-                        Console.ForegroundColor = ConsoleColor.DarkYellow;
-                        Console.Write($"  Tagged:    ");
-                        Console.ForegroundColor = state.CurrentForeground;
-                        Console.WriteLine($"{progline.TaggedLine}");
-
-                        Console.ForegroundColor = ConsoleColor.DarkYellow;
-                        Console.Write($"  Formatted: ");
-                        Console.ForegroundColor = state.CurrentForeground;
-                        Console.WriteLine($"{progline.FormattedTagged}");
-
-                        string untaggedline = Regex.Replace(progline.TaggedLine, @"\{.*?\}", "");
-                        if (untaggedline != progline.PlainDetokenisedLine)
+                        #region debug
+                        if (switches.Debug)
                         {
-                            Console.ForegroundColor = ConsoleColor.Red;
-                            Console.WriteLine("Mismatch");
+                            Console.WriteLine($"{progline.LineNumber} -");
+
+                            Console.ForegroundColor = ConsoleColor.DarkYellow;
+                            Console.Write($"  Plain:     ");
                             Console.ForegroundColor = state.CurrentForeground;
-                            Console.WriteLine(untaggedline);
+                            Console.WriteLine($"{progline.PlainDetokenisedLine}");
+
+                            Console.ForegroundColor = ConsoleColor.DarkYellow;
+                            Console.Write($"  Formatted: ");
+                            Console.ForegroundColor = state.CurrentForeground;
+                            Console.WriteLine($"{progline.FormattedPlain}");
+
+                            Console.ForegroundColor = ConsoleColor.DarkYellow;
+                            Console.Write($"  Tagged:    ");
+                            Console.ForegroundColor = state.CurrentForeground;
+                            Console.WriteLine($"{progline.TaggedLine}");
+
+                            Console.ForegroundColor = ConsoleColor.DarkYellow;
+                            Console.Write($"  Formatted: ");
+                            Console.ForegroundColor = state.CurrentForeground;
+                            Console.WriteLine($"{progline.FormattedTagged}");
+
+                            string untaggedline = Regex.Replace(progline.TaggedLine, @"\{.*?\}", "");
+                            if (untaggedline != progline.PlainDetokenisedLine)
+                            {
+                                Console.ForegroundColor = ConsoleColor.Red;
+                                Console.WriteLine("Mismatch");
+                                Console.ForegroundColor = state.CurrentForeground;
+                                Console.WriteLine(untaggedline);
+                            }
+                            Console.WriteLine();
                         }
-                        Console.WriteLine();
+                        #endregion
                     }
-                    #endregion
                 }
             }
         }
@@ -559,6 +559,36 @@ namespace BasList.CLI
             }
             Console.WriteLine("");
             linesprinted++;             // TODO doesn't take account of lines that wrap, i.e. wider than the window
+        }
+        static void printLineOut(ProgramLine progline, CommandSwitches switches, ListerState state, ref int linesprinted)
+        {
+            if (!switches.NoFormat)
+            {
+                // Normal behaviour
+                PrintLineNumber(progline, switches, true);
+                PrintIndents(progline, switches);
+                PrintOut(progline.FormattedTagged, state, switches, ref linesprinted);
+            }
+            else
+            {
+                // plain printout without additional spaces
+                Console.WriteLine((switches.NoLineNumbers ? "" : (progline.FormattedLineNumber +
+                    (!switches.NoFormat ? ' ' : ""))) +
+                    (switches.FlgIndent ? new string(' ', progline.IndentLevel * 2) : "") +
+                    (switches.FlgEmphDefs ? new string(' ', progline.DefIndent * 2) : "") +
+                    (switches.NoFormat ? progline.PlainDetokenisedLine : progline.FormattedPlain));
+                linesprinted++;
+            }
+            // Deal with pausing
+            if (switches.FlgPause)
+            {
+                switch (CheckForPause(switches, ref linesprinted))
+                {
+                    case ConsoleKey.Spacebar: linesprinted = 0; break;
+                    case ConsoleKey.Enter: linesprinted--; break;
+                    case ConsoleKey.Escape: ResetAndExit(switches); break;
+                }
+            }
         }
         static void PrintLineNumber(ProgramLine progline, CommandSwitches switches, bool first)
         {
@@ -588,6 +618,8 @@ namespace BasList.CLI
         static void PrintIndents(ProgramLine progline, CommandSwitches switches)
         {
             // Indents
+            Console.WriteLine($"Indent: {progline.IndentLevel}");
+
             Console.Write(switches.FlgIndent ? new string(' ', progline.IndentLevel * 2) : "");
             Console.Write(switches.FlgEmphDefs ? new string(' ', progline.DefIndent * 2) : "");
         }
@@ -620,15 +652,26 @@ namespace BasList.CLI
             var result = new List<string>();
             var sb = new StringBuilder();
 
-            foreach (Token tok in BasToolsEngine.WalkTagged(code))
+            var tokens = BasToolsEngine.WalkTagged(code).ToList();
+            for (int i = 0; i < tokens.Count; i++)
             {
+                Token tok = tokens[i];
                 sb.Append(tok.tag + tok.value);
                 if (!string.IsNullOrEmpty(tok.tag))
                     sb.Append("{/}");
 
-                if (tok.tag == SemanticTags.StatementSep || tok.isLast)
+                if (i < tokens.Count-1 && tok.tag == SemanticTags.StatementSep && tokens[i + 1].value == "THEN")
+                    continue;
+
+                if (i < tokens.Count - 1 && tokens[i + 1].value == "ELSE")
                 {
-                    result.Add(sb.ToString());
+                    result.Add(sb.ToString().TrimEnd());
+                    sb.Clear();
+                }
+
+                if (tok.isLast || tok.tag == SemanticTags.StatementSep || tok.value == "ELSE")
+                {
+                    result.Add(sb.ToString().TrimEnd());
                     sb.Clear();
                 }
             }

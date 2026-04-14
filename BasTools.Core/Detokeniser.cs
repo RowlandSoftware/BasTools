@@ -96,7 +96,6 @@ namespace BasTools.Core
                 {
                     throw new IOException("File read incomplete.");
                 }
-                //State.DataSize = size;
             }
             return true;
         }
@@ -578,7 +577,7 @@ namespace BasTools.Core
                         string tag = SemanticTags.Keyword;
                         switch (keyword)
                         {
-                            // No If ... Then ... Else - handled in code because depends on whether in multiLineIf or not (unless /breakapart)
+                            // No If ... Then ... Else - handled in code because depends on whether in multiLineIf or not (unless /splitlines)
                             case "FOR":
                             case "REPEAT":
                             case "WHILE":
@@ -782,29 +781,25 @@ namespace BasTools.Core
                     continue;
 
                 // Explicit separators already present
-                //if (next.tag == SemanticTags.StatementSep)
-                    //continue;
-                // If the next token is an original separator (space or colon), do NOT insert implied THEN
-                if (next.tag == SemanticTags.StatementSep &&
-                    (next.value == " " || next.value == ":"))
-                {
+                // If the next token is an original separator (space or colon) or THEN, do NOT insert implied THEN
+                if (
+                    (next.tag == SemanticTags.StatementSep &&
+                    (next.value == " " || next.value == ":")) ||
+                    (next.tag == SemanticTags.Keyword && next.value == "THEN")
+                    )
                     continue;
-                }
 
                 // Insert implied THEN
-                next = tokens[i + 1];
-                if (next.tag != SemanticTags.StatementSep)
+                sb.Append($"{SemanticTags.StatementSep}{SemanticTags.Reset}");
+                
+                // Skip literal whitespace after an inserted null separator
+                int j = nextIndex;
+                while (j < tokens.Count && tokens[j].tag == null && string.IsNullOrWhiteSpace(tokens[j].value))
                 {
-                    sb.Append($"{SemanticTags.StatementSep}{SemanticTags.Reset}");
-                    // Skip literal whitespace after an inserted null separator
-                    int j = nextIndex;
-                    while (j < tokens.Count && tokens[j].tag == null && string.IsNullOrWhiteSpace(tokens[j].value))
-                    {
-                        j++;
-                    }
-                    // Continue processing from the first non-whitespace token
-                    i = j - 1;
+                    j++;
                 }
+                // Continue processing from the first non-whitespace token
+                i = j - 1;
 
                 inIf = false;
             }

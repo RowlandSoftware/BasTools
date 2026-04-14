@@ -95,16 +95,18 @@ namespace BasTools.Core
         {
             FormatterState state = new();      // this sets initial conditions
 
-            formatLines(lines, switches, state, BasicV);
+            formatLines(lines, switches, state, BasicV, false);
 
-            state.InIfCondition = false;
             return true;
         }
-        internal void formatLines(Listing lines, FormattingOptions switches, FormatterState state, bool BasicV)
+        public void formatLines(Listing lines, FormattingOptions switches, FormatterState state, bool BasicV, bool IsSplitLines)
         {
+            state.InIf = false; // for the benefit of SplitLines
+
             for (int counter = 0; counter < lines.Lines.Count; counter++)
             {
                 ProgramLine progline = lines.Lines[counter];
+                Console.Write($"< {progline.LineNumber} {state.Indent} - ");
 
                 string linenumber = formatLineNumber(progline.LineNumber, switches, state);
                 progline.FormattedLineNumber = linenumber;
@@ -112,13 +114,14 @@ namespace BasTools.Core
                 var tokens = BasToolsEngine.WalkTagged(progline.TaggedLine).ToList();
 
                 state.InIfCondition = false; // start of line, no IF's
+                if (!IsSplitLines) state.InIf = false;
 
                 for (int i = 0; i < tokens.Count; i++)
                 {
                     var token1 = tokens[i];
 
                     // Indenting
-                    HandleIndents(token1, state, switches, BasicV);
+                    HandleIndents(token1, state, BasicV, IsSplitLines);
 
                     // Reached end of token list?
                     if (i == tokens.Count - 1)
@@ -133,11 +136,13 @@ namespace BasTools.Core
                     if (token1.tag == SemanticTags.Keyword && token1.value == "IF") // starting an IF...        
                     {
                         state.InIfCondition = true;
-                        //state.IfConditionStartIndex = i + 1;
+                        state.InIf = true;
                     }
 
-                    if (token1.tag == SemanticTags.Keyword &&                       // reached end of the expression
-                        (token1.value == "THEN" || token1.value == "ELSE"))
+                    if ((token1.tag == SemanticTags.Keyword &&
+                    (token1.value == "THEN" || token1.value == "ELSE")) ||  // reached end of the expression
+                    (token1.tag == SemanticTags.StatementSep &&
+                    token1.value == ""))
                         state.InIfCondition = false;
 
                     if (token1.tag == SemanticTags.StatementSep)
@@ -167,7 +172,7 @@ namespace BasTools.Core
 
                     // Spacing out keywords
                     bool spaceafter = BasSpacingRules.IsSpaceBetween(token1, token2);
-                    //Console.WriteLine($"{token1.tag}[{token1.value}] {token2.tag}[{token2.value}] - {spaceafter}");
+                    
                     // Special check for unary minus
                     if (token1.tag == SemanticTags.Operator && token1.value == "-" && IsUnaryMinus(tokens, i))
                         spaceafter = false;
@@ -180,6 +185,12 @@ namespace BasTools.Core
                 } // NEXT i
 
                 progline.IndentLevel = state.Indent;
+                Console.WriteLine($"{state.Indent} ({state.PendingIndent}) > ");
+                // Needed for SplitLines
+                progline.InIfCondition = state.InIfCondition; // ?
+                progline.InMultiLineIf = state.fMultiLineIf;
+                progline.SeenFirstWhen = state.SeenFirstWhen;
+                //
                 state.Indent += state.PendingIndent;
                 state.PendingIndent = 0;
 
@@ -192,7 +203,7 @@ namespace BasTools.Core
                 }
                 else if (state.InDefInition)
                 {
-                    state.InDefInition = !isEndOfProc(lines, counter);
+                    state.InDefInition = !isEndOfProc(lines, counter, IsSplitLines);
                 }
                 progline.IsInDef = !progline.IsDef && state.InDefInition; // update progline flags from state
             }
@@ -212,11 +223,11 @@ namespace BasTools.Core
                 return linenumber;
             }
         }
-        private void HandleIndents(Token token1, FormatterState state, FormattingOptions switches, bool BasicV)
+        private void  HandleIndents(Token token1, FormatterState state, bool BasicV, bool InSplitLines)
         {
             if (token1.tag == SemanticTags.Keyword)
             {
-                if (token1.value == "THEN" && BasicV && token1.isLast) // TODO ... THEN: is legal
+                if (token1.value == "THEN" && (BasicV && token1.isLast))                            // s.a. below
                 {
                     state.fMultiLineIf = true;
                     state.PendingIndent++;
@@ -236,6 +247,11 @@ namespace BasTools.Core
                     state.IsDef = true;
                 }
             }
+            else if (InSplitLines && token1.tag == SemanticTags.StatementSep && token1.value == "") // s.a. above
+            {
+                state.fMultiLineIf = true;
+                state.PendingIndent++;
+            }
             else
             {
                 if (token1.tag == SemanticTags.IndentingKeyword)
@@ -244,11 +260,12 @@ namespace BasTools.Core
                     if (token1.value == "CASE")
                         state.SeenFirstWhen = false;
                 }
-                if (token1.tag == SemanticTags.OutdentingKeyword)
+
+                if (token1.tag == SemanticTags.OutdentingKeyword) // NEXT UNTIL ENDWHILE ENDCASE
                 {
-                    // don't cancel indent in 'IF x NEXT'
-                    if (!state.InIfCondition)
-                        state.Indent--; // Limit to NEXT and UNTIL?
+                    // don't cancel indent in e.g. 'IF x NEXT'
+                    if (!state.InIf)
+                        state.Indent--;
 
                     if (token1.value == "ENDCASE")
                     {
@@ -258,9 +275,8 @@ namespace BasTools.Core
                         state.SeenFirstWhen = false;
                     }
                 }
-                if (token1.tag == SemanticTags.InOutKeyword)
+                if (token1.tag == SemanticTags.InOutKeyword) // WHEN and OTHERWISE
                 {
-                    // WHEN and OTHERWISE
                     if (!state.SeenFirstWhen)
                     {
                         // First WHEN: no outdent
@@ -276,8 +292,10 @@ namespace BasTools.Core
                 }
             }
         }
-        static bool isEndOfProc(Listing lines, int i) // Line lookahead to see whether next significant line is end-of-proc
+        static bool isEndOfProc(Listing lines, int i, bool IsSplitLines) // Line lookahead to see whether next significant line is end-of-proc
         {
+            if (IsSplitLines) return false;
+
             // dumb checks
             if (lines.Lines[i].TaggedLine.Trim().StartsWith(SemanticTags.Keyword + "ENDPROC" + SemanticTags.Reset))
                 return true;

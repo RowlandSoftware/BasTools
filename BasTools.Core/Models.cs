@@ -6,6 +6,7 @@ using System.Text;
 namespace BasTools.Core
 {
     //***************** ProgInfo *****************
+    // Just a little collection of information. USed to pass information 
     
     public class ProgInfo
     {
@@ -112,12 +113,25 @@ namespace BasTools.Core
         public string FormattedLineNumber { get; set; }
         public string FormattedPlain { get; set; } = "";
         public string FormattedTagged { get; set; } = "";
+
+        // Flags and indent level
         public int IndentLevel { get; set; }
         public bool IsDef {  get; set; }
         public bool IsInDef { get; set; }
         public int DefIndent
         {
             get => IsInDef ? 1 : 0;
+        }
+        // Properties needed for SplitLines
+        public bool InMultiLineIf;
+        public bool InIfCondition;
+        public bool SeenFirstWhen;
+        public ProgramLine (ProgramLine other)
+        {
+            LineNumber = other.LineNumber;
+            IndentLevel = other.IndentLevel;
+            IsDef = other.IsDef;
+            IsInDef = other.IsInDef;
         }
     }
     public record Listing(List<ProgramLine> Lines);
@@ -131,7 +145,7 @@ namespace BasTools.Core
         bool isLast
     );
 
-    //***************** ParserState *****************
+    //***************** ParserState used by Detokeniser *****************
     internal class ParserState
     {
         public byte[] Data;
@@ -139,7 +153,8 @@ namespace BasTools.Core
         public bool Z80;
         public int LineCount;
         public bool InAsm;
-        public bool InIfCondition;
+        public bool InIfCondition;  // Evaluating the IF <condition>
+        public bool InIf;           // All of line following IF (but before ELSE)
         public int IfParenDepth;
         public bool ExprComplete;
 
@@ -152,24 +167,24 @@ namespace BasTools.Core
             LineCount = 0;
             InAsm = false;
             InIfCondition = false;
+            InIf = false;
             IfParenDepth = 0;
             ExprComplete = false;
         }
     }
 
     //***************** FormatterState *****************
-    internal class FormatterState
+    public class FormatterState
     {
         public bool Z80;
         public int LineCount;
         private int _indent;
         public int PendingIndent;
         public bool fMultiLineIf;
-        public bool InIfCondition;
-        //public int IfConditionStartIndex;
+        public bool InIfCondition;  // Evaluating the IF <condition>
+        public bool InIf;           // All of line following IF (but before ELSE)
         public bool InDefInition;
         public bool IsDef;
-        //public bool PendingDefUnindent;
         public bool SeenFirstWhen;
         public FormatterState()
         {
@@ -179,24 +194,31 @@ namespace BasTools.Core
             PendingIndent = 0;
             fMultiLineIf = false;
             InIfCondition = false;
-            //IfConditionStartIndex = 0;
+            InIf = false;
             IsDef = false;
             InDefInition = false;
-            //PendingDefUnindent = false;
             SeenFirstWhen = false;
         }
         public FormatterState(FormatterState other)
         {
             Z80 = other.Z80;
             LineCount = other.LineCount;
-            Indent = other.Indent;
-            PendingIndent = other.PendingIndent;
+            Indent = other.Indent + other.PendingIndent;
+            PendingIndent = 0; // other.PendingIndent;
             fMultiLineIf = other.fMultiLineIf;
             InIfCondition = other.InIfCondition;
-            //IfConditionStartIndex = other.IfConditionStartIndex;
+            InIf = other.InIf;
             IsDef = other.IsDef;
             InDefInition = other.InDefInition;
-            //PendingDefUnindent = other.PendingDefUnindent;
+            SeenFirstWhen = other.SeenFirstWhen;
+        }
+        public FormatterState(ProgramLine other) : this()
+        {
+            Indent = other.IndentLevel;
+            fMultiLineIf = other.InMultiLineIf;
+            InIfCondition = other.InIfCondition; // ?
+            IsDef = other.IsDef;
+            InDefInition = other.IsInDef;
             SeenFirstWhen = other.SeenFirstWhen;
         }
         public int Indent
@@ -207,6 +229,7 @@ namespace BasTools.Core
     }
 
     //***************** FormattingOptions *****************
+    // Just a subset of switches. See CommandSwitches.copyToFormatOptions()
     public class FormattingOptions
     {
         public bool FlgAddNums;
