@@ -15,6 +15,7 @@
     using System.Reflection;
     using System.Reflection.Emit;
     using System.Reflection.PortableExecutable;
+    using System.Security.Cryptography;
     using System.Text;
     using System.Text.RegularExpressions;
     using static System.Runtime.InteropServices.JavaScript.JSType;
@@ -46,7 +47,7 @@
                 {
                     try
                     {
-                        FormatProgram(listing, formatOptions, progInfo.BasicV);
+                        FormatProgram(listing, formatOptions, progInfo);
                         {
                             return listing;
                         }

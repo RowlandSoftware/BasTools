@@ -6,7 +6,7 @@ using System.Text;
 namespace BasTools.Core
 {
     //***************** ProgInfo *****************
-    // Just a little collection of information. USed to pass information 
+    // Just a little collection of information. Also used to pass some information
     
     public class ProgInfo
     {
@@ -123,9 +123,7 @@ namespace BasTools.Core
             get => IsInDef ? 1 : 0;
         }
         // Properties needed for SplitLines
-        public bool InMultiLineIf;
-        public bool InIfCondition;
-        public bool SeenFirstWhen;
+        public FormatterState fstate;
         public ProgramLine (ProgramLine other)
         {
             LineNumber = other.LineNumber;
@@ -176,49 +174,42 @@ namespace BasTools.Core
     //***************** FormatterState *****************
     public class FormatterState
     {
-        public bool Z80;
+        //public bool Z80;
         public int LineCount;
         private int _indent;
         public int PendingIndent;
-        public bool fMultiLineIf;
+        public int MultiLineIfDepth;
         public bool InIfCondition;  // Evaluating the IF <condition>
         public bool InIf;           // All of line following IF (but before ELSE)
+        public bool LoopInIf;
+        public int LoopsOnThisLine;
         public bool InDefInition;
         public bool IsDef;
         public bool SeenFirstWhen;
         public FormatterState()
         {
-            Z80 = false;
             LineCount = 0;
             Indent = 0;
             PendingIndent = 0;
-            fMultiLineIf = false;
+            MultiLineIfDepth = 0;
             InIfCondition = false;
             InIf = false;
+            LoopInIf = false;
+            LoopsOnThisLine = 0;
             IsDef = false;
             InDefInition = false;
             SeenFirstWhen = false;
         }
-        public FormatterState(FormatterState other)
+        public FormatterState(FormatterState other) : this()
         {
-            Z80 = other.Z80;
             LineCount = other.LineCount;
             Indent = other.Indent + other.PendingIndent;
-            PendingIndent = 0; // other.PendingIndent;
-            fMultiLineIf = other.fMultiLineIf;
+            MultiLineIfDepth = other.MultiLineIfDepth;
             InIfCondition = other.InIfCondition;
             InIf = other.InIf;
+            LoopInIf = other.LoopInIf;
             IsDef = other.IsDef;
             InDefInition = other.InDefInition;
-            SeenFirstWhen = other.SeenFirstWhen;
-        }
-        public FormatterState(ProgramLine other) : this()
-        {
-            Indent = other.IndentLevel;
-            fMultiLineIf = other.InMultiLineIf;
-            InIfCondition = other.InIfCondition; // ?
-            IsDef = other.IsDef;
-            InDefInition = other.IsInDef;
             SeenFirstWhen = other.SeenFirstWhen;
         }
         public int Indent

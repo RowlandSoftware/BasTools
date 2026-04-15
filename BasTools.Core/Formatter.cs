@@ -91,37 +91,40 @@ namespace BasTools.Core
     }
     public partial class BasToolsEngine
     {
-        internal bool FormatProgram(Listing lines, FormattingOptions switches, bool BasicV)
+        internal bool FormatProgram(Listing lines, FormattingOptions switches, ProgInfo progInfo)
         {
             FormatterState state = new();      // this sets initial conditions
 
-            formatLines(lines, switches, state, BasicV, false);
+            formatLines(lines, switches, state, progInfo, false);
 
             return true;
         }
-        public void formatLines(Listing lines, FormattingOptions switches, FormatterState state, bool BasicV, bool IsSplitLines)
+        public void formatLines(Listing lines, FormattingOptions switches, FormatterState state, ProgInfo progInfo, bool IsSplitLines)
         {
             state.InIf = false; // for the benefit of SplitLines
 
             for (int counter = 0; counter < lines.Lines.Count; counter++)
             {
                 ProgramLine progline = lines.Lines[counter];
-                Console.Write($"< {progline.LineNumber} {state.Indent} - ");
+                state.LineCount++;
 
-                string linenumber = formatLineNumber(progline.LineNumber, switches, state);
-                progline.FormattedLineNumber = linenumber;
+                // Capture formatter state at start of this line
+                progline.fstate = new(state);
+
+                formatLineNumber(progline, switches, state, progInfo);                
 
                 var tokens = BasToolsEngine.WalkTagged(progline.TaggedLine).ToList();
 
                 state.InIfCondition = false; // start of line, no IF's
                 if (!IsSplitLines) state.InIf = false;
+                state.LoopsOnThisLine = 0;   // start of line
 
                 for (int i = 0; i < tokens.Count; i++)
                 {
                     var token1 = tokens[i];
 
                     // Indenting
-                    HandleIndents(token1, state, BasicV, IsSplitLines);
+                    HandleIndents(token1, state, progInfo, IsSplitLines);
 
                     // Reached end of token list?
                     if (i == tokens.Count - 1)
@@ -139,11 +142,11 @@ namespace BasTools.Core
                         state.InIf = true;
                     }
 
-                    if ((token1.tag == SemanticTags.Keyword &&
-                    (token1.value == "THEN" || token1.value == "ELSE")) ||  // reached end of the expression
-                    (token1.tag == SemanticTags.StatementSep &&
-                    token1.value == ""))
-                        state.InIfCondition = false;
+                    if (token1.tag == SemanticTags.Keyword &&
+                       (token1.value == "THEN" || token1.value == "ELSE"))
+                    {
+                        state.InIfCondition = false;      // reached end of the expression
+                    }                        
 
                     if (token1.tag == SemanticTags.StatementSep)
                         state.InIfCondition = false;
@@ -185,12 +188,6 @@ namespace BasTools.Core
                 } // NEXT i
 
                 progline.IndentLevel = state.Indent;
-                Console.WriteLine($"{state.Indent} ({state.PendingIndent}) > ");
-                // Needed for SplitLines
-                progline.InIfCondition = state.InIfCondition; // ?
-                progline.InMultiLineIf = state.fMultiLineIf;
-                progline.SeenFirstWhen = state.SeenFirstWhen;
-                //
                 state.Indent += state.PendingIndent;
                 state.PendingIndent = 0;
 
@@ -208,55 +205,63 @@ namespace BasTools.Core
                 progline.IsInDef = !progline.IsDef && state.InDefInition; // update progline flags from state
             }
 
-            static string formatLineNumber(int lineNumber, FormattingOptions switches, FormatterState State)
+            static void formatLineNumber(ProgramLine progLine, FormattingOptions switches, FormatterState State, ProgInfo progInfo)
             {
-                string linenumber = lineNumber.ToString();
+                string formattedLineNumber = progLine.LineNumber.ToString();
 
-                if (lineNumber == 0 && State.Z80)
+                if (progLine.LineNumber == 0 && progInfo.Z80)
                 {
-                    linenumber = string.Empty;
-                    if (switches.FlgAddNums) linenumber = (State.LineCount * 10).ToString();
+                    formattedLineNumber = string.Empty;
+                    if (switches.FlgAddNums)
+                    {
+                        progLine.LineNumber = State.LineCount * 10;
+                        formattedLineNumber = progLine.LineNumber.ToString();
+                    }
                 }
-                else if (switches.Align)
-                    linenumber = linenumber.PadLeft(5);
+                if (switches.Align && formattedLineNumber.Length > 0)
+                    formattedLineNumber = formattedLineNumber.PadLeft(5);
 
-                return linenumber;
+                progLine.FormattedLineNumber = formattedLineNumber;
             }
         }
-        private void  HandleIndents(Token token1, FormatterState state, bool BasicV, bool InSplitLines)
+        private void  HandleIndents(Token token1, FormatterState state, ProgInfo progInfo, bool InSplitLines)
         {
             if (token1.tag == SemanticTags.Keyword)
             {
-                if (token1.value == "THEN" && (BasicV && token1.isLast))                            // s.a. below
+                if (token1.value == "THEN" && ((progInfo.BasicV || progInfo.Z80) && token1.isLast))        // s.a. below
                 {
-                    state.fMultiLineIf = true;
+                    state.MultiLineIfDepth++;
                     state.PendingIndent++;
                 }
-                else if (state.fMultiLineIf && token1.value == "ELSE")
+                else if (state.MultiLineIfDepth > 0 && token1.value == "ELSE")
                 {
                     state.PendingIndent++;
                     state.Indent--;
                 }
-                else if (state.fMultiLineIf && token1.value == "ENDIF")
+                else if (state.MultiLineIfDepth > 0 && token1.value == "ENDIF")
                 {
                     state.Indent--;
-                    state.fMultiLineIf = false;
+                    state.MultiLineIfDepth--;
                 }
                 if (token1.value == "DEF")
                 {
                     state.IsDef = true;
                 }
             }
-            else if (InSplitLines && token1.tag == SemanticTags.StatementSep && token1.value == "") // s.a. above
+            else if (InSplitLines && (token1.tag == SemanticTags.StatementSep     // s.a. above
+                && token1.value == "") || (token1.tag == SemanticTags.Keyword && token1.value == "THEN"))
             {
-                state.fMultiLineIf = true;
+                state.MultiLineIfDepth++;
                 state.PendingIndent++;
             }
             else
             {
-                if (token1.tag == SemanticTags.IndentingKeyword)
+                if (token1.tag == SemanticTags.IndentingKeyword) // FOR REPEAT WHILE CASE
                 {
                     state.PendingIndent++;
+                    state.LoopsOnThisLine++;
+                    if (state.InIf)
+                        state.LoopInIf = true;
                     if (token1.value == "CASE")
                         state.SeenFirstWhen = false;
                 }
@@ -264,12 +269,23 @@ namespace BasTools.Core
                 if (token1.tag == SemanticTags.OutdentingKeyword) // NEXT UNTIL ENDWHILE ENDCASE
                 {
                     // don't cancel indent in e.g. 'IF x NEXT'
-                    if (!state.InIf)
-                        state.Indent--;
+                    if (!state.InIf || state.LoopInIf)
+                    {
+                        state.LoopInIf = false;
+                        if (state.LoopsOnThisLine > 0) // handle loops on one line different from separate lines
+                        {
+                            state.PendingIndent--;
+                            state.LoopsOnThisLine--;
+                        }
+                        else
+                        {
+                            state.Indent--;
+                        }
+                    }
 
                     if (token1.value == "ENDCASE")
                     {
-                        //state.Indent--;           // undo CASE indent
+                        //state.Indent--;           // undo CASE indent (done already)
                         if (state.SeenFirstWhen)
                             state.Indent--;         // undo last WHEN indent
                         state.SeenFirstWhen = false;

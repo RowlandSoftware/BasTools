@@ -137,13 +137,12 @@ namespace BasList.CLI
             [SemanticTags.Operator] = ConsoleColor.Red,
             [SemanticTags.IndirectionOperator] = ConsoleColor.White,
             [SemanticTags.ImmediateOperator] = ConsoleColor.White,
-            [SemanticTags.LineNumber] = ConsoleColor.Gray,
+            [SemanticTags.LineNumber] = ConsoleColor.DarkGray,
             [SemanticTags.StarCommand] = ConsoleColor.White,
             [SemanticTags.StatementSep] = ConsoleColor.White,
             [SemanticTags.ListSep] = ConsoleColor.White,
             [SemanticTags.OpenBracket] = ConsoleColor.White,
             [SemanticTags.CloseBracket] = ConsoleColor.White,
-            ["{=ListingLineNo}"] = ConsoleColor.DarkGray
         };
         public static bool TryGetColor(string tag, out ConsoleColor color, bool darkMode)
         {
@@ -351,6 +350,7 @@ namespace BasList.CLI
                     break;
                 }
             }
+            if (switches.NoFormat) switches.SplitLines = false;
 
             if (switches.ToLine < 0) switches.ToLine = switches.BasicV ? 0xFFFF : 0x7FFF;
             if (switches.FlgList) { switches.FromLine = 0; switches.ToLine = 0xFFFF; } // line numbers ignored for LIST
@@ -429,10 +429,10 @@ namespace BasList.CLI
                     }
                     if (switches.FlgList)
                     {
-                        if (progline.FormattedTagged.StartsWith(SemanticTags.Keyword + "DEF"))
+                        if (progline.IsDef)
                         {
                             state.Listme = nameMatch(progline.TaggedLine, switches); // automatically cancels ListMe at DEF if no match
-                        }
+                        }                        
                     }
 
                     bool insideIf = switches.FlgIf || switches.FlgIfX;
@@ -463,7 +463,7 @@ namespace BasList.CLI
                                 sections.Lines.Add(line);
                             }
 
-                            // Print normally if only one section
+                            // Print normally if only one section - not necessary, just more efficient
                             if (sections.Lines.Count == 1)
                             {
                                 printLineOut(progline, switches, state, ref linesprinted);
@@ -471,10 +471,9 @@ namespace BasList.CLI
                             else
                             {
                                 // Call the Formatter to format these 'lines'
-                                FormatterState formatterState = new FormatterState(progline);
                                 BasToolsEngine engine = new BasToolsEngine();
 
-                                engine.formatLines(sections, switches.copyToFormatOptions(), formatterState, progInfo.BasicV, true);
+                                engine.formatLines(sections, switches.copyToFormatOptions(), progline.fstate, progInfo, true);
 
                                 foreach (ProgramLine line in sections.Lines)
                                 {
@@ -493,7 +492,15 @@ namespace BasList.CLI
                                             case ConsoleKey.Escape: ResetAndExit(switches); break;
                                         }
                                     }
-                                }
+                                }                                
+                            }
+                        }
+                        // After printing the line, turn off printing PROC (so don't suppress ENDPROC)
+                        if (switches.FlgList && state.Listme)
+                        {
+                            if (!progline.IsDef && !progline.IsInDef)
+                            {
+                                state.Listme = false;
                             }
                         }
                         #region debug
@@ -532,14 +539,13 @@ namespace BasList.CLI
                             Console.WriteLine();
                         }
                         #endregion
-                    }
+                    } // end shouldprint
                 }
             }
         }
         // ******** PrintOut - handles plain and PrettyPrint ********
         static void PrintOut(string line, ListerState state, CommandSwitches switches, ref int linesprinted)
         {
-            //Console.WriteLine(line); return;
             // Line contents
             foreach (Token tok in BasToolsEngine.WalkTagged(line))
             {
@@ -593,11 +599,11 @@ namespace BasList.CLI
         static void PrintLineNumber(ProgramLine progline, CommandSwitches switches, bool first)
         {
             // Line preamble
-            if (!switches.NoLineNumbers)
+            if (!switches.NoLineNumbers && progline.FormattedLineNumber.Length > 0)
             {
                 string? ln = progline.FormattedLineNumber;
                 if (!first) ln = new string(' ', ln.Length);
-                ln = "{=ListingLineNo}" + ln + "{/}";
+                ln = SemanticTags.LineNumber + ln + SemanticTags.Reset;
 
                 foreach (Token tok in BasToolsEngine.WalkTagged(ln)) // retrieve line no. colour
                 {
@@ -617,9 +623,6 @@ namespace BasList.CLI
         }
         static void PrintIndents(ProgramLine progline, CommandSwitches switches)
         {
-            // Indents
-            Console.WriteLine($"Indent: {progline.IndentLevel}");
-
             Console.Write(switches.FlgIndent ? new string(' ', progline.IndentLevel * 2) : "");
             Console.Write(switches.FlgEmphDefs ? new string(' ', progline.DefIndent * 2) : "");
         }
@@ -663,13 +666,13 @@ namespace BasList.CLI
                 if (i < tokens.Count-1 && tok.tag == SemanticTags.StatementSep && tokens[i + 1].value == "THEN")
                     continue;
 
-                if (i < tokens.Count - 1 && tokens[i + 1].value == "ELSE")
+                if (tok.tag != SemanticTags.StatementSep && i < tokens.Count - 1 && tokens[i + 1].value == "ELSE")
                 {
                     result.Add(sb.ToString().TrimEnd());
                     sb.Clear();
                 }
 
-                if (tok.isLast || tok.tag == SemanticTags.StatementSep || tok.value == "ELSE")
+                if (tok.isLast || tok.tag == SemanticTags.StatementSep || tok.value == "ELSE" || tok.value == "THEN")
                 {
                     result.Add(sb.ToString().TrimEnd());
                     sb.Clear();
@@ -683,7 +686,13 @@ namespace BasList.CLI
             if (linesprinted == Console.WindowHeight - 4)
             {
                 Console.ForegroundColor = switches.ForeColor;
-                Console.Write(" -- Enter - next line | Space - Continue | Esc - End --");
+                
+                string prompt = " -- Enter - next line | Space - Continue | Esc - End --";
+                if (Console.WindowWidth <= prompt.Length)
+                {
+                    prompt = "[Enter | Space | Esc]";
+                }
+                Console.Write(prompt);
                 // Read until a valid key is pressed
                 ConsoleKey key;
                 while (true)

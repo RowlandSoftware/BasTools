@@ -45,7 +45,7 @@ namespace BasTools.Core
             ParserState State = new();
             bool result = LoadFile(fn, State);
             if (!result) return false;
-
+            DBG("File loaded");
             // determine file type (Acorn or Z80)
             int ll = State.Data[3];
             if (State.Data[0] == 13 && State.Data[ll] == 13)
@@ -362,6 +362,7 @@ namespace BasTools.Core
                             if (progInfo.BasicV)
                             {
                                 isMnemonic = ArmMnemonics.Contains(mnemonic);
+                                Console.WriteLine($"{mnemonic} - {isMnemonic}");
                             }
                             else
                             {
@@ -832,26 +833,26 @@ namespace BasTools.Core
         {
             try
             {
-                if (curbyte > 197 && curbyte < 201)
+                if (!s.Z80 && (curbyte > 197 && curbyte < 201))
                 {
                     progInfo.BasicV = true;
                     int token = curbyte * 256 + tokenisedLine[++ptr];
                     nxtchar = (ptr == tokenisedLine.Length - 1) ? '\0' : (char)tokenisedLine[ptr + 1];
                     return Vtoken[token];
                 }
-                if (s.Z80) // RT Russell tokens that could not be included in tokentable
+                if (s.Z80) // RT Russell tokens that could not be included in token table (though overlap)
                 {
                     switch (curbyte)
                     {
-                        case 0xC6: return "SUM";
-                        case 0xC7: return "WHILE";
-                        case 0xC8: return "CASE";
-                        case 0xC9: return "WHEN";
-                        case 0xCA: return "OF";
-                        case 0xCB: return "ENDCASE";
-                        case 0xCC: return "OTHERWISE";
-                        case 0xCD: return "ENDIF";
-                        case 0xCE: return "ENDWHILE";
+                        case 0xC6: return "SUM";        // 198
+                        case 0xC7: return "WHILE";      // 199
+                        case 0xC8: return "CASE";       // 200 LOAD
+                        case 0xC9: return "WHEN";       // 201 WHEN
+                        case 0xCA: return "OF";         // 202 OF
+                        case 0xCB: return "ENDCASE";    // 203 ENDCASE
+                        case 0xCC: return "OTHERWISE";  // 204 ELSE (multiline)
+                        case 0xCD: return "ENDIF";      // 205 ENDIF
+                        case 0xCE: return "ENDWHILE";   // 206 ENDWHILE
                     }
                 }
                 if (curbyte != 0x8D) // 'line number' marker
@@ -981,7 +982,7 @@ namespace BasTools.Core
         }
         static void DBG(string msg)
         {
-            //Console.WriteLine(msg);
+            Console.WriteLine(msg);
         }
 
     }
