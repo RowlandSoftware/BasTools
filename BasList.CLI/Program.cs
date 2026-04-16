@@ -20,7 +20,7 @@ namespace BasList.CLI
     //***************** CommandSwitches *****************
     public class CommandSwitches
     {
-        // swtiches for detokenisation
+        // switches for detokenisation
         private bool _basicV;
         private bool _notBasicV;
         // switches for formatting
@@ -28,11 +28,13 @@ namespace BasList.CLI
         public bool FlgIndent;
         public bool FlgEmphDefs;
         public bool Align;
-        // swtiches for listing
+        // switches for listing
         public bool NoFormat;
         public bool NoLineNumbers;
         public bool Bare;
         public bool SplitLines;
+        public bool AssemblerColumns;
+        private int _columnWidth;
         public bool Pretty;
         private bool _flgPause;
         // switches for filtering listings
@@ -42,7 +44,7 @@ namespace BasList.CLI
         public bool FlgIfX;
         public bool FlgList;
         public List<string> DirectiveParams;
-        // swtiches for appearance
+        // switches for appearance
         public bool Clear;
         public bool FlgDark;
         public ConsoleColor ForeColor;
@@ -59,6 +61,8 @@ namespace BasList.CLI
             FlgIndent = false;
             FlgEmphDefs = false;
             Align = false;
+            AssemblerColumns = false;
+            _columnWidth = 10;
             NoFormat = false;
             NoLineNumbers = false;
             Bare = false;
@@ -81,6 +85,14 @@ namespace BasList.CLI
         public bool NotBasicV
         {
             set => _notBasicV = value;
+        }
+        public void SetColumnWidth(int width)
+        {
+            _columnWidth = width;
+        }
+        public int ColumnWidth
+        {
+            get => _columnWidth;
         }
         public bool FlgPause
         {
@@ -105,6 +117,8 @@ namespace BasList.CLI
             opts.Bare = Bare;
             opts.FlgEmphDefs = FlgEmphDefs;
             opts.FlgIndent = FlgIndent;
+            opts.AssemblerColumns = AssemblerColumns;
+            opts.ColumnWidth = ColumnWidth;
 
             return opts;
         }
@@ -218,8 +232,7 @@ namespace BasList.CLI
 
             BasToolsEngine engine = new BasToolsEngine();
             bool flgZ80 = false;
-            ProgInfo progInfo = new(switches.BasicV, flgZ80, filename);
-
+            ProgInfo progInfo = new(flgZ80, switches.BasicV, filename);
             FormattingOptions formatOptions = switches.copyToFormatOptions();
 
             try
@@ -272,6 +285,23 @@ namespace BasList.CLI
                                 switches.FlgEmphDefs = true;
                             }
                         }
+                        if ("COLUMNS".StartsWith(arg1))
+                        {
+                            switches.AssemblerColumns = true;
+                            recognised = true;
+
+                            if (int.TryParse(arg3, out int width))
+                            {
+                                if (width > 5 && width <= 20)
+                                {
+                                    switches.SetColumnWidth(width);
+                                }
+                                else
+                                {
+                                    Console.WriteLine($"Assembler column width {width} not between 6 and 20 inc.\n - Using default ({switches.ColumnWidth})");
+                                }
+                            }
+                        }
                     }
                     if (arg2 == "V") { switches.BasicV = true; recognised = true; }
                     if ("NOTBASICV".StartsWith(arg2)) { switches.NotBasicV = true; recognised = true; }
@@ -282,6 +312,7 @@ namespace BasList.CLI
                     if ("PAUSE".StartsWith(arg2)) { switches.FlgPause = true; recognised = true; }
                     if ("PRETTYPRINT".StartsWith(arg2)) { switches.Pretty = true; recognised = true; }
                     if ("ALIGN".StartsWith(arg2)) { switches.Align = true; recognised = true; }
+                    if ("COLUMNS".StartsWith(arg2)) { switches.AssemblerColumns = true; recognised = true; }
                     if ("CLS".StartsWith(arg2)) { switches.Clear = true; recognised = true; }
                     if ("CLEAR".StartsWith(arg2)) { switches.Clear = true; recognised = true; }
                     if ("INDENT".StartsWith(arg2)) { switches.FlgIndent = true; switches.FlgEmphDefs = true; recognised = true; }
@@ -432,7 +463,7 @@ namespace BasList.CLI
                         if (progline.IsDef)
                         {
                             state.Listme = nameMatch(progline.TaggedLine, switches); // automatically cancels ListMe at DEF if no match
-                        }                        
+                        }
                     }
 
                     bool insideIf = switches.FlgIf || switches.FlgIfX;
@@ -492,7 +523,7 @@ namespace BasList.CLI
                                             case ConsoleKey.Escape: ResetAndExit(switches); break;
                                         }
                                     }
-                                }                                
+                                }
                             }
                         }
                         // After printing the line, turn off printing PROC (so don't suppress ENDPROC)
@@ -528,14 +559,6 @@ namespace BasList.CLI
                             Console.ForegroundColor = state.CurrentForeground;
                             Console.WriteLine($"{progline.FormattedTagged}");
 
-                            string untaggedline = Regex.Replace(progline.TaggedLine, @"\{.*?\}", "");
-                            if (untaggedline != progline.PlainDetokenisedLine)
-                            {
-                                Console.ForegroundColor = ConsoleColor.Red;
-                                Console.WriteLine("Mismatch");
-                                Console.ForegroundColor = state.CurrentForeground;
-                                Console.WriteLine(untaggedline);
-                            }
                             Console.WriteLine();
                         }
                         #endregion
@@ -663,7 +686,7 @@ namespace BasList.CLI
                 if (!string.IsNullOrEmpty(tok.tag))
                     sb.Append("{/}");
 
-                if (i < tokens.Count-1 && tok.tag == SemanticTags.StatementSep && tokens[i + 1].value == "THEN")
+                if (i < tokens.Count - 1 && tok.tag == SemanticTags.StatementSep && tokens[i + 1].value == "THEN")
                     continue;
 
                 if (tok.tag != SemanticTags.StatementSep && i < tokens.Count - 1 && tokens[i + 1].value == "ELSE")
@@ -686,7 +709,7 @@ namespace BasList.CLI
             if (linesprinted == Console.WindowHeight - 4)
             {
                 Console.ForegroundColor = switches.ForeColor;
-                
+
                 string prompt = " -- Enter - next line | Space - Continue | Esc - End --";
                 if (Console.WindowWidth <= prompt.Length)
                 {
@@ -756,6 +779,8 @@ namespace BasList.CLI
             Console.WriteLine("                   Indent loops only | PROC & FN definitions | both");
             Console.WriteLine("  /nonumbers       Omits line numbers");
             Console.WriteLine("  /noformat        List program as entered (cancels prettyprint, splitlines and all additional spaces)");
+            Console.WriteLine("  /columns         Format assembly language listings into columns (default width 10)");
+            Console.WriteLine("  /columns=<width> Format assembler into columns. <width> must be 6 - 20");
             Console.WriteLine("  /bare            Omits additional messages (cancels pause)");
             Console.WriteLine("  /splitlines      Prints each statement on its own line");
             Console.WriteLine("  /pause           Pause at bottom of each screenful");
@@ -781,6 +806,10 @@ namespace BasList.CLI
             Console.ForegroundColor = s.ForeColor;
             Console.BackgroundColor = s.BackColor;
             Environment.Exit(0);
+        }
+        static void DBG(string msg)
+        {
+            //Console.WriteLine(msg);
         }
     }
 }

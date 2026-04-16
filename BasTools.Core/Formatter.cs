@@ -56,7 +56,7 @@ namespace BasTools.Core
             if (token1.tag == SemanticTags.StatementSep && token1.value == "") return true;
 
             (bool dummy, bool spaceafter) = GetSpacingRule(token1.tag, token1.value);
-            (bool spacebefore, dummy)     = GetSpacingRule(token2.tag, token2.value);
+            (bool spacebefore, dummy) = GetSpacingRule(token2.tag, token2.value);
 
             if (spacebefore == spaceafter)
             {
@@ -73,24 +73,49 @@ namespace BasTools.Core
                     return (token2.tag is SemanticTags.Keyword or SemanticTags.OutdentingKeyword or
                         SemanticTags.InOutKeyword or SemanticTags.IndentingKeyword or
                         SemanticTags.BuiltInFn or SemanticTags.OpenBracket or SemanticTags.IndirectionOperator);
-                
-                case SemanticTags.Operator:                   
+
+                case SemanticTags.Operator:
                     return (token2.tag is SemanticTags.OpenBracket or SemanticTags.IndirectionOperator);
-                
+
                 case SemanticTags.CloseBracket:
                     return (token2.tag is not SemanticTags.CloseBracket and not SemanticTags.ListSep and not SemanticTags.StatementSep);
-                
+
                 case SemanticTags.Mnemonic:
                     return true;
-                
+
                 case SemanticTags.ListSep:
-                    return true;
+                    return (!(token2.tag == null && token2.value.Contains('['))); // this is specifically for ARM assembler like LDR R3, [R2]. 'true' -> double spaces.
             }
             return false;
         }
     }
     public partial class BasToolsEngine
     {
+     #region Assembler Columns
+        public sealed class AsmColumnConfig
+        {
+            public int LabelCol { get; init; }      // 0‑based index where label starts
+            public int MnemonicCol { get; init; }   // where mnemonic starts
+            public int OperandCol { get; init; }    // where operands start
+            public int CommentCol { get; init; }    // where comment starts
+        }
+
+        static readonly AsmColumnConfig ArmColumns = new()
+        {
+            LabelCol = 0,   // after line number, you’ll prepend that separately
+            MnemonicCol = 10,
+            OperandCol = 18,
+            CommentCol = 40,
+        };
+
+        static readonly AsmColumnConfig M6502Columns = new()
+        {
+            LabelCol = 0,
+            MnemonicCol = 8,
+            OperandCol = 16,
+            CommentCol = 40,
+        };
+        #endregion
         internal bool FormatProgram(Listing lines, FormattingOptions switches, ProgInfo progInfo)
         {
             FormatterState state = new();      // this sets initial conditions
@@ -114,6 +139,12 @@ namespace BasTools.Core
                 formatLineNumber(progline, switches, state, progInfo);                
 
                 var tokens = BasToolsEngine.WalkTagged(progline.TaggedLine).ToList();
+
+                if (progline.InAsm && switches.AssemblerColumns)
+                {
+                    FormatAssemblerColumnsForLine(tokens, progline, switches);
+
+                }
 
                 state.InIfCondition = false; // start of line, no IF's
                 if (!IsSplitLines) state.InIf = false;
@@ -459,6 +490,94 @@ namespace BasTools.Core
             if (t.value == "AND" || t.value == "OR" || t.value == "NOT") return true;
 
             return false;
+        }
+        private static void FormatAssemblerColumnsForLine(List<Token> tokens, ProgramLine progline, FormattingOptions switches)
+        {
+            if (!switches.AssemblerColumns)
+                return;   // leave as is
+
+            var cols = progline.IsArm ? ArmColumns : M6502Columns;
+
+            string label = "";
+            string mnemonic = "";
+            string comment = "";
+            var operandParts = new List<string>();
+
+            bool seenMnemonic = false;
+            bool seenComment = false;
+
+            foreach (Token tok in tokens)
+            {
+                if (tok.tag == SemanticTags.Label && label == "")
+                {
+                    label = tok.value;
+                    continue;
+                }
+
+                if (tok.tag == SemanticTags.Mnemonic && mnemonic == "")
+                {
+                    mnemonic = tok.value;
+                    seenMnemonic = true;
+                    continue;
+                }
+
+                if (tok.tag == SemanticTags.AssemblerComment)
+                {
+                    comment = tok.value;
+                    seenComment = true;
+                    continue;
+                }
+
+                // Everything after mnemonic and before comment is operand text
+                if (seenMnemonic && !seenComment)
+                {
+                    operandParts.Add(tok.value);
+                }
+            }
+
+            string operands = string.Concat(operandParts);
+
+            // Now build the line with padding
+            var sbTagged = new StringBuilder();
+            var sbPlain = new StringBuilder();
+
+            // Label
+            if (!string.IsNullOrEmpty(label))
+            {
+                sbTagged.Append(label);
+            }
+            int curCol = sbTagged.Length;
+            if (curCol < cols.MnemonicCol)
+                sbTagged.Append(' ', cols.MnemonicCol - curCol);
+
+            // Mnemonic
+            if (!string.IsNullOrEmpty(mnemonic))
+            {
+                sbTagged.Append(mnemonic);
+            }
+            curCol = sbTagged.Length;
+            if (curCol < cols.OperandCol)
+                sbTagged.Append(' ', cols.OperandCol - curCol);
+
+            // Operands
+            if (!string.IsNullOrEmpty(operands))
+            {
+                sbTagged.Append(operands);
+            }
+            curCol = sbTagged.Length;
+            if (curCol < cols.CommentCol)
+                sbTagged.Append(' ', cols.CommentCol - curCol);
+
+            // Comment
+            if (!string.IsNullOrEmpty(comment))
+            {
+                sbTagged.Append(comment);
+            }
+
+            progline.FormattedTagged = sbTagged.ToString();
+            //progline.FormattedPlain = sbPlain.ToString();
+
+            return;
         }
     }
 }

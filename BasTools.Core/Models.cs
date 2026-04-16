@@ -122,6 +122,9 @@ namespace BasTools.Core
         {
             get => IsInDef ? 1 : 0;
         }
+        // Properties for Assembler
+        public bool InAsm { get; set; } = false;
+        public bool IsArm { get; set; } = false;
         // Properties needed for SplitLines
         public FormatterState fstate;
         public ProgramLine (ProgramLine other)
@@ -230,6 +233,8 @@ namespace BasTools.Core
         public bool NoFormat;
         public bool Bare;
         public bool SplitLines;
+        public bool AssemblerColumns;
+        public int ColumnWidth;
         public FormattingOptions()
         {
             FlgAddNums = false;
@@ -239,6 +244,8 @@ namespace BasTools.Core
             NoFormat = false;
             Bare = false;
             SplitLines = false;
-        }
+            AssemblerColumns = false;
+            ColumnWidth = 10;
+    }
     }
 }

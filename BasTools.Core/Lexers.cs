@@ -55,6 +55,19 @@ namespace BasTools.Core
             if (!IsOperatorChar(c))
                 return false;
 
+            // could be hyphen in ARM assembler e.g. LDMFD SP!, {R4-R7, PC}
+            if (c == '-' && parserState.InAsm)
+            {
+                char next = (char)line[i + 1];
+                if (char.ToUpperInvariant((char)line[1 + 1]) != 'R') return false;
+                while (i > 0)
+                {
+                    char prev = (char)line[--i];
+                    if (char.IsDigit(prev)) continue;
+                    if (char.ToUpperInvariant(prev) == 'R') return true; else return false;
+                }
+            }
+
             taggedline += SemanticTags.Operator;
             string op = string.Empty;
 
@@ -150,7 +163,28 @@ namespace BasTools.Core
             }
             return set;
         }
-        static string readMnemonic(byte[] tokenisedLine, int ptr)
+        static string readMnemonic(byte[] line, int ptr)
+        {
+            var sb = new StringBuilder(16);
+
+            while (ptr < line.Length)
+            {
+                char c = (char)line[ptr];
+
+                if (char.IsAsciiLetterOrDigit(c) || c is '%' or '$' or '_')
+                {
+                    sb.Append(c);
+                    ptr++;
+                }
+                else
+                {
+                    break;
+                }
+            }
+            return sb.ToString();
+        }
+
+        /*static string readMnemonic(byte[] tokenisedLine, int ptr)
         {
             string result = string.Empty;
 
@@ -159,6 +193,6 @@ namespace BasTools.Core
                 result += (char)tokenisedLine[ptr++];
             }
             return result;
-        }
+        }*/
     }
 }

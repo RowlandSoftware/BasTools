@@ -107,7 +107,7 @@
                 {
                     // Untagged text — collect until next '{'
                     int start = i;
-                    int next = line.IndexOf('{', i);
+                    int next = line.IndexOf('{', i+1);
                     if (next < 0) next = line.Length;
 
                     string text = line.Substring(start, next - start);
