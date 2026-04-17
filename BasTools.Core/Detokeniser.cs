@@ -305,7 +305,7 @@ namespace BasTools.Core
                     }
                     else if (!flgVar && curchar is '#')
                     {
-                        taggedline += parserState.InAsm ? SemanticTags.ImmediateOperator : SemanticTags.IndirectionOperator;
+                        taggedline += parserState.InAsm ? SemanticTags.ImmediateOperator : SemanticTags.IndirectionOperator; // e.g. EOF#, PRINT#
                         closeTag = true;
                     }
                     // Operators (+ - * / >> etc)
@@ -368,14 +368,14 @@ namespace BasTools.Core
                         else
                         {
                             string possibleMnemonic = readMnemonic(tokenisedLine, i);
-                            //DBG($"{mnemonic} - V? {progInfo.BasicV}");
+                            //DBG($"{possibleMnemonic} - V? {progInfo.BasicV}");
                             if (possibleMnemonic != string.Empty)
                             {
                                 bool isMnemonic;
                                 if (progInfo.BasicV)
                                 {
                                     isMnemonic = ArmMnemonics.Contains(possibleMnemonic.ToUpperInvariant());
-                                    //DBG($"{possibleMnemonic} - {possibleMnemonic}");
+                                    //DBG($"{possibleMnemonic} - {isMnemonic}");
                                 }
                                 else
                                 {
@@ -438,18 +438,23 @@ namespace BasTools.Core
                                         continue;
                                     }
                                 }
-                                if (!flgVar && !isMnemonic)// It's a variable, then (flgVar set if label)
+                                if ((char.IsAsciiDigit(curchar) || curchar == '.') && !flgVar && !rem && !quote) // don't tag numbers as variables
+                                { }
+                                else
                                 {
-                                    taggedline += SemanticTags.Variable + possibleMnemonic + SemanticTags.Reset;
-                                    plainline += possibleMnemonic;
-                                    linenospaces += possibleMnemonic;
+                                    if (!flgVar && !isMnemonic)// It's a variable, then (flgVar set if label)
+                                    {
+                                        taggedline += SemanticTags.Variable + possibleMnemonic + SemanticTags.Reset;
+                                        plainline += possibleMnemonic;
+                                        linenospaces += possibleMnemonic;
 
-                                    i += possibleMnemonic.Length - 1;
-                                    curbyte = tokenisedLine[i];
-                                    curchar = (char)curbyte;
-                                    nxtchar = (i == tokenisedLine.Length - 1) ? '\0' : (char)tokenisedLine[i + 1];
-                                    prevbyte = (byte)plainline[^1];
-                                    continue;
+                                        i += possibleMnemonic.Length - 1;
+                                        curbyte = tokenisedLine[i];
+                                        curchar = (char)curbyte;
+                                        nxtchar = (i == tokenisedLine.Length - 1) ? '\0' : (char)tokenisedLine[i + 1];
+                                        prevbyte = (byte)plainline[^1];
+                                        continue;
+                                    }
                                 }
                             }
                         }
@@ -702,11 +707,14 @@ namespace BasTools.Core
                 prevbyte = curbyte;
             }
             if (rem || flgFnOrProc || flgVar || asmComment || closeTag) taggedline += SemanticTags.Reset; // close hanging tags at end of line
-            //DBG(taggedline);
+            
+            //if (parserState.InAsm) DBG($"InAsm {parserState.InAsm} - {taggedline}");
 
             returnObject.PlainDetokenisedLine = plainline;
             returnObject.TaggedLine = taggedline;
             returnObject.NoSpacesLine = linenospaces;
+            returnObject.InAsm = parserState.InAsm;
+            returnObject.IsArm = (progInfo.BasicV && !progInfo.Z80);
 
             return;
         }
@@ -1015,7 +1023,7 @@ namespace BasTools.Core
         }
         static void DBG(string msg)
         {
-            //Console.WriteLine(msg);
+            Console.WriteLine(msg);
         }
     }
 }

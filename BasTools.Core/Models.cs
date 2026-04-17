@@ -133,6 +133,8 @@ namespace BasTools.Core
             IndentLevel = other.IndentLevel;
             IsDef = other.IsDef;
             IsInDef = other.IsInDef;
+            InAsm = other.InAsm;
+            IsArm = other.IsArm;
         }
     }
     public record Listing(List<ProgramLine> Lines);
@@ -234,7 +236,7 @@ namespace BasTools.Core
         public bool Bare;
         public bool SplitLines;
         public bool AssemblerColumns;
-        public int ColumnWidth;
+        public int ExtraColumnWidth;
         public FormattingOptions()
         {
             FlgAddNums = false;
@@ -245,7 +247,7 @@ namespace BasTools.Core
             Bare = false;
             SplitLines = false;
             AssemblerColumns = false;
-            ColumnWidth = 10;
-    }
+            ExtraColumnWidth = 10;
+        }
     }
 }

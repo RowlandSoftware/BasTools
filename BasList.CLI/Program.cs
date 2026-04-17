@@ -62,7 +62,7 @@ namespace BasList.CLI
             FlgEmphDefs = false;
             Align = false;
             AssemblerColumns = false;
-            _columnWidth = 10;
+            _columnWidth = 0;
             NoFormat = false;
             NoLineNumbers = false;
             Bare = false;
@@ -90,7 +90,7 @@ namespace BasList.CLI
         {
             _columnWidth = width;
         }
-        public int ColumnWidth
+        public int ExtraColumnWidth
         {
             get => _columnWidth;
         }
@@ -118,7 +118,7 @@ namespace BasList.CLI
             opts.FlgEmphDefs = FlgEmphDefs;
             opts.FlgIndent = FlgIndent;
             opts.AssemblerColumns = AssemblerColumns;
-            opts.ColumnWidth = ColumnWidth;
+            opts.ExtraColumnWidth = ExtraColumnWidth;
 
             return opts;
         }
@@ -292,13 +292,13 @@ namespace BasList.CLI
 
                             if (int.TryParse(arg3, out int width))
                             {
-                                if (width > 5 && width <= 20)
+                                if (width >= -5 && width <= 20)
                                 {
                                     switches.SetColumnWidth(width);
                                 }
                                 else
                                 {
-                                    Console.WriteLine($"Assembler column width {width} not between 6 and 20 inc.\n - Using default ({switches.ColumnWidth})");
+                                    Console.WriteLine($"Extra assembler column width {width} not between -5 and 20 inc.\n - Using default ({switches.ExtraColumnWidth})");
                                 }
                             }
                         }
@@ -508,11 +508,12 @@ namespace BasList.CLI
 
                                 foreach (ProgramLine line in sections.Lines)
                                 {
-                                    PrintLineNumber(line, switches, first);
+                                    int printedLineLength = 0;
+                                    PrintLineNumber(line, switches, ref printedLineLength, first);
                                     first = false;
-                                    PrintIndents(line, switches);
+                                    PrintIndents(line, ref printedLineLength, switches);
 
-                                    PrintOut(line.TaggedLine.TrimStart(), state, switches, ref linesprinted);
+                                    PrintOut(line.TaggedLine.TrimStart(), state, switches, ref printedLineLength, ref linesprinted);
 
                                     if (switches.FlgPause)
                                     {
@@ -567,7 +568,7 @@ namespace BasList.CLI
             }
         }
         // ******** PrintOut - handles plain and PrettyPrint ********
-        static void PrintOut(string line, ListerState state, CommandSwitches switches, ref int linesprinted)
+        static void PrintOut(string line, ListerState state, CommandSwitches switches, ref int printedLineLength, ref int linesprinted)
         {
             // Line contents
             foreach (Token tok in BasToolsEngine.WalkTagged(line))
@@ -587,26 +588,38 @@ namespace BasList.CLI
                 }
             }
             Console.WriteLine("");
-            linesprinted++;             // TODO doesn't take account of lines that wrap, i.e. wider than the window
+            int windowWidth = Console.WindowWidth;
+            int rows = (printedLineLength + (windowWidth - 1)) / windowWidth;
+
+            linesprinted += rows;
         }
         static void printLineOut(ProgramLine progline, CommandSwitches switches, ListerState state, ref int linesprinted)
         {
+            int printedLineLength = 0;
+
             if (!switches.NoFormat)
             {
                 // Normal behaviour
-                PrintLineNumber(progline, switches, true);
-                PrintIndents(progline, switches);
-                PrintOut(progline.FormattedTagged, state, switches, ref linesprinted);
+                PrintLineNumber(progline, switches, ref printedLineLength, true);
+                PrintIndents(progline, ref printedLineLength, switches);
+                PrintOut(progline.FormattedTagged, state, switches, ref printedLineLength, ref linesprinted);
             }
             else
             {
                 // plain printout without additional spaces
-                Console.WriteLine((switches.NoLineNumbers ? "" : (progline.FormattedLineNumber +
+                string printedLine = (switches.NoLineNumbers ? "" : (progline.FormattedLineNumber +
                     (!switches.NoFormat ? ' ' : ""))) +
                     (switches.FlgIndent ? new string(' ', progline.IndentLevel * 2) : "") +
                     (switches.FlgEmphDefs ? new string(' ', progline.DefIndent * 2) : "") +
-                    (switches.NoFormat ? progline.PlainDetokenisedLine : progline.FormattedPlain));
-                linesprinted++;
+                    (switches.NoFormat ? progline.PlainDetokenisedLine : progline.FormattedPlain);
+                Console.WriteLine(printedLine);
+
+                printedLineLength += printedLine.Length;
+
+                int windowWidth = Console.WindowWidth;
+                int rows = (printedLineLength + (windowWidth - 1)) / windowWidth;
+
+                linesprinted += rows;
             }
             // Deal with pausing
             if (switches.FlgPause)
@@ -619,12 +632,14 @@ namespace BasList.CLI
                 }
             }
         }
-        static void PrintLineNumber(ProgramLine progline, CommandSwitches switches, bool first)
+        static void PrintLineNumber(ProgramLine progline, CommandSwitches switches, ref int printedLineLength, bool first)
         {
             // Line preamble
             if (!switches.NoLineNumbers && progline.FormattedLineNumber.Length > 0)
             {
                 string? ln = progline.FormattedLineNumber;
+                printedLineLength = ln.Length + (switches.NoFormat ? 0 : 1);
+
                 if (!first) ln = new string(' ', ln.Length);
                 ln = SemanticTags.LineNumber + ln + SemanticTags.Reset;
 
@@ -644,10 +659,22 @@ namespace BasList.CLI
                 }
             }
         }
-        static void PrintIndents(ProgramLine progline, CommandSwitches switches)
+        static void PrintIndents(ProgramLine progline, ref int printedLineLength, CommandSwitches switches)
         {
-            Console.Write(switches.FlgIndent ? new string(' ', progline.IndentLevel * 2) : "");
-            Console.Write(switches.FlgEmphDefs ? new string(' ', progline.DefIndent * 2) : "");
+            if (!progline.InAsm)
+            {
+                if (switches.FlgIndent)
+                {
+                    Console.Write(new string(' ', progline.IndentLevel * 2)); // ignore indents in assembler - assume is in [OPT opt% loop
+                    printedLineLength += progline.IndentLevel * 2;
+                }
+            }
+            if (switches.FlgEmphDefs)
+            {
+                Console.Write(new string(' ', progline.DefIndent * 2));
+                printedLineLength += progline.DefIndent * 2;
+            }
+            
         }
         static bool nameMatch(string taggedline, CommandSwitches switches)
         {
@@ -779,8 +806,8 @@ namespace BasList.CLI
             Console.WriteLine("                   Indent loops only | PROC & FN definitions | both");
             Console.WriteLine("  /nonumbers       Omits line numbers");
             Console.WriteLine("  /noformat        List program as entered (cancels prettyprint, splitlines and all additional spaces)");
-            Console.WriteLine("  /columns         Format assembly language listings into columns (default width 10)");
-            Console.WriteLine("  /columns=<width> Format assembler into columns. <width> must be 6 - 20");
+            Console.WriteLine("  /columns         Format assembly language listings into columns");
+            Console.WriteLine("  /columns=<extra> Format assembler into columns. <extra> must be -5 to 20 inc.");
             Console.WriteLine("  /bare            Omits additional messages (cancels pause)");
             Console.WriteLine("  /splitlines      Prints each statement on its own line");
             Console.WriteLine("  /pause           Pause at bottom of each screenful");

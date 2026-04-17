@@ -183,16 +183,5 @@ namespace BasTools.Core
             }
             return sb.ToString();
         }
-
-        /*static string readMnemonic(byte[] tokenisedLine, int ptr)
-        {
-            string result = string.Empty;
-
-            while (ptr <= tokenisedLine.Length - 1 && (char.IsAsciiLetterOrDigit((char)tokenisedLine[ptr]) || ((char)tokenisedLine[ptr] is '%' or '$' or '_'))) // if we capture MORE than a mnemonic, it is a variable, e.g. lda123, opt%
-            {
-                result += (char)tokenisedLine[ptr++];
-            }
-            return result;
-        }*/
     }
 }
