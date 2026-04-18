@@ -213,6 +213,7 @@ namespace BasTools.Core
             InIfCondition = other.InIfCondition;
             InIf = other.InIf;
             LoopInIf = other.LoopInIf;
+            LoopsOnThisLine = other.LoopsOnThisLine;
             IsDef = other.IsDef;
             InDefInition = other.InDefInition;
             SeenFirstWhen = other.SeenFirstWhen;

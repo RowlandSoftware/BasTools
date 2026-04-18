@@ -416,7 +416,7 @@ namespace BasList.CLI
         //****************** Display the Output ***********
         private static void displayProgramLines(Listing formattedListing, CommandSwitches switches, ProgInfo progInfo)
         {
-            ListerState state = new(); // this sets initial conditions
+            ListerState listerState = new(); // this sets initial conditions
 
             switches.BackColor = ConsoleColor.Black;
             switches.ForeColor = ConsoleColor.White;
@@ -424,8 +424,8 @@ namespace BasList.CLI
 
             Console.ForegroundColor = switches.ForeColor;
             Console.BackgroundColor = switches.BackColor;
-            state.CurrentForeground = switches.ForeColor;
-            state.CurrentBackground = switches.BackColor;
+            listerState.CurrentForeground = switches.ForeColor;
+            listerState.CurrentBackground = switches.BackColor;
 
             if (switches.Clear && !Console.IsOutputRedirected) Console.Clear();
             int linesprinted = 0;
@@ -442,12 +442,12 @@ namespace BasList.CLI
                 if (progline.LineNumber >= switches.FromLine && progline.LineNumber <= switches.ToLine)
                 {
                     // set flags
-                    state.Printme = false;
+                    listerState.Printme = false;
                     if (switches.FlgIf)
                     {
                         foreach (string param in switches.DirectiveParams)
                         {
-                            if (progline.NoSpacesLine.Contains(param, StringComparison.OrdinalIgnoreCase)) { state.Printme = true; continue; }
+                            if (progline.NoSpacesLine.Contains(param, StringComparison.OrdinalIgnoreCase)) { listerState.Printme = true; continue; }
                         }
                     }
                     if (switches.FlgIfX)
@@ -455,22 +455,22 @@ namespace BasList.CLI
                         string cleanline = progline.PlainDetokenisedLine;
                         foreach (string param in switches.DirectiveParams)
                         {
-                            if (cleanline.Contains(param, StringComparison.Ordinal)) { state.Printme = true; continue; }
+                            if (cleanline.Contains(param, StringComparison.Ordinal)) { listerState.Printme = true; continue; }
                         }
                     }
                     if (switches.FlgList)
                     {
                         if (progline.IsDef)
                         {
-                            state.Listme = nameMatch(progline.TaggedLine, switches); // automatically cancels ListMe at DEF if no match
+                            listerState.Listme = nameMatch(progline.TaggedLine, switches); // automatically cancels ListMe at DEF if no match
                         }
                     }
 
                     bool insideIf = switches.FlgIf || switches.FlgIfX;
                     bool shouldPrint =
                         (!insideIf && !switches.FlgList) ||
-                        (insideIf && state.Printme) ||
-                        (switches.FlgList && state.Listme);
+                        (insideIf && listerState.Printme) ||
+                        (switches.FlgList && listerState.Listme);
 
                     if (shouldPrint)
                     {
@@ -478,7 +478,7 @@ namespace BasList.CLI
 
                         if (!switches.SplitLines)
                         {
-                            printLineOut(progline, switches, state, ref linesprinted);
+                            printLineOut(progline, switches, listerState, ref linesprinted);
                         }
                         else // SplitLines
                         {
@@ -487,17 +487,25 @@ namespace BasList.CLI
                             Listing sections = new(new List<ProgramLine>());
 
                             // generate a 'min-program-listing' from the sections
-                            foreach (string taggedSection in SplitStatements(progline.FormattedTagged))
+                            foreach (string taggedSection in SplitStatements(progline.TaggedLine))
                             {
                                 ProgramLine line = new(progline);
                                 line.TaggedLine = taggedSection;
+
+                                line.IndentLevel = progline.IndentLevel;
+                                line.LineNumber = progline.LineNumber;
+                                line.InAsm = progline.InAsm;
+                                line.IsArm = progline.IsArm;
+                                line.IsDef = progline.IsDef;
+                                line.IsInDef = progline.IsInDef;
+
                                 sections.Lines.Add(line);
                             }
 
                             // Print normally if only one section - not necessary, just more efficient
                             if (sections.Lines.Count == 1)
                             {
-                                printLineOut(progline, switches, state, ref linesprinted);
+                                printLineOut(progline, switches, listerState, ref linesprinted);
                             }
                             else
                             {
@@ -513,7 +521,7 @@ namespace BasList.CLI
                                     first = false;
                                     PrintIndents(line, ref printedLineLength, switches);
 
-                                    PrintOut(line.TaggedLine.TrimStart(), state, switches, ref printedLineLength, ref linesprinted);
+                                    PrintLineBody(line.FormattedTagged.TrimStart(), listerState, switches, ref printedLineLength, ref linesprinted);
 
                                     if (switches.FlgPause)
                                     {
@@ -525,14 +533,14 @@ namespace BasList.CLI
                                         }
                                     }
                                 }
-                            }
+                            }                            
                         }
                         // After printing the line, turn off printing PROC (so don't suppress ENDPROC)
-                        if (switches.FlgList && state.Listme)
+                        if (switches.FlgList && listerState.Listme)
                         {
                             if (!progline.IsDef && !progline.IsInDef)
                             {
-                                state.Listme = false;
+                                listerState.Listme = false;
                             }
                         }
                         #region debug
@@ -542,22 +550,22 @@ namespace BasList.CLI
 
                             Console.ForegroundColor = ConsoleColor.DarkYellow;
                             Console.Write($"  Plain:     ");
-                            Console.ForegroundColor = state.CurrentForeground;
+                            Console.ForegroundColor = listerState.CurrentForeground;
                             Console.WriteLine($"{progline.PlainDetokenisedLine}");
 
                             Console.ForegroundColor = ConsoleColor.DarkYellow;
                             Console.Write($"  Formatted: ");
-                            Console.ForegroundColor = state.CurrentForeground;
+                            Console.ForegroundColor = listerState.CurrentForeground;
                             Console.WriteLine($"{progline.FormattedPlain}");
 
                             Console.ForegroundColor = ConsoleColor.DarkYellow;
                             Console.Write($"  Tagged:    ");
-                            Console.ForegroundColor = state.CurrentForeground;
+                            Console.ForegroundColor = listerState.CurrentForeground;
                             Console.WriteLine($"{progline.TaggedLine}");
 
                             Console.ForegroundColor = ConsoleColor.DarkYellow;
                             Console.Write($"  Formatted: ");
-                            Console.ForegroundColor = state.CurrentForeground;
+                            Console.ForegroundColor = listerState.CurrentForeground;
                             Console.WriteLine($"{progline.FormattedTagged}");
 
                             Console.WriteLine();
@@ -567,8 +575,8 @@ namespace BasList.CLI
                 }
             }
         }
-        // ******** PrintOut - handles plain and PrettyPrint ********
-        static void PrintOut(string line, ListerState state, CommandSwitches switches, ref int printedLineLength, ref int linesprinted)
+        // ******** PrintLineBody - handles plain and PrettyPrint ********
+        static void PrintLineBody(string line, ListerState listerState, CommandSwitches switches, ref int printedLineLength, ref int linesprinted)
         {
             // Line contents
             foreach (Token tok in BasToolsEngine.WalkTagged(line))
@@ -593,7 +601,7 @@ namespace BasList.CLI
 
             linesprinted += rows;
         }
-        static void printLineOut(ProgramLine progline, CommandSwitches switches, ListerState state, ref int linesprinted)
+        static void printLineOut(ProgramLine progline, CommandSwitches switches, ListerState listerState, ref int linesprinted)
         {
             int printedLineLength = 0;
 
@@ -602,7 +610,7 @@ namespace BasList.CLI
                 // Normal behaviour
                 PrintLineNumber(progline, switches, ref printedLineLength, true);
                 PrintIndents(progline, ref printedLineLength, switches);
-                PrintOut(progline.FormattedTagged, state, switches, ref printedLineLength, ref linesprinted);
+                PrintLineBody(progline.FormattedTagged, listerState, switches, ref printedLineLength, ref linesprinted);
             }
             else
             {

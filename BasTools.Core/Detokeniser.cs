@@ -343,6 +343,8 @@ namespace BasTools.Core
                         asmComment = true;
                         rem = true;
                         startOfStatement = false;
+                        checkForUnclosedTag(ref taggedline);        // ; will have been tagged but not closed, so remove
+                        closeTag = false;
                         taggedline += SemanticTags.AssemblerComment;
                         //DBG($"Start of comment: {taggedline}");
                     }
@@ -784,7 +786,6 @@ namespace BasTools.Core
                 // Continuation tokens
                 bool continuation =
                 next.tag == SemanticTags.Operator ||
-                //next.tag == SemanticTags.IndirectionOperator ||
                 next.tag == SemanticTags.OpenBracket ||
                 next.tag == SemanticTags.Variable ||
                 next.tag == SemanticTags.Number ||
@@ -927,6 +928,9 @@ namespace BasTools.Core
                 throw new BasToolsException(e.Message);
             }
         }
+        //
+        // Utility procedures
+        //
         static void NoteExprTokenInIf(string tag, string keyword, ParserState parserState)
         { /*
             // DBG($"Checking {tag} {keyword}, InIfCondition = {parserState.InIfCondition}, starting paren depth {parserState.IfParenDepth}");
@@ -971,6 +975,21 @@ namespace BasTools.Core
             string value = m.Groups[2].Value;
 
             return (tag, value);
+        }
+        private void checkForUnclosedTag(ref string taggedline)
+        {
+            int x = taggedline.LastIndexOf("{=");
+            if (x == -1) return;
+            int y = taggedline.IndexOf('}', x);
+            if (y == -1)
+            {
+                throw new BasToolsException("Malformed tag in '" + taggedline + "'");
+            }
+            string tag = taggedline.Substring(x, y-x+1);
+            if (taggedline.EndsWith(tag))
+            {
+                taggedline = taggedline.Substring(0, x);
+            }
         }
         static void addtoall(char addition,
         ref string plainline,

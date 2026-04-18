@@ -140,13 +140,17 @@ namespace BasTools.Core
                 formatLineNumber(progline, switches, state, progInfo);
 
                 var tokens = BasToolsEngine.WalkTagged(progline.TaggedLine).ToList();
-
+                
                 if (progline.InAsm && switches.AssemblerColumns)
                 {
-                    //Console.WriteLine($"1. {progline.PlainDetokenisedLine}");
-                    bool t = (FormatAssemblerColumnsForLine(tokens, progline, switches));// continue;
-                    //Console.WriteLine($"2. {progline.FormattedPlain}\n");
-                    if (t) {continue;}
+                    //DBG($"{progline.LineNumber} {progline.TaggedLine} == {progline.InAsm} [{switches.AssemblerColumns}]");
+
+                    if (FormatAssemblerColumnsForLine(tokens, progline, switches))
+                    {
+                        // safe to set this IF it's in a PROC - assembler can't really be a DEF
+                        progline.IsInDef = state.InDefInition;
+                        continue;
+                    }
                 }
 
                 state.InIfCondition = false; // start of line, no IF's
@@ -496,9 +500,9 @@ namespace BasTools.Core
         // True if line has been formatted for assembler
         private static bool FormatAssemblerColumnsForLine(List<Token> tokens, ProgramLine progline, FormattingOptions switches)
         {
-            if (!switches.AssemblerColumns || progline.PlainDetokenisedLine.StartsWith('['))
+            if (!switches.AssemblerColumns || progline.TaggedLine.StartsWith('['))
                 return false;
-
+            //DBG("Hello");
             var cols = progline.IsArm ? ArmColumns : M6502Columns;
 
             // Final output builders
@@ -579,8 +583,10 @@ namespace BasTools.Core
             }
 
             // MAIN TOKEN LOOP
+            //int c = 1;
             foreach (Token tok in tokens)
             {
+                //DBG($"{c++}: {tok.tag} {tok.value}");
                 // --- STATEMENT SEPARATOR ---
                 if (tok.tag == SemanticTags.StatementSep)
                 {
