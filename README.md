@@ -3,15 +3,15 @@ It provides accurate pretty‑printing, token analysis, and structural inspectio
 
 The tools will eventually include full analysis and editing. The most complete at the moment is BasList, a command line utility to list tokenised BASIC programs from the BBC Micro, RiscOS machines and R.T. Russell's Z80 programs, with optional comprehensive pretty-printing. Cross-platform (Windows, Mac, Linux).
 
-# BasList vs 1.1.0
+# BasList vs 2.0.0 for BasTools 1.0.0
 
-Lists a BBC BASIC program file in Acorn or R.T. Russell (Z80) format
+Lists a BBC BASIC program file in Acorn or R.T. Russell (Z80) format with full formatting options and syntax colouring
 
 ## SYNTAX
 
 BasList [/file=]filename ([from line] [to line]) | [line,line]) [Options] ([IF ...] | [IFX ...] | [LIST ...])
 
-BasList [/file=]filename [/V] [/addnumbers] [/auto] [/align] [/indent] [/nonumbers] [/nospaces] [/bare] [/pause] [/prettyprint] [/dark | /light]
+BasList [/file=]filename [/V] [/notBasicV] [/addnumbers] [/] [/align] [/indent] [/nonumbers] [/noformat] [/splitlines] [/columns] [(/cls | /clear)] [/bare] [/pause] [/prettyprint] [/dark | /light]
 
 BasList /? or /h - help
 
@@ -38,15 +38,17 @@ BasList /? or /h - help
 
 # Features
 
-- Accurate tokenisation for BBC BASIC (6502 and ARM)
+- Accurate detokenisation of BBC BASIC (6502, ARM and Z80)
 
-- Deterministic pretty‑printing
+- Code indentation options (loops and structures, procedures and functions)
 
-- Case‑insensitive assembly handling
+- Split long lines with full identation capabilities
+
+- Syntax colouring option
+
+- Assembly handling - align in columns option
 
 - Shared parsing engine across all tools
-
-- Clean multi‑project .NET solution
 
 - Installer for Windows (Inno Setup)
 
