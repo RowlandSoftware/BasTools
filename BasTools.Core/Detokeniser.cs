@@ -1,10 +1,12 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.PortableExecutable;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading.Channels;
 using static System.Net.Mime.MediaTypeNames;
 
 namespace BasTools.Core
@@ -17,6 +19,8 @@ namespace BasTools.Core
         private readonly HashSet<string> Mnemonics6502;
         private readonly HashSet<string> ArmMnemonics;
         private readonly HashSet<string> ArmRegisters;
+        private readonly HashSet<string> Z80Mnemonics;
+        private readonly HashSet<string> Z80Registers;
         public BasToolsEngine()
         {
             // Initialise the fields
@@ -37,8 +41,16 @@ namespace BasTools.Core
             "R8","R9","R10","R11","R12","R13","R14","R15",
             "SP","LR","PC"
             };
-            readTokenTable(token, "BasTools.Core.TokenTable.txt");
-            readTokenTable(Vtoken, "BasTools.Core.VTokenTable.txt");
+
+            Z80Mnemonics = LoadMnemonicTable("BasTools.Core.Z80Mnemonics.txt");
+            Z80Registers = new(StringComparer.OrdinalIgnoreCase)
+            {
+                "A","B","C","D","E","H","L","AF","BC","DE","HL",
+                "IX","IY","IXH","IXL","IYH","IYL","SP","PC","I","R"
+            };
+
+            readTokenTable(token, "BasTools.Core.TokenTable.txt");      // actually a mix of all single-byte tokens
+            readTokenTable(Vtoken, "BasTools.Core.VTokenTable.txt");    // double-byte tokens
         }        
         internal bool ProcessRawProgram(string fn, Listing listing, ProgInfo progInfo)
         {
@@ -298,7 +310,7 @@ namespace BasTools.Core
                             }
                         }
                     }
-                    else if (!flgVar && curchar is '!' or '?' or '$')
+                    else if (!flgVar && curchar is '!' or '?' or '$' or '|') // Bar is BasV 5-byte FP indirection operator
                     {
                         taggedline += SemanticTags.IndirectionOperator;
                         closeTag = true;
@@ -370,14 +382,17 @@ namespace BasTools.Core
                         else
                         {
                             string possibleMnemonic = readMnemonic(tokenisedLine, i);
-                            //DBG($"{possibleMnemonic} - V? {progInfo.BasicV}");
+                            
                             if (possibleMnemonic != string.Empty)
                             {
                                 bool isMnemonic;
                                 if (progInfo.BasicV)
                                 {
                                     isMnemonic = ArmMnemonics.Contains(possibleMnemonic.ToUpperInvariant());
-                                    //DBG($"{possibleMnemonic} - {isMnemonic}");
+                                }
+                                else if (progInfo.Z80)
+                                {
+                                    isMnemonic = Z80Mnemonics.Contains(possibleMnemonic.ToUpperInvariant());
                                 }
                                 else
                                 {
@@ -405,13 +420,11 @@ namespace BasTools.Core
                                     {
                                         // R0–R15, SP, LR, PC
                                         string reg = readRegister(tokenisedLine, i);   // similar to readMnemonic
-                                                                                       //DBG($"Reg? {reg}");
                                         if (ArmRegisters.Contains(reg.ToUpperInvariant()))
                                         {
                                             taggedline += SemanticTags.Register + reg.ToUpper() + SemanticTags.Reset;
                                             plainline += reg;
                                             linenospaces += reg;
-                                            //DBG($"Reg - {taggedline}");
 
                                             i += reg.Length - 1;   // advance past the whole register
                                             curbyte = tokenisedLine[i];
@@ -421,6 +434,38 @@ namespace BasTools.Core
 
                                             continue;
 
+                                        }
+                                    }
+                                }
+                                else if (progInfo.Z80)
+                                {
+                                    // Z80 registers: A, B, C, D, E, H, L,
+                                    // AF, BC, DE, HL,
+                                    // IX, IY, IXH, IXL, IYH, IYL,
+                                    // SP, PC, I, R
+
+                                    char uchar = char.ToUpperInvariant(curchar);
+
+                                    // Fast‑path: first character must be A–S
+                                    if ("ABCDEHILPRS".Contains(uchar))
+                                    {
+                                        string reg = readRegister(tokenisedLine, i).ToUpperInvariant();
+
+                                        if (Z80Registers.Contains(reg))
+                                        {
+                                            // Tag it as a register
+                                            taggedline += SemanticTags.Register + reg + SemanticTags.Reset;
+                                            plainline += reg;
+                                            linenospaces += reg;
+
+                                            // Advance past the whole register
+                                            i += reg.Length - 1;
+                                            curbyte = tokenisedLine[i];
+                                            curchar = (char)curbyte;
+                                            nxtchar = (i == tokenisedLine.Length - 1) ? '\0' : (char)tokenisedLine[i + 1];
+                                            prevbyte = (byte)plainline[^1];
+
+                                            continue;
                                         }
                                     }
                                 }
@@ -717,6 +762,7 @@ namespace BasTools.Core
             returnObject.NoSpacesLine = linenospaces;
             returnObject.InAsm = parserState.InAsm;
             returnObject.IsArm = (progInfo.BasicV && !progInfo.Z80);
+            returnObject.IsZ80 = (progInfo.Z80);
 
             return;
         }
@@ -896,6 +942,13 @@ namespace BasTools.Core
                         case 0xCD: return "ENDIF";      // 205 ENDIF
                         case 0xCE: return "ENDWHILE";   // 206 ENDWHILE
                     }
+                    /*The token for PUT has changed from & CE (206) in version 3 to & 0E in version 5.
+                    If this token is present in existing programs it will list as ENDWHILE rather
+                    than PUT, and the programs will need to be modified to restore functionality.
+                    [WHATSNEW.TDT in BBCZ80V5 co-pro.zip\B\0\ from http://rtrussell.co.uk/bbcbasic/z80basic.html]
+                    Note: 0E is BY in Windows versions of R.T. Russell BASIC. BY is encoded as 'B' 'Y'
+                    in Arm Basic according to https://mdfs.net/Docs/Comp/BBCBasic/Tokens, and BY is 0F
+                    */
                 }
                 if (curbyte != 0x8D) // 'line number' marker
                 {

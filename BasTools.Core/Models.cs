@@ -125,6 +125,7 @@ namespace BasTools.Core
         // Properties for Assembler
         public bool InAsm { get; set; } = false;
         public bool IsArm { get; set; } = false;
+        public bool IsZ80 { get; set; } = false;
         // Properties needed for SplitLines
         public FormatterState fstate;
         public ProgramLine (ProgramLine other)

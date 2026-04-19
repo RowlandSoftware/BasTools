@@ -8,14 +8,13 @@ namespace BasList.CLI
     using System.ComponentModel.Design;
     using System.Diagnostics;
     using System.Reflection;
+    using System.Reflection.Emit;
     using System.Security.Cryptography.X509Certificates;
     using System.Text;
     using System.Text.RegularExpressions;
-    using System.Windows.Forms;
-    using static System.Runtime.InteropServices.JavaScript.JSType;
-    using static System.Windows.Forms.AxHost;
-    using static System.Windows.Forms.LinkLabel;
-    using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
+    using System.Xml.Linq;
+
+    //using System.Windows.Forms
 
     //***************** CommandSwitches *****************
     public class CommandSwitches
@@ -51,6 +50,7 @@ namespace BasList.CLI
         public ConsoleColor BackColor;
         // debug
         public bool Debug;
+        public bool FullDebug;
         public CommandSwitches()
         {
             _basicV = false;
@@ -76,6 +76,7 @@ namespace BasList.CLI
             FlgDark = true;
             DirectiveParams = new();
             Debug = false;
+            FullDebug = false;
         }
         public bool BasicV
         {
@@ -321,6 +322,7 @@ namespace BasList.CLI
                     if ("DARK".StartsWith(arg2)) { switches.FlgDark = true; recognised = true; }
                     if ("LIGHT".StartsWith(arg2)) { switches.FlgDark = false; recognised = true; }
                     if ("DEBUG".StartsWith(arg2)) { switches.Debug = true; recognised = true; }
+                    if ("FULLDEBUG".StartsWith(arg2)) { switches.FullDebug = true; recognised = true; }
                     if (!recognised && !switches.Bare) Console.Error.WriteLine("Option " + arg.ToLower() + " not recognised");
                 }
                 // not a switch ...
@@ -544,7 +546,7 @@ namespace BasList.CLI
                             }
                         }
                         #region debug
-                        if (switches.Debug)
+                        if (switches.Debug || switches.FullDebug)
                         {
                             Console.WriteLine($"{progline.LineNumber} -");
 
@@ -568,6 +570,12 @@ namespace BasList.CLI
                             Console.ForegroundColor = listerState.CurrentForeground;
                             Console.WriteLine($"{progline.FormattedTagged}");
 
+                            Console.WriteLine();
+                        }
+                        if (switches.FullDebug)
+                        {
+                            Console.WriteLine("Indent: {0,-10}IsDef: {1,-10}IsInDef: {2,-10}", progline.IndentLevel, progline.IsDef, progline.IsInDef);
+                            Console.WriteLine("InAsm:  {0,-10}IsArm: {1,-10}IsZ80:   {2,-10}", progline.InAsm, progline.IsArm, progline.IsZ80);
                             Console.WriteLine();
                         }
                         #endregion
@@ -597,7 +605,7 @@ namespace BasList.CLI
             }
             Console.WriteLine("");
             int windowWidth = Console.WindowWidth;
-            int rows = (printedLineLength + (windowWidth - 1)) / windowWidth;
+            int rows = (printedLineLength / windowWidth) + 1; // For operands of integer types, the result of the / operator an integer, the quotient of the two operands rounded toward zero
 
             linesprinted += rows;
         }
@@ -669,14 +677,14 @@ namespace BasList.CLI
         }
         static void PrintIndents(ProgramLine progline, ref int printedLineLength, CommandSwitches switches)
         {
-            if (!progline.InAsm)
-            {
+            //if (!progline.InAsm)
+            //{
                 if (switches.FlgIndent)
                 {
-                    Console.Write(new string(' ', progline.IndentLevel * 2)); // ignore indents in assembler - assume is in [OPT opt% loop
+                    Console.Write(new string(' ', progline.IndentLevel * 2)); //// ignore indents in assembler - assume is in [OPT opt% loop
                     printedLineLength += progline.IndentLevel * 2;
                 }
-            }
+            //}
             if (switches.FlgEmphDefs)
             {
                 Console.Write(new string(' ', progline.DefIndent * 2));
