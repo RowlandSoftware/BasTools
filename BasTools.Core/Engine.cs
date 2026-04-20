@@ -36,6 +36,10 @@
     //
     public partial class BasToolsEngine
     {
+        public Listing CurrentListing { get; private set; } = null;
+        public ProgInfo CurrentProgInfo { get; private set; } = null;
+
+
         // The public 'pipeline' for BasList
         public Listing loadAndFormatFile(string filename, FormattingOptions formatOptions, ProgInfo progInfo)
         {
@@ -62,6 +66,23 @@
             {
                 throw new BasToolsException($"Program '{filename}' could not be processed", e2);
             }
+        }
+        public void loadAndDetokenise(string filename, ProgInfo progInfo)
+        {
+            Listing listing = new(new List<ProgramLine>());
+
+            try
+            {
+                ProcessRawProgram(filename, listing, progInfo); // load, detokenise and tag                    
+            }
+            catch (Exception e2)
+            {
+                throw new BasToolsException($"Error: {e2.Message}");
+            }
+            CurrentListing = listing;
+            CurrentProgInfo = progInfo;
+
+            return;
         }
         public static IEnumerable<Token> WalkTagged(string line)
         {

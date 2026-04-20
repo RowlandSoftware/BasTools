@@ -19,12 +19,18 @@ namespace BasTools.Core
             Z80 ? "Z80 Basic"
                 : BasicV ? "Acorn Basic V"
                     : "Acorn Basic I–IV";
-        public ProgInfo(bool z80, bool basicV, string filename)
+        public ProgInfo()
+        {
+            Z80 = false;
+            BasicV = false;
+            NumberOfLines = 0;
+            LengthInBytes = 0;
+            Filename = string.Empty;
+        }
+        public ProgInfo(bool z80, bool basicV, string filename) : this()
         {
             Z80 = z80;
             BasicV = basicV;
-            NumberOfLines = 0;
-            LengthInBytes = 0;
             Filename = filename;
         }
     }
