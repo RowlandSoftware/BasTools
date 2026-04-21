@@ -1,8 +1,10 @@
-﻿using System;
+﻿using BasTools.Core;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
 using System.Text;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 
 namespace BAnalysis.CLI
 {
@@ -64,15 +66,14 @@ namespace BAnalysis.CLI
 
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine($"\nBasAnalysis vs {vs} (C) Andrew Rowland 2022-26");
-            Console.WriteLine("Detailed analysis of a BBC BASIC program file\n");
+            Console.WriteLine("Detailed analysis of a BBC BASIC program\n");
             Console.ForegroundColor = ConsoleColor.White;
         }
         public static void help(string[] args)
         {
-            banner();
-
             if (args.Length <= 1)
             {
+                banner();
                 Console.WriteLine("    BasList <filename>");
                 Console.WriteLine("\n    COMMANDS\n");
                 Console.WriteLine("    {0,-10}{1,-10}{2,-10}{3,-10}{4,-10}{5,-10}", "help", "load", "analyze", "list", "lvar", "lvars");
@@ -81,10 +82,16 @@ namespace BAnalysis.CLI
             }
             else
             {
+                Console.WriteLine("");
                 switch (args[1].ToLower())
                 {
                     case "load":
                         Console.WriteLine("load <file spec> - If file spec contains spaces, enclose in double quotes");
+                        break;
+                    case "list":
+                        Console.WriteLine("list        - Display entire program");
+                        Console.WriteLine("list nn nn  - Display program lines (from to)");
+                        Console.WriteLine("list <name> - Display PROC or FN (list)");
                         break;
                     case "analyse":
                     case "analyze":
@@ -96,6 +103,29 @@ namespace BAnalysis.CLI
                         break;
                 }
             }
+        }
+
+        // Print line and check for pause
+        // Returns: true - continue, false - stop listing
+        internal static bool printLine(ProgramLine progLine, ref int linesprinted)
+        {
+            string line = progLine.FormattedPlain;
+            string printedLine = progLine.LineNumber.ToString().PadLeft(5) + ' ' + new string(' ', progLine.IndentLevel * 2) + line;
+            Console.WriteLine(printedLine);
+
+            int windowWidth = Console.WindowWidth;
+            int rows = (printedLine.Length + (windowWidth - 1)) / windowWidth;
+
+            linesprinted += rows;
+
+            // Deal with pausing
+            switch (Utilities.CheckForPause(ref linesprinted))
+            {
+                case ConsoleKey.Spacebar: linesprinted = 0; break;
+                case ConsoleKey.Enter: linesprinted--; break;
+                case ConsoleKey.Escape: return false;
+            }
+            return true;
         }
         public static ConsoleKey CheckForPause(ref int linesprinted)
         {
