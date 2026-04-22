@@ -87,11 +87,11 @@ namespace BasList.CLI
             //
             // Main Loop
             //
-            while (cmd != "QUIT" && cmd != "EXIT")
+            while (cmd != "QUIT" && cmd != "EXIT" && cmd != "END" && cmd != "X")
             {
                 Console.Write(prompt);
                 string? input = Console.ReadLine();
-                if (input == null) continue;
+                if (input == null || input.IsWhiteSpace()) continue;
 
                 string[] arglist = Utilities.SplitArgList(input);
                 cmd = arglist[0].ToUpper();
@@ -99,7 +99,8 @@ namespace BasList.CLI
                 if (cmd.EndsWith('.'))
                 {
                     string abbrev = cmd.Substring(0, cmd.Length - 1);
-                    string[] commands = { "HELP", "LOAD", "ANALYZE", "ANALYSE", "LIST", "LVAR", "LVARS", "LFN", "LPROC", "TREE", "PREVIEW", "EXIT", "END", "QUIT" };
+                    string[] commands = { "HELP", "LIST", "LOAD", "ANALYZE", "ANALYSE", "LVAR", "LVARS", "LFN", "LPROC", "TREE", "PREVIEW", "EXIT", "END", "QUIT" };
+                    // "LISTIF", "LISTIFX", "BLIST"
                     foreach (string match in commands)
                     {
                         if (match.StartsWith(abbrev))
@@ -112,7 +113,11 @@ namespace BasList.CLI
 
                 switch (cmd)
                 {
-                    case "HELP": Utilities.help(arglist); break;
+                    case "?":
+                    case "-H":
+                    case "HELP":
+                        Utilities.help(arglist);
+                        break;
                     case "LOAD":
                         load(arglist[1], CurrentProgInfo, engine, ref prompt);
                         break;
@@ -126,13 +131,15 @@ namespace BasList.CLI
                         break;
                     case "LVAR":
                         Listvars(arglist, engine, analyzed);
-                            break;
+                        break;
                     case "LVARS":
                         Listvars(arglist, engine, analyzed)
-                            ; break;
+                        ; break;
                     case "QUIT":
                     case "EXIT":
-                    case "END": break;
+                    case "END":
+                    case "X":
+                        break;
                     default:
                         Console.WriteLine($"'{cmd}' not recognised");
                         break;
@@ -163,7 +170,7 @@ namespace BasList.CLI
                 Console.WriteLine($"Program loaded. {CurrentProgInfo.NumberOfLines} lines, {CurrentProgInfo.LengthInBytes} bytes " +
                 $"(&{CurrentProgInfo.LengthInBytes:X4}), {CurrentProgInfo.LengthInBytes / 1024.0:F2} KB" +
                 $"\n\nEnter 'preview' to see first 20 lines, or enter 'analyse'\n");
-                
+
                 return true;
             }
             catch (BasToolsException e)
@@ -194,12 +201,12 @@ namespace BasList.CLI
                     if (tok.tag != null && tok.value != null)
                     {
                         if (tok.tag == SemanticTags.Variable || tok.tag == SemanticTags.StaticInteger ||
-                            tok.tag == SemanticTags.Label || tok.tag == SemanticTags.FunctionName ||
-                            tok.tag == SemanticTags.ProcName || tok.tag == SemanticTags.StringLiteral)
+                        tok.tag == SemanticTags.Label || tok.tag == SemanticTags.FunctionName ||
+                        tok.tag == SemanticTags.ProcName || tok.tag == SemanticTags.StringLiteral)
                         {
                             RecordUse(tok.tag, tok.value, line.LineNumber,
-                                lhs ? SymbolReadOrWrite.Assigned : SymbolReadOrWrite.Referenced,
-                                SymbolContext.TBD, procedureName, procedureType);
+                            lhs ? SymbolReadOrWrite.Assigned : SymbolReadOrWrite.Referenced,
+                            SymbolContext.TBD, procedureName, procedureType);
                         }
                         if (tok.tag == SemanticTags.Operator && tok.value == "=")
                         {
@@ -329,7 +336,7 @@ namespace BasList.CLI
 
             if (arglist.Length > 1)
             {
-                if (!int.TryParse (arglist[1], out fromline))
+                if (!int.TryParse(arglist[1], out fromline))
                 {
                     ListDef(engine, arglist);
                     return;
@@ -351,7 +358,7 @@ namespace BasList.CLI
             int linesprinted = 0;
             int linecount = 0;
 
-            for (int i = 0 ; i < 0xFEFF && (totLineCount == 0 ? true : ++linecount <= totLineCount); i++)
+            for (int i = 0; i < 0xFEFF && (totLineCount == 0 ? true : ++linecount <= totLineCount); i++)
             {
                 if (i == engine.CurrentListing.Lines.Count)
                     return;
@@ -368,7 +375,7 @@ namespace BasList.CLI
         }
         static void ListDef(BasToolsEngine engine, string[] arglist)
         {
-            if(engine.CurrentListing == null)
+            if (engine.CurrentListing == null)
             {
                 Console.WriteLine("No program loaded.");
                 return;
@@ -438,7 +445,7 @@ namespace BasList.CLI
             if (tag == SemanticTags.StringLiteral && string.IsNullOrWhiteSpace(name))
                 return;
 
-                SymbolKind kind = InferKind(tag, name);
+            SymbolKind kind = InferKind(tag, name);
 
             if (!Symbols.TryGetValue(kind + ":" + name, out var sym))
             {
@@ -487,14 +494,14 @@ namespace BasList.CLI
             Console.ForegroundColor = ConsoleColor.White;
             bool alternate = true;
             foreach (SymbolInfo symInfo in Symbols.Values.Where(s => s.Kind == kind)
-                                              .OrderBy(s => s.Name))
+            .OrderBy(s => s.Name))
             {
                 Console.ForegroundColor = alternate ? ConsoleColor.White : ConsoleColor.Gray;       // mild stripes
                 alternate = !alternate;
 
                 if (kind == SymbolKind.LiteralString)
                 {
-                    Console.WriteLine("  {0,-35}{1,6}{2,10} ", symInfo.Name, symInfo.AssignedCount, symInfo.Name.Length-2);
+                    Console.WriteLine("  {0,-35}{1,6}{2,10} ", symInfo.Name, symInfo.AssignedCount, symInfo.Name.Length - 2);
                 }
                 else
                 {

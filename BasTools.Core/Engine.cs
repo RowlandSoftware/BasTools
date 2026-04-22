@@ -52,6 +52,9 @@
                     {
                         FormatProgram(listing, formatOptions, progInfo);
                         {
+                            CurrentListing = listing;
+                            CurrentProgInfo = progInfo; 
+                            
                             return listing;
                         }
                     }
@@ -69,9 +72,6 @@
         public void loadAndDetokenise(string filename, FormattingOptions formatOptions, ProgInfo progInfo)
         {
             Listing listing = loadAndFormatFile(filename, formatOptions, progInfo);
-
-            CurrentListing = listing;
-            CurrentProgInfo = progInfo;
 
             return;
         }

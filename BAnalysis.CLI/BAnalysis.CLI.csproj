@@ -8,6 +8,7 @@
     <Nullable>enable</Nullable>
     <ApplicationIcon>RS_lg.ico</ApplicationIcon>
     <PackageIcon>RSlogo_78x78.png</PackageIcon>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
   </PropertyGroup>
 
   <ItemGroup>

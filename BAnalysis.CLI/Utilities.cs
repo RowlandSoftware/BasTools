@@ -12,6 +12,10 @@ namespace BAnalysis.CLI
     {
         public static string[] SplitArgList(string input)
         {
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                return Array.Empty<string>();
+            }
             List<string> parts = new();
             StringBuilder current = new();
             bool inQuotes = false;
@@ -38,7 +42,7 @@ namespace BAnalysis.CLI
                     continue;
                 }
 
-                // Space outside quotes → split
+                // Space outside quotes ? split
                 if (char.IsWhiteSpace(c) && !inQuotes)
                 {
                     if (current.Length > 0)
@@ -95,7 +99,15 @@ namespace BAnalysis.CLI
                         break;
                     case "analyse":
                     case "analyze":
+                        Console.WriteLine("analyze     - (or analyse) Use after 'load' and before other options");
+                        break;
+                    case "lvars":
+                        Console.WriteLine("lvars       - Display analysis of variables, procedures and strings");
+                        break;
                     case "exit":
+                    case "quit":
+                    case "x":
+                    case "end":
                         Console.WriteLine($"{args[1]} - Leave BasAnalysis");
                         break;
                     default:
@@ -145,8 +157,8 @@ namespace BAnalysis.CLI
                     key = info.Key;
 
                     if (key == ConsoleKey.Spacebar ||
-                        key == ConsoleKey.Enter ||
-                        key == ConsoleKey.Escape)
+                    key == ConsoleKey.Enter ||
+                    key == ConsoleKey.Escape)
                     {
                         break; // valid key
                     }

@@ -60,6 +60,7 @@ namespace BasTools.Core
         Mnemonic,
         LineNumber,
         Operator,
+        IsEqualTo_Operator,
         IndirectionOperator,
         ImmediateOperator,
         StatementSep,
@@ -93,6 +94,7 @@ namespace BasTools.Core
         public const string Mnemonic = "{=mnemonic}";
         public const string LineNumber = "{=linenumber}";
         public const string Operator = "{=operator}";
+        public const string IsEqualTo_Operator = "{==}";
         public const string IndirectionOperator = "{=indirectionoperator}";
         public const string ImmediateOperator = "{=immediateoperator}";        
         public const string StatementSep = "{=statementsep}";
@@ -256,6 +258,72 @@ namespace BasTools.Core
             SplitLines = false;
             AssemblerColumns = false;
             ExtraColumnWidth = 10;
+        }
+    }
+    public class ListerOptions // a copy of CommandSwitches
+    {
+        // switches for detokenisation
+        //public bool BasicV;
+        //public bool NotBasicV;
+
+        // switches for formatting
+        public bool FlgAddNums;
+        public bool FlgIndent;
+        public bool FlgEmphDefs;
+        public bool Align;
+
+        // switches for listing
+        public bool NoFormat;
+        public bool NoLineNumbers;
+        public bool Bare;
+        public bool SplitLines;
+        public bool AssemblerColumns;
+        public int ColumnWidth;
+        public bool Pretty;
+        public bool FlgPause;
+
+        // switches for filtering listings
+        public int FromLine;
+        public int ToLine;
+        public bool FlgIf;
+        public bool FlgIfX;
+        public bool FlgList;
+        public List<string> DirectiveParams;
+
+        // switches for appearance
+        public bool Clear;
+        public bool FlgDark;
+        public ConsoleColor ForeColor;
+        public ConsoleColor BackColor;
+
+        // debug
+        public bool Debug;
+        public bool FullDebug;
+        public ListerOptions()
+        {
+            Clear = false;
+            FlgDark = false;
+            ForeColor = Console.ForegroundColor;
+            BackColor = Console.BackgroundColor;
+        }
+        public FormattingOptions copyToFormatOptions()
+        {
+            FormattingOptions opts = new FormattingOptions();
+            opts.NoFormat = NoFormat;
+            opts.Align = Align;
+            opts.FlgAddNums = FlgAddNums;
+            opts.SplitLines = SplitLines;
+            opts.Bare = Bare;
+            opts.FlgEmphDefs = FlgEmphDefs;
+            opts.FlgIndent = FlgIndent;
+            opts.AssemblerColumns = AssemblerColumns;
+            opts.ExtraColumnWidth = ColumnWidth;
+
+            return opts;
+        }        
+        public void SwopIfLight()
+        {
+            if (!FlgDark) (ForeColor, BackColor) = (BackColor, ForeColor);
         }
     }
 }
