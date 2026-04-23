@@ -81,7 +81,8 @@ namespace BAnalysis.CLI
                 Console.WriteLine("    BasList <filename>");
                 Console.WriteLine("\n    COMMANDS\n");
                 Console.WriteLine("    {0,-10}{1,-10}{2,-10}{3,-10}{4,-10}{5,-10}", "help", "load", "analyze", "list", "lvar", "lvars");
-                Console.WriteLine("    {0,-10}{1,-10}{2,-10}{3,-10}{4,-10}{5,-10}", "lfn", "lproc", "tree", "preview", "exit", "quit");
+                Console.WriteLine("    {0,-10}{1,-10}{2,-10}{3,-10}{4,-10}{5,-10}", "lfn", "lproc", "tree", "preview", "cls", "clear");
+                Console.WriteLine("    {0,-10}{1,-10}{2,-10}", "exit", "quit", "x");
                 Console.WriteLine("\nEnter help <command> for further help\n");
             }
             else

@@ -59,7 +59,7 @@ namespace BasList.CLI
         }
 
         static Dictionary<string, SymbolInfo> Symbols = new();
-        static bool analyzed = false;
+        static bool analyzed; // = false by default
 
         static void Main(string[] args)
         {
@@ -99,7 +99,7 @@ namespace BasList.CLI
                 if (cmd.EndsWith('.'))
                 {
                     string abbrev = cmd.Substring(0, cmd.Length - 1);
-                    string[] commands = { "HELP", "LIST", "LOAD", "ANALYZE", "ANALYSE", "LVAR", "LVARS", "LFN", "LPROC", "TREE", "PREVIEW", "EXIT", "END", "QUIT" };
+                    string[] commands = { "HELP", "LIST", "LOAD", "ANALYZE", "ANALYSE", "CLEAR", "CLS", "LVAR", "LVARS", "LFN", "LPROC", "TREE", "PREVIEW", "EXIT", "END", "QUIT" };
                     // "LISTIF", "LISTIFX", "BLIST"
                     foreach (string match in commands)
                     {
@@ -120,6 +120,10 @@ namespace BasList.CLI
                         break;
                     case "LOAD":
                         load(arglist[1], CurrentProgInfo, engine, ref prompt);
+                        break;
+                    case "CLS":
+                    case "CLEAR":
+                        Console.Clear();
                         break;
                     case "PREVIEW":
                         Preview(engine); break;

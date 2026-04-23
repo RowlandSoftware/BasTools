@@ -166,12 +166,11 @@ namespace BasTools.Core
         }
         private void processLineBody(ParserState parserState, byte[] tokenisedLine, ProgramLine returnObject, ProgInfo progInfo)
         {
-            //DBG("First pass");
             firstPass(parserState, tokenisedLine, returnObject, progInfo);
-            //DBG("Second pass");
+            
             secondPass(returnObject);
-
-            //thirdPass(returnObject);
+            
+            thirdPass(returnObject);
         }
         private void firstPass(ParserState parserState, byte[] tokenisedLine, ProgramLine returnObject, ProgInfo progInfo)
         {
@@ -775,7 +774,6 @@ namespace BasTools.Core
             for (int i = 0; i < tokens.Count; i++)
             {
                 var t = tokens[i];
-                DBG($"{t.tag} {t.value}");
 
                 // Always emit the current token
                 sb.Append(t.tag);
@@ -974,10 +972,6 @@ namespace BasTools.Core
 
                 // Skip null-tag tokens
                 if (tok.Tag == null)
-                    continue;
-
-                // Skip whitespace-only values
-                if (string.IsNullOrWhiteSpace(tok.Value))
                     continue;
 
                 return (j, tok);

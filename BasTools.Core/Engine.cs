@@ -15,6 +15,7 @@
     using System.Reflection;
     using System.Reflection.Emit;
     using System.Reflection.PortableExecutable;
+    using System.Runtime.Intrinsics.X86;
     using System.Security.Cryptography;
     using System.Text;
     using System.Text.RegularExpressions;
@@ -100,16 +101,21 @@
                 if (line[i] == '{' && i + 2 < line.Length && line[i + 1] == '=')
                 {
                     int tagStart = i;
+                    
                     int tagEnd = line.IndexOf('}', tagStart);
                     if (tagEnd < 0) break;
 
                     string tag = line.Substring(tagStart, tagEnd - tagStart + 1);
+                    //DBG($"string tag = line.Substring(tagStart, tagEnd - tagStart + 1);\n" +
+                    //    $"string {tag} = line.Substring({tagStart}, {tagEnd} - {tagStart} + 1);");
 
                     int valueStart = tagEnd + 1;
                     int close = line.IndexOf("{/}", valueStart);
                     if (close < 0) break;
 
                     string value = line.Substring(valueStart, close - valueStart);
+                    //DBG($"string value = line.Substring(valueStart, close - valueStart);\n" +
+                    //    $"string {value} = line.Substring({valueStart}, {close} - {valueStart});");
 
                     items.Add((value, tag));
 
