@@ -2,11 +2,12 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Reflection;
 using System.Text;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 
-namespace BAnalysis.CLI
+namespace BasAnalysis.CLI
 {
     internal static class Utilities
     {
@@ -88,7 +89,7 @@ namespace BAnalysis.CLI
             else
             {
                 Console.WriteLine("");
-                switch (args[1].ToLower())
+                switch (args[1].ToLower(CultureInfo.InvariantCulture))
                 {
                     case "load":
                         Console.WriteLine("load <file spec> - If file spec contains spaces, enclose in double quotes");
@@ -98,12 +99,31 @@ namespace BAnalysis.CLI
                         Console.WriteLine("list nn nn  - Display program lines (from to)");
                         Console.WriteLine("list <name> - Display PROC or FN (list)");
                         break;
+                    case "preview":
+                        Console.WriteLine("preview     - Display first 20 lines of program");
+                        break;
                     case "analyse":
                     case "analyze":
                         Console.WriteLine("analyze     - (or analyse) Use after 'load' and before other options");
                         break;
                     case "lvars":
                         Console.WriteLine("lvars       - Display analysis of variables, procedures and strings");
+                        break;
+                    case "lvar":
+                        Console.WriteLine("lvar <variable>   - Display detailed analysis of named variable");
+                        break;
+                    case "lfn":
+                        Console.WriteLine("lfn <FN name>     - Display detailed analysis of named function");
+                        break;
+                    case "lproc":
+                        Console.WriteLine("lproc <PROC name> - Display detailed analysis of named procedure");
+                        break;
+                    case "listif":
+                        Console.WriteLine("listif <text>     - Display lines that contain <text> (list)");
+                        break;
+                    case "cls":
+                    case "clear":
+                        Console.WriteLine("cls | clear - Clear screen");
                         break;
                     case "exit":
                     case "quit":

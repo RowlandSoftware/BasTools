@@ -7,18 +7,28 @@ namespace BasTools.Core
 {
     //***************** ProgInfo *****************
     // Just a little collection of information. Also used to pass some information
-    
+
     public class ProgInfo
     {
         public bool Z80;
         public bool BasicV;
         public int NumberOfLines;
         public int LengthInBytes;
-        public string Filename;
+        private string _filename;
+        public string ProgName;
         public string BasicDialect =>
             Z80 ? "Z80 Basic"
                 : BasicV ? "Acorn Basic V"
                     : "Acorn Basic I–IV";
+        public string Filename
+        {
+            get => _filename;
+            set
+            {
+                _filename = value;
+                ProgName = Path.GetFileNameWithoutExtension(value);
+            }
+        }
         public ProgInfo()
         {
             Z80 = false;
@@ -102,6 +112,14 @@ namespace BasTools.Core
         public const string OpenBracket = "{=openbracket}";
         public const string CloseBracket = "{=closebracket}";
         public const string Reset = "{/}";
+    }
+    // Keyword roles
+    public enum KeywordRole
+    {
+        Unknown,
+        Command,        // PRINT, INPUT, VDU, GOTO, PROC, etc.
+        Function,       // ASC, LEN, INSTR, etc. (your BuiltInFn)
+        FlowControl,    // IF, THEN, ELSE, FOR, NEXT, WHILE, UNTIL, REPEAT, CASE, WHEN, OTHERWISE
     }
     //
     //***************** Listing Classes and Records *****************
@@ -262,10 +280,6 @@ namespace BasTools.Core
     }
     public class ListerOptions // a copy of CommandSwitches
     {
-        // switches for detokenisation
-        //public bool BasicV;
-        //public bool NotBasicV;
-
         // switches for formatting
         public bool FlgAddNums;
         public bool FlgIndent;

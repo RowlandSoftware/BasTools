@@ -1,7 +1,11 @@
-﻿using BAnalysis.CLI;
+﻿using BasAnalysis.CLI;
 using BasTools.Core;
+using System.Globalization;
+using Windows.Media.Playback;
+using static System.Net.Mime.MediaTypeNames;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 
-namespace BasList.CLI
+namespace BasAnalysis.CLI
 {
     public class Program
     {
@@ -52,8 +56,8 @@ namespace BasList.CLI
             public string Name { get; init; } = "";
             public SymbolKind Kind { get; init; }   // IntVar, RealVar, StringVar, Array, PROC, FN, LocalVar, etc.
 
-            public int AssignedCount { get; set; } = 0;
-            public int ReferencedCount { get; set; } = 0;
+            public int AssignedCount { get; set; }
+            public int ReferencedCount { get; set; }
 
             public List<SymbolUse> Uses { get; } = new();   // line numbers, contexts, parent
         }
@@ -67,9 +71,8 @@ namespace BasList.CLI
             string prompt = "BasAnalysis >";
 
             BasToolsEngine engine = new BasToolsEngine();
-            //bool flgZ80 = false;
-            ProgInfo CurrentProgInfo = new(); // (flgZ80, switches.BasicV, filename);
-            FormattingOptions formatOptions = new(); // switches.copyToFormatOptions();
+            ProgInfo BAprogInfo = new();
+            FormattingOptions formatOptions = new();
 
             Utilities.banner();
 
@@ -82,7 +85,7 @@ namespace BasList.CLI
             else
             {
                 Console.ForegroundColor = ConsoleColor.White;
-                load(args[0], CurrentProgInfo, engine, ref prompt);
+                load(args[0], BAprogInfo, engine, ref prompt);
             }
             //
             // Main Loop
@@ -94,16 +97,16 @@ namespace BasList.CLI
                 if (input == null || input.IsWhiteSpace()) continue;
 
                 string[] arglist = Utilities.SplitArgList(input);
-                cmd = arglist[0].ToUpper();
+                cmd = arglist[0].ToUpper(CultureInfo.InvariantCulture);
 
                 if (cmd.EndsWith('.'))
                 {
                     string abbrev = cmd.Substring(0, cmd.Length - 1);
-                    string[] commands = { "HELP", "LIST", "LOAD", "ANALYZE", "ANALYSE", "CLEAR", "CLS", "LVAR", "LVARS", "LFN", "LPROC", "TREE", "PREVIEW", "EXIT", "END", "QUIT" };
+                    string[] commands = { "HELP", "LIST", "LISTIF", "LOAD", "ANALYZE", "ANALYSE", "CLEAR", "CLS", "LVAR", "LVARS", "LFN", "LPROC", "TREE", "PREVIEW", "EXIT", "END", "QUIT" };
                     // "LISTIF", "LISTIFX", "BLIST"
                     foreach (string match in commands)
                     {
-                        if (match.StartsWith(abbrev))
+                        if (match.StartsWith(abbrev, StringComparison.OrdinalIgnoreCase))
                         {
                             cmd = match;
                             break;
@@ -119,7 +122,10 @@ namespace BasList.CLI
                         Utilities.help(arglist);
                         break;
                     case "LOAD":
-                        load(arglist[1], CurrentProgInfo, engine, ref prompt);
+                        if (arglist.Length < 2)
+                            Utilities.help(new string[] { "", "LOAD" });
+                        else
+                            load(arglist[1], BAprogInfo, engine, ref prompt);
                         break;
                     case "CLS":
                     case "CLEAR":
@@ -129,12 +135,14 @@ namespace BasList.CLI
                         Preview(engine); break;
                     case "LIST":
                         ListProg(engine, arglist); break;
+                    case "LISTIF":
+                        ListIf(engine, arglist); break;
                     case "ANALYZE":
                     case "ANALYSE":
                         Analyse(engine, ref analyzed);
                         break;
                     case "LVAR":
-                        Listvars(arglist, engine, analyzed);
+                        Listvar(arglist, engine, analyzed);
                         break;
                     case "LVARS":
                         Listvars(arglist, engine, analyzed)
@@ -150,11 +158,10 @@ namespace BasList.CLI
                 }
             }
         }
-        static bool load(string filename, ProgInfo CurrentProgInfo, BasToolsEngine engine, ref string prompt)
+        static bool load(string filename, ProgInfo BAprogInfo, BasToolsEngine engine, ref string prompt)
         {
             try
             {
-                CurrentProgInfo = new();
                 FormattingOptions formatOptions = new FormattingOptions
                 {
                     Align = true,
@@ -163,16 +170,15 @@ namespace BasList.CLI
                     FlgIndent = true
                 };
 
-                engine.loadAndDetokenise(filename, formatOptions, CurrentProgInfo);
-                //Listing formattedListing = engine.loadAndFormatFile(filename, formatOptions, CurrentProgInfo);
+                engine.loadAndFormatFile(filename, formatOptions, BAprogInfo);
 
                 prompt = "BasAnalysis " + Path.GetFileName(filename) + " >";
 
                 Symbols.Clear();
                 analyzed = false;
 
-                Console.WriteLine($"Program loaded. {CurrentProgInfo.NumberOfLines} lines, {CurrentProgInfo.LengthInBytes} bytes " +
-                $"(&{CurrentProgInfo.LengthInBytes:X4}), {CurrentProgInfo.LengthInBytes / 1024.0:F2} KB" +
+                Console.WriteLine($"Program loaded. {BAprogInfo.NumberOfLines} lines, {BAprogInfo.LengthInBytes} bytes " +
+                $"(&{BAprogInfo.LengthInBytes:X4}), {BAprogInfo.LengthInBytes / 1024.0:F2} KB" +
                 $"\n\nEnter 'preview' to see first 20 lines, or enter 'analyse'\n");
 
                 return true;
@@ -187,87 +193,170 @@ namespace BasList.CLI
         {
             if (engine.CurrentListing == null)
             {
-                Console.WriteLine("No program loaded.");
+                Console.WriteLine("ANALYSE - No program loaded.");
                 return false;
             }
 
-            bool lhs;
+            bool expectingAssignmentTarget;
             ProcedureType procedureType = ProcedureType.Root;
             string procedureName = string.Empty;
 
             foreach (ProgramLine line in engine.CurrentListing.Lines)
             {
                 // line level state
-                lhs = true;
+                expectingAssignmentTarget = true; // at start of statement...
+
                 //Console.Write($"{line.LineNumber} ");
-                foreach (Token tok in BasToolsEngine.WalkTagged(line.TaggedLine))
+                List<Token> tokens = BasToolsEngine.WalkTagged(line.TaggedLine).ToList();
+
+                for (int i = 0; i < tokens.Count; i++)
                 {
-                    if (tok.tag != null && tok.value != null)
+                    SymbolContext context = SymbolContext.TBD;
+                    var tok = tokens[i];
+
+                    if (tok.tag == SemanticTags.StatementSep)
                     {
-                        if (tok.tag == SemanticTags.Variable || tok.tag == SemanticTags.StaticInteger ||
-                        tok.tag == SemanticTags.Label || tok.tag == SemanticTags.FunctionName ||
-                        tok.tag == SemanticTags.ProcName || tok.tag == SemanticTags.StringLiteral)
-                        {
-                            RecordUse(tok.tag, tok.value, line.LineNumber,
-                            lhs ? SymbolReadOrWrite.Assigned : SymbolReadOrWrite.Referenced,
+                        expectingAssignmentTarget = true;
+                        continue;
+                    }
+
+                    if (tok.tag == SemanticTags.Variable)
+                    {
+                        // Look ahead to see if this is an assignment
+                        Token? next = PeekNextNonSpaceToken(tokens, i);
+
+                        bool isAssignment = expectingAssignmentTarget &&
+                                            next?.tag == SemanticTags.Operator &&
+                                            next?.value == "=";
+
+                        RecordUse(tok.tag, tok.value, line.LineNumber,
+                            isAssignment ? SymbolReadOrWrite.Assigned : SymbolReadOrWrite.Referenced,
                             SymbolContext.TBD, procedureName, procedureType);
-                        }
-                        if (tok.tag == SemanticTags.Operator && tok.value == "=")
+
+                        expectingAssignmentTarget = false;
+                        continue;
+                    }
+
+                    if (tok.tag is SemanticTags.ProcName or SemanticTags.FunctionName)
+                    {
+                        RecordUse(tok.tag, tok.value, line.LineNumber,
+                            line.IsDef ? SymbolReadOrWrite.Assigned : SymbolReadOrWrite.Referenced,
+                            line.IsDef ? SymbolContext.TBD : SymbolContext.Call, procedureName, procedureType);
+
+                        continue;
+                    }
+                    if (tok.tag is SemanticTags.StringLiteral)
+                    {
+                        RecordUse(tok.tag, tok.value, line.LineNumber,
+                            SymbolReadOrWrite.Assigned,
+                            SymbolContext.TBD, procedureName, procedureType);
+
+                        expectingAssignmentTarget = false;
+                        continue;
+                    }
+                    if (tok.tag is SemanticTags.Label)
+                    {
+                        RecordUse(tok.tag, tok.value, line.LineNumber,
+                            SymbolReadOrWrite.Assigned,
+                            SymbolContext.TBD, procedureName, procedureType);
+
+                        expectingAssignmentTarget = false;
+                        continue;
+                    }
+
+                    if (tok.tag == SemanticTags.Operator && tok.value == "=")
+                    {
+                        // After '=', everything is a reference
+                        expectingAssignmentTarget = false;
+                        continue;
+                    }
+
+                    if (line.IsInDef == false) // exiting from PROC or FN
+                    {
+                        procedureType = ProcedureType.Root;
+                    }
+                    if (tok.tag == SemanticTags.Keyword && tok.value == "DEF") // entering PROC or FN
+                    {
+                        Token? next = PeekNextNonSpaceToken(tokens, i);
+                        if (next?.tag == SemanticTags.ProcName)
                         {
-                            lhs = false;
-                        }
-                        if (tok.tag == SemanticTags.StatementSep && tok.value == ":")
-                        {
-                            lhs = true;
+                            procedureName = next.value;
+                            switch (next.tag)
+                            {
+                                case SemanticTags.ProcName:
+                                    procedureName = next.value;
+                                    procedureType = ProcedureType.Proc;
+                                    break;
+                                case SemanticTags.FunctionName:
+                                    procedureName = next.value;
+                                    procedureType = ProcedureType.Fn;
+                                    break;
+                                default:
+                                    procedureType = ProcedureType.Root;
+                                    break;
+                            }
                         }
                     }
+
                 }
             }
             Console.Write($"Analysed {Symbols.Count} unique tokens\n");
             analyzed = true;
             return true;
         }
+        private static Token? PeekNextNonSpaceToken(List<Token> tokens, int index)
+        {
+            for (int i = index + 1; i < tokens.Count; i++)
+            {
+                var t = tokens[i];
+
+                // Skip null-tag whitespace tokens
+                if (t.tag == null) // && string.IsNullOrWhiteSpace(t.value))
+                    continue;
+
+                return t;
+            }
+
+            return null;
+        }
         static void Listvar(string[] arglist, BasToolsEngine engine, bool analyzed)
         {
             if (engine.CurrentListing == null)
             {
-                Console.WriteLine("No program loaded.");
+                Console.WriteLine("LVAR - No program loaded.");
                 return;
             }
             if (!analyzed)
             {
-                Console.WriteLine("Program has not been analysed.");
+                Console.WriteLine($"LVAR - Program '{engine.CurrentProgInfo.ProgName}' has not been analysed.");
                 return;
             }
 
             // Find variable
-            bool first = true;
-            foreach (string arg in arglist)
+            for (int j = 1; j < arglist.Length; j++)
             {
-                if (first)
+                string arg = arglist[j];
+
+                foreach (SymbolInfo symInfo in Symbols.Values.Where(s => s.Kind is SymbolKind.StaticInt
+                or SymbolKind.IntVar
+                or SymbolKind.RealVar
+                or SymbolKind.StringVar))
                 {
-                    first = false;
-                    continue;
+                    if (arg == symInfo.Name)
+                        VarDetail(arg, symInfo); // Console.WriteLine("{0,-20}{1,-10}{2,10}{3,11}", symInfo.Name, symInfo.Kind, symInfo.AssignedCount, symInfo.ReferencedCount);
                 }
-
-            }
-            Console.WriteLine("{0,-20}{1,-10}{2,10}{3,11}", "Variable", "Kind", "Assigned", "Referenced");
-
-            foreach (SymbolInfo symInfo in Symbols.Values)
-            {
-                Console.WriteLine("{0,-20}{1,-10}{2,10}{3,11}", symInfo.Name, symInfo.Kind, symInfo.AssignedCount, symInfo.ReferencedCount);
             }
         }
         static void Listvars(string[] arglist, BasToolsEngine engine, bool analyzed)
         {
             if (engine.CurrentListing == null)
             {
-                Console.WriteLine("No program loaded.");
+                Console.WriteLine("LVARS - No program loaded.");
                 return;
             }
             if (!analyzed)
             {
-                Console.WriteLine("Program has not been analysed.");
+                Console.WriteLine($"LVARS - Program '{engine.CurrentProgInfo.ProgName}' has not been analysed.");
                 return;
             }
 
@@ -331,10 +420,20 @@ namespace BasList.CLI
         }
         static void Preview(BasToolsEngine engine)
         {
+            if (engine.CurrentListing == null)
+            {
+                Console.WriteLine("PREVIEW - No program loaded.");
+                return;
+            }
             List(engine, 0, 0xFEFF, 20);
         }
         static void ListProg(BasToolsEngine engine, string[] arglist)
         {
+            if (engine.CurrentListing == null)
+            {
+                Console.WriteLine("LIST - No program loaded.");
+                return;
+            }
             int fromline = 0;
             int toline = 0xFFFF;
 
@@ -348,15 +447,49 @@ namespace BasList.CLI
             }
             if (arglist.Length > 2)
             {
-                int.TryParse(arglist[2], out toline);
+                if (!int.TryParse(arglist[2], out toline))
+                    toline = 0xFFFF;
             }
             List(engine, fromline, toline, 0);
+        }
+        static void ListIf(BasToolsEngine engine, string[] arglist)
+        {
+            if (engine.CurrentListing == null)
+            {
+                Console.WriteLine("LISTIF - No program loaded.");
+                return;
+            }
+            if (arglist.Length < 2)
+            {
+                Utilities.help(new string[] { "LISTIF", "listif" });
+                return;
+            }
+
+            int linesprinted = 0;
+            bool first = true;
+
+            foreach(ProgramLine line in engine.CurrentListing.Lines)
+            {
+                foreach (string arg in arglist)
+                {
+                    if (first)
+                    {
+                        first = false;
+                        continue;
+                    }
+                    if (line.NoSpacesLine.Contains(arg, StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (!Utilities.printLine(line, ref linesprinted)) return;
+                        break; // only print once, even if more than one match
+                    }
+                }
+            }
         }
         static void List(BasToolsEngine engine, int fromline, int toline, int totLineCount)
         {
             if (engine.CurrentListing == null)
             {
-                Console.WriteLine("No program loaded.");
+                Console.WriteLine("LIST - No program loaded.");
                 return;
             }
             int linesprinted = 0;
@@ -433,7 +566,7 @@ namespace BasList.CLI
                         first = false;
                         continue;
                     }
-                    if (string.Equals(name, arg, StringComparison.InvariantCultureIgnoreCase))
+                    if (string.Equals(name, arg, StringComparison.OrdinalIgnoreCase))
                     {
                         listme = true;
                         Console.WriteLine("");
@@ -518,6 +651,18 @@ namespace BasList.CLI
                 }
             }
             Console.ForegroundColor = ConsoleColor.White;
+        }
+        private static void VarDetail(string match, SymbolInfo symInfo)
+        {
+            SymbolKind varKind = InferKind("", match);
+            if (symInfo.Kind != varKind) return;
+            Console.WriteLine("  {0,10}: {1,20} - Assigned: {2,10} - Referenced :{3,11} ", symInfo.Kind, symInfo.Name, symInfo.AssignedCount, symInfo.ReferencedCount);
+            foreach (var use in symInfo.Uses)
+            {
+                Console.WriteLine("  at Line {0,20}, {1,10}, {2,10}, in {3,11} ", use.LineNumber,
+                    use.symbolReadWrite, use.symbolContext,
+                    (use.ParentProcedureType == ProcedureType.Proc ? "PROC" : "FN") + use.ParentProcOrFn);
+            }
         }
     }
 }

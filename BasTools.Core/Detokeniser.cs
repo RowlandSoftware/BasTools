@@ -21,6 +21,8 @@ namespace BasTools.Core
         private readonly HashSet<string> ArmRegisters;
         private readonly HashSet<string> Z80Mnemonics;
         private readonly HashSet<string> Z80Registers;
+        Dictionary<string, KeywordRole> KeywordRoles;
+
         public BasToolsEngine()
         {
             // Initialise the fields
@@ -49,6 +51,7 @@ namespace BasTools.Core
                 "IX","IY","IXH","IXL","IYH","IYL","SP","PC","I","R"
             };
 
+            KeywordRoles = new();
             readTokenTable(token, "BasTools.Core.TokenTable.txt");      // actually a mix of all single-byte tokens
             readTokenTable(Vtoken, "BasTools.Core.VTokenTable.txt");    // double-byte tokens
         }        
@@ -60,6 +63,9 @@ namespace BasTools.Core
 
             bool result = LoadFile(fn, State);
             if (!result) return false;
+
+            // Update progInfo
+            progInfo.Filename = fn;
 
             // determine file type (Acorn or Z80)
             int ll = State.Data[3];
@@ -674,41 +680,12 @@ namespace BasTools.Core
                             case "WHEN":
                                 tag = SemanticTags.InOutKeyword;
                                 break;
-                            case "TAB(":  // no space after these
-                            case "INSTR(":
-                            case "POINT(":
-                            case "LEFT$(":
-                            case "MID$(":
-                            case "RIGHT$(":
-                            case "STRING$(":
-                            case "GET":   // no space after bracket-optional function keywords
-                            case "GET$":
-                            case "CHR$":
-                            case "ASC":
-                            case "INKEY":
-                            case "VAL":
-                            case "LEN":
-                            case "SQR":
-                            case "ABS":
-                            case "SGN":
-                            case "EXP":
-                            case "LOG":
-                            case "SIN":
-                            case "COS":
-                            case "TAN":
-                            case "ATN":
-                            case "RND":
-                            case "EOF":  //? illegal without #
-                            case "SPC":
-                            case "PTR":
-                            case "EXT":
-                            case "EVAL":
-                            case "OPENIN":
-                            case "OPENOUT":
-                            case "OPENUP":
-                                tag = SemanticTags.BuiltInFn;
-                                break;
                         }
+                        if (KeywordRoles.TryGetValue(keyword, out var role) && role == KeywordRole.Function)
+                        {
+                            tag = SemanticTags.BuiltInFn;
+                        }
+
                         taggedline += tag + keyword + SemanticTags.Reset;
 
                         if (tag == SemanticTags.BuiltInFn && keyword.EndsWith('(')) // catch tokens like STRING$(
@@ -790,6 +767,13 @@ namespace BasTools.Core
                 }
 
                 if (t.tag == SemanticTags.Keyword && (t.value == "THEN" || t.value == "ELSE"))
+                {
+                    inIf = false;
+                    continue;
+                }
+
+                // NEW: commands that cannot appear in an IF condition
+                if (inIf && t.tag == SemanticTags.Keyword && t.value == "PRINT" && parenDepth == 0)
                 {
                     inIf = false;
                     continue;
@@ -1128,16 +1112,34 @@ namespace BasTools.Core
                 string[] temp = tline.Split('\t');
 
                 // BASIC token table: name \t byte
-                if (temp.Length == 2)
+                if (temp.Length == 3)
                 {
                     int key = byte.Parse(temp[1]);
                     toktable.Add(key, temp[0]);
+                    if (Enum.TryParse<KeywordRole>(temp[2], true, out var role))
+                    {
+                        KeywordRoles[temp[0]] = role;   // overwrite or insert
+                    }
+                    else
+                    {
+                        KeywordRoles[temp[0]] = KeywordRole.Unknown;
+                    }
+
                 }
                 // BASIC V token table: name \t hi \t lo
-                else if (temp.Length == 3)
+                else if (temp.Length == 4)
                 {
                     int key = (byte.Parse(temp[1]) << 8) | byte.Parse(temp[2]);
                     toktable.Add(key, temp[0]);
+                    if (Enum.TryParse<KeywordRole>(temp[3], true, out var role))
+                    {
+                        KeywordRoles[temp[0]] = role;   // overwrite or insert
+                    }
+                    else
+                    {
+                        KeywordRoles[temp[0]] = KeywordRole.Unknown;
+                    }
+
                 }
                 else
                 {

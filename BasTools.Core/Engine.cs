@@ -70,12 +70,6 @@
                 throw new BasToolsException($"Program '{filename}' could not be processed", e2);
             }
         }
-        public void loadAndDetokenise(string filename, FormattingOptions formatOptions, ProgInfo progInfo)
-        {
-            Listing listing = loadAndFormatFile(filename, formatOptions, progInfo);
-
-            return;
-        }
         public static IEnumerable<Token> WalkTagged(string line)
         {
             if (line == null) yield break;

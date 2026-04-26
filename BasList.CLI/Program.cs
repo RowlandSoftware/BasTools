@@ -341,7 +341,7 @@ namespace BasList.CLI
                 Console.Error.WriteLine("Error: No filename found");
                 help();
                 Environment.Exit(0);
-            }
+            }            
             if (switches.Bare) switches.FlgPause = false;
         }
         static void getDirectiveParams(string[] args, CommandSwitches s)
