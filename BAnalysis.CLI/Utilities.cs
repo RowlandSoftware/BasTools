@@ -11,6 +11,86 @@ namespace BasAnalysis.CLI
 {
     internal static class Utilities
     {
+        public static SymbolKind InferKind(string tag, string name)
+        {
+            if (name.EndsWith('%') && name.Length == 2 && (char.IsAsciiLetterUpper(name[0]) || name[0] == '@'))
+                return SymbolKind.StaticInt;
+            if (name.EndsWith('%'))
+                return SymbolKind.IntVar;
+            if (name.EndsWith('$'))
+                return SymbolKind.StringVar;
+            if (tag == SemanticTags.Variable)
+                return SymbolKind.RealVar;
+            if (tag == SemanticTags.FunctionName)
+                return SymbolKind.Fn;
+            if (tag == SemanticTags.ProcName)
+                return SymbolKind.Proc;
+            if (tag == SemanticTags.Label)
+                return SymbolKind.Label;
+            if (tag == SemanticTags.StringLiteral)
+                return SymbolKind.LiteralString;
+            return SymbolKind.FuckKnows;
+            // TODO Arrays?
+        }
+        public static void PrintByKind(SymbolKind kind, Dictionary<string, SymbolInfo> Symbols)
+        {
+            Console.ForegroundColor = ConsoleColor.White;
+            bool alternate = true;
+            foreach (SymbolInfo symInfo in Symbols.Values.Where(s => s.Kind == kind)
+            .OrderBy(s => s.Name))
+            {
+                Console.ForegroundColor = alternate ? ConsoleColor.White : ConsoleColor.Gray;       // mild stripes
+                alternate = !alternate;
+
+                if (kind == SymbolKind.LiteralString)
+                {
+                    Console.WriteLine("  {0,-35}{1,6}{2,10} ", symInfo.Name, symInfo.AssignedCount, symInfo.Name.Length - 2);
+                }
+                else if (kind == SymbolKind.Label)
+                {
+                    if (symInfo.AssignedCount > 1) Console.ForegroundColor = ConsoleColor.Red;       // assigned > once
+
+                    // find corresponding variable (without leading .)
+                    int refCount = 0; // symInfo.ReferencedCount;
+                    string name = symInfo.Name.Substring(1);
+                    SymbolKind refKind = InferKind(SemanticTags.Variable, name);
+
+                    SymbolInfo refVar;
+                    if (refKind != SymbolKind.FuckKnows)
+                    {
+                        refVar = Symbols[refKind + ":" + name];
+                        //Console.WriteLine($"{refVar.Name} - {refVar.ReferencedCount} - ");
+                        refCount = refVar.ReferencedCount;
+                    }
+
+                    Console.WriteLine("  {0,-20}{1,10}{2,11} ", symInfo.Name, symInfo.AssignedCount, refCount);
+                }
+                else
+                {
+                    if (symInfo.ReferencedCount == 0) Console.ForegroundColor = ConsoleColor.Red;       // assigned but unused
+                    if ((kind == SymbolKind.Fn || kind == SymbolKind.Proc) && symInfo.AssignedCount > 1)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Yellow;                                  // FN or PROC defined > once
+                    }
+                    Console.WriteLine("  {0,-20}{1,10}{2,11} ", symInfo.Name, symInfo.AssignedCount, symInfo.ReferencedCount);
+                }
+            }
+            Console.ForegroundColor = ConsoleColor.White;
+        }
+        public static Token? PeekNextNonSpaceToken(List<Token> tokens, int index)
+        {
+            for (int i = index + 1; i < tokens.Count; i++)
+            {
+                var t = tokens[i];
+
+                // Skip null-tag whitespace tokens
+                if (t.tag == null) // && string.IsNullOrWhiteSpace(t.value))
+                    continue;
+
+                return t;
+            }
+            return null;
+        }
         public static string[] SplitArgList(string input)
         {
             if (string.IsNullOrWhiteSpace(input))

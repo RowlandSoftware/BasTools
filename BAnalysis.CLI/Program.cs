@@ -9,62 +9,8 @@ namespace BasAnalysis.CLI
 {
     public class Program
     {
-        enum SymbolKind
-        {
-            StaticInt,
-            IntVar,
-            RealVar,
-            StringVar,
-            RealArray,
-            IntArray,
-            StringArray,
-            LiteralString,
-            Fn,
-            Proc,
-            Label,
-            FuckKnows
-        }
-        enum SymbolReadOrWrite
-        {
-            Assigned,
-            Referenced
-        }
-        enum SymbolContext
-        {
-            Global,
-            Local,
-            Parameter,
-            Call,
-            TBD
-        }
-        enum ProcedureType
-        {
-            Proc,
-            Fn,
-            Root
-        }
-        class SymbolUse
-        {
-            public int LineNumber { get; init; }
-            public SymbolContext symbolContext { get; init; }       // Global, Local, Parameter, Call
-            public SymbolReadOrWrite symbolReadWrite { get; init; }   // Assigned / Referenced
-            public string? ParentProcOrFn { get; set; }             // null = global
-            public ProcedureType? ParentProcedureType { get; set; } // null = global
-        }
-        class SymbolInfo
-        {
-            public string Name { get; init; } = "";
-            public SymbolKind Kind { get; init; }   // IntVar, RealVar, StringVar, Array, PROC, FN, LocalVar, etc.
-
-            public int AssignedCount { get; set; }
-            public int ReferencedCount { get; set; }
-
-            public List<SymbolUse> Uses { get; } = new();   // line numbers, contexts, parent
-        }
-
         static Dictionary<string, SymbolInfo> Symbols = new();
         static bool analyzed; // = false by default
-
         static void Main(string[] args)
         {
             string cmd = string.Empty;
@@ -142,11 +88,14 @@ namespace BasAnalysis.CLI
                         Analyse(engine, ref analyzed);
                         break;
                     case "LVAR":
-                        Listvar(arglist, engine, analyzed);
+                        Listvar(engine, arglist, analyzed);
                         break;
                     case "LVARS":
-                        Listvars(arglist, engine, analyzed)
-                        ; break;
+                        Listvars(engine, arglist, analyzed);
+                        break;
+                    case "LPROC":
+                        Listproc(engine, arglist, analyzed);
+                        break;
                     case "QUIT":
                     case "EXIT":
                     case "END":
@@ -198,32 +147,96 @@ namespace BasAnalysis.CLI
             }
 
             bool expectingAssignmentTarget;
+            HashSet<string> localVars = new();
+            HashSet<string> parameters = new();
+
             ProcedureType procedureType = ProcedureType.Root;
             string procedureName = string.Empty;
 
             foreach (ProgramLine line in engine.CurrentListing.Lines)
             {
+                /* MOved to end
+                 * / Reset only when outside any DEF block
+                if (!line.IsInDef && !line.IsDef)
+                {
+                    procedureType = ProcedureType.Root;
+                    procedureName = "ROOT"; // TODO
+                    localVars.Clear();
+                    parameters.Clear();
+                }*/
+
                 // line level state
-                expectingAssignmentTarget = true; // at start of statement...
+                expectingAssignmentTarget = true; // start of line is start of statement...
 
                 //Console.Write($"{line.LineNumber} ");
                 List<Token> tokens = BasToolsEngine.WalkTagged(line.TaggedLine).ToList();
 
                 for (int i = 0; i < tokens.Count; i++)
                 {
-                    SymbolContext context = SymbolContext.TBD;
+                    SymbolContext context = SymbolContext.TBD; // Global, Local, Parameter, Call, NA, TBD
                     var tok = tokens[i];
 
-                    if (tok.tag == SemanticTags.StatementSep)
+                    if (tok.tag == SemanticTags.StatementSep ||
+                        (tok.tag == SemanticTags.Keyword && (tok.value is "REPEAT" or "ELSE")))
                     {
                         expectingAssignmentTarget = true;
                         continue;
                     }
 
+                    if (tok.tag == SemanticTags.Keyword && tok.value == "LOCAL")
+                    {
+                        int j = i + 1;
+                        while (j < tokens.Count && tokens[j].tag != SemanticTags.StatementSep)
+                        {
+                            if (tokens[j].tag == SemanticTags.Variable)
+                            {
+                                localVars.Add(tokens[j].value);
+                                //Console.WriteLine(">" + tokens[j].value);
+                            }
+                            j++;
+                        }
+                        //i = j; // Don't skip: we need synthetic assignments or counts go out of sync
+                        continue;
+                    }
+                    if (tok.tag == SemanticTags.Keyword && tok.value == "FOR") // without this, FOR i=0 TO 4:NEXT would be an assignment without 'use'
+                    {
+                        Token? nextVar = Utilities.PeekNextNonSpaceToken(tokens, i);
+                        if (nextVar != null && nextVar.tag == SemanticTags.Variable) // anything other than variable is illegal as control variable
+                        {
+                            RecordUse(
+                                SemanticTags.Variable,
+                                nextVar.value,
+                                line.LineNumber,
+                                SymbolReadOrWrite.Referenced,   // synthetic reference
+                                SymbolContext.Local, procedureName, procedureType
+                            );
+                        }
+                    }
+
                     if (tok.tag == SemanticTags.Variable)
                     {
+                        // Derive Context for variable
+                        if (procedureType == ProcedureType.Root)
+                        {
+                            context = SymbolContext.Global;
+                        }
+                        else if (parameters.Contains(tok.value))
+                        {
+                            context = SymbolContext.Parameter;
+                        }
+                        else if (localVars.Contains(tok.value))
+                        {
+                            context = SymbolContext.Local;
+                        }
+                        else
+                        {
+                            // Variable inside a PROC/FN but not declared LOCAL or parameter
+                            // BBC BASIC treats these as GLOBAL
+                            context = SymbolContext.Global;
+                        }
+
                         // Look ahead to see if this is an assignment
-                        Token? next = PeekNextNonSpaceToken(tokens, i);
+                        Token? next = Utilities.PeekNextNonSpaceToken(tokens, i);
 
                         bool isAssignment = expectingAssignmentTarget &&
                                             next?.tag == SemanticTags.Operator &&
@@ -231,7 +244,7 @@ namespace BasAnalysis.CLI
 
                         RecordUse(tok.tag, tok.value, line.LineNumber,
                             isAssignment ? SymbolReadOrWrite.Assigned : SymbolReadOrWrite.Referenced,
-                            SymbolContext.TBD, procedureName, procedureType);
+                           context, procedureName, procedureType);
 
                         expectingAssignmentTarget = false;
                         continue;
@@ -239,17 +252,64 @@ namespace BasAnalysis.CLI
 
                     if (tok.tag is SemanticTags.ProcName or SemanticTags.FunctionName)
                     {
-                        RecordUse(tok.tag, tok.value, line.LineNumber,
-                            line.IsDef ? SymbolReadOrWrite.Assigned : SymbolReadOrWrite.Referenced,
-                            line.IsDef ? SymbolContext.TBD : SymbolContext.Call, procedureName, procedureType);
+                        if (line.IsDef)
+                        {
+                            if (tok.tag == SemanticTags.ProcName)
+                                procedureType = ProcedureType.Proc;
+                            else
+                                procedureType = ProcedureType.Fn;
+                            
+                            procedureName = tok.value;
 
+                            RecordUse(tok.tag, tok.value, line.LineNumber, SymbolReadOrWrite.Assigned,
+                                SymbolContext.NA, "", procedureType); // here, procedure type = DEFPROC or DEFFN
+
+                            localVars.Clear();
+                            parameters.Clear();
+
+                            // Now parse parameters
+                            int j = i + 1;
+                            bool inParens = false;
+
+                            while (j < tokens.Count)
+                            {
+                                if (tokens[j].value == "(") inParens = true;
+                                else if (tokens[j].value == ")") break;
+                                else if (inParens && tokens[j].tag == SemanticTags.Variable)
+                                {
+                                    parameters.Add(tokens[j].value);
+                                    localVars.Add(tokens[j].value); // parameters are also local
+                                }
+                                j++;
+                            }
+                            // Now record a synthetic assignment for each
+                            foreach (var p in parameters)
+                            {
+                                // Synthetic assignment at line of DEF
+                                RecordUse(
+                                    SemanticTags.Variable,
+                                    p,
+                                    line.LineNumber,
+                                    SymbolReadOrWrite.Assigned,
+                                    SymbolContext.Parameter,
+                                    procedureName,
+                                    procedureType
+                                );
+                            }
+                        }
+                        else // is a PROC or FN call
+                        {
+                            RecordUse(tok.tag, tok.value, line.LineNumber,
+                            SymbolReadOrWrite.Referenced,
+                            SymbolContext.Call, procedureName, procedureType);  // here, procedure name and type refer to the parent proc
+                        }
                         continue;
                     }
                     if (tok.tag is SemanticTags.StringLiteral)
                     {
                         RecordUse(tok.tag, tok.value, line.LineNumber,
                             SymbolReadOrWrite.Assigned,
-                            SymbolContext.TBD, procedureName, procedureType);
+                            SymbolContext.NA, procedureName, procedureType);    // TODO SymbolContext should record whether part of an argument
 
                         expectingAssignmentTarget = false;
                         continue;
@@ -257,8 +317,8 @@ namespace BasAnalysis.CLI
                     if (tok.tag is SemanticTags.Label)
                     {
                         RecordUse(tok.tag, tok.value, line.LineNumber,
-                            SymbolReadOrWrite.Assigned,
-                            SymbolContext.TBD, procedureName, procedureType);
+                            SymbolReadOrWrite.Assigned,                         // .label - all assigned. References tracked in variables
+                            SymbolContext.TBD, procedureName, procedureType);   // Context should show if local
 
                         expectingAssignmentTarget = false;
                         continue;
@@ -270,56 +330,21 @@ namespace BasAnalysis.CLI
                         expectingAssignmentTarget = false;
                         continue;
                     }
-
-                    if (line.IsInDef == false) // exiting from PROC or FN
-                    {
-                        procedureType = ProcedureType.Root;
-                    }
-                    if (tok.tag == SemanticTags.Keyword && tok.value == "DEF") // entering PROC or FN
-                    {
-                        Token? next = PeekNextNonSpaceToken(tokens, i);
-                        if (next?.tag == SemanticTags.ProcName)
-                        {
-                            procedureName = next.value;
-                            switch (next.tag)
-                            {
-                                case SemanticTags.ProcName:
-                                    procedureName = next.value;
-                                    procedureType = ProcedureType.Proc;
-                                    break;
-                                case SemanticTags.FunctionName:
-                                    procedureName = next.value;
-                                    procedureType = ProcedureType.Fn;
-                                    break;
-                                default:
-                                    procedureType = ProcedureType.Root;
-                                    break;
-                            }
-                        }
-                    }
-
+                }
+                // Reset only when outside any DEF block
+                if (!line.IsInDef && !line.IsDef)
+                {
+                    procedureType = ProcedureType.Root;
+                    procedureName = "";
+                    //localVars.Clear(); - we do this when meet a DEF
+                    //parameters.Clear();
                 }
             }
             Console.Write($"Analysed {Symbols.Count} unique tokens\n");
             analyzed = true;
             return true;
         }
-        private static Token? PeekNextNonSpaceToken(List<Token> tokens, int index)
-        {
-            for (int i = index + 1; i < tokens.Count; i++)
-            {
-                var t = tokens[i];
-
-                // Skip null-tag whitespace tokens
-                if (t.tag == null) // && string.IsNullOrWhiteSpace(t.value))
-                    continue;
-
-                return t;
-            }
-
-            return null;
-        }
-        static void Listvar(string[] arglist, BasToolsEngine engine, bool analyzed)
+        static void Listvar(BasToolsEngine engine, string[] arglist, bool analyzed)
         {
             if (engine.CurrentListing == null)
             {
@@ -343,11 +368,11 @@ namespace BasAnalysis.CLI
                 or SymbolKind.StringVar))
                 {
                     if (arg == symInfo.Name)
-                        VarDetail(arg, symInfo); // Console.WriteLine("{0,-20}{1,-10}{2,10}{3,11}", symInfo.Name, symInfo.Kind, symInfo.AssignedCount, symInfo.ReferencedCount);
+                        VarDetail(arg, symInfo);
                 }
             }
         }
-        static void Listvars(string[] arglist, BasToolsEngine engine, bool analyzed)
+        static void Listvars(BasToolsEngine engine, string[] arglist, bool analyzed)
         {
             if (engine.CurrentListing == null)
             {
@@ -365,7 +390,7 @@ namespace BasAnalysis.CLI
             Console.WriteLine("\n  Static Integer Variables");
             Console.ForegroundColor = ConsoleColor.Blue;
             Console.WriteLine("\n  {0,-20}{1,10}{2,11}\n", "Variable", "Assigned", "Referenced");
-            PrintByKind(SymbolKind.StaticInt);
+            Utilities.PrintByKind(SymbolKind.StaticInt, Symbols);
 
             Console.WriteLine("\n  Dynamic Variables (may include labels)");
 
@@ -374,49 +399,96 @@ namespace BasAnalysis.CLI
             Console.WriteLine("\n  Integer Variables");
             Console.ForegroundColor = ConsoleColor.Blue;
             Console.WriteLine("\n  {0,-20}{1,10}{2,11}\n", "Variable", "Assigned", "Referenced");
-            PrintByKind(SymbolKind.IntVar);
+            Utilities.PrintByKind(SymbolKind.IntVar, Symbols);
 
             // Real variables
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine("\n  Real Number Variables");
             Console.ForegroundColor = ConsoleColor.Blue;
             Console.WriteLine("\n  {0,-20}{1,10}{2,11}\n", "Variable", "Assigned", "Referenced");
-            PrintByKind(SymbolKind.RealVar);
+            Utilities.PrintByKind(SymbolKind.RealVar, Symbols);
 
             // String variables
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine("\n  String Variables");
             Console.ForegroundColor = ConsoleColor.Blue;
             Console.WriteLine("\n  {0,-20}{1,10}{2,11}\n", "Variable", "Assigned", "Referenced");
-            PrintByKind(SymbolKind.StringVar);
+            Utilities.PrintByKind(SymbolKind.StringVar, Symbols);
 
             // PROCs
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine("\n  Sub-procedures (PROCs)");
             Console.ForegroundColor = ConsoleColor.Blue;
-            Console.WriteLine("\n  {0,-20}{1,10}{2,11}\n", "PROC name", "Assigned", "Referenced");
-            PrintByKind(SymbolKind.Proc);
+            Console.WriteLine("\n  {0,-20}{1,10}{2,11}\n", "PROC name", "Declared", "Referenced");
+            Utilities.PrintByKind(SymbolKind.Proc, Symbols);
 
             // FNs
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine("\n  Functions (FNs)");
             Console.ForegroundColor = ConsoleColor.Blue;
-            Console.WriteLine("\n  {0,-20}{1,10}{2,11}\n", "FN name", "Assigned", "Referenced");
-            PrintByKind(SymbolKind.Fn);
+            Console.WriteLine("\n  {0,-20}{1,10}{2,11}\n", "FN name", "Declared", "Referenced");
+            Utilities.PrintByKind(SymbolKind.Fn, Symbols);
 
             // Assembler label
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine("\n  Assembler labels");
             Console.ForegroundColor = ConsoleColor.Blue;
             Console.WriteLine("\n  {0,-20}{1,10}{2,11}\n", "Label", "Assigned", "Referenced");
-            PrintByKind(SymbolKind.Label);
+            Utilities.PrintByKind(SymbolKind.Label, Symbols);
 
             // Strings
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine("\n  Literal strings");
             Console.ForegroundColor = ConsoleColor.Blue;
             Console.WriteLine("\n  {0,-35}{1,6}{2,10}\n", "String", "Count", "Length");
-            PrintByKind(SymbolKind.LiteralString);
+            Utilities.PrintByKind(SymbolKind.LiteralString, Symbols);
+        }
+        static void Listproc(BasToolsEngine engine, string[] arglist, bool analysed)
+        {
+            if (engine.CurrentListing == null)
+            {
+                Console.WriteLine("LPROC - No program loaded.");
+                return;
+            }
+            if (!analyzed)
+            {
+                Console.WriteLine($"LPROC - Program '{engine.CurrentProgInfo.ProgName}' has not been analysed.");
+                return;
+            }
+            if (arglist.Length < 2)
+            {
+                Utilities.help(new string[] { "LPROC", "lproc   " });
+                return;
+            }
+
+            string name = arglist[1];
+            if (name.StartsWith("proc", StringComparison.OrdinalIgnoreCase))
+            {
+                name = name.Substring(4);
+            }
+            if (!Symbols.TryGetValue("Proc:" + name, out var symInfo))
+            {
+                Console.WriteLine($"PROC{name} not found. (Tip: PROCs are case sensitive)");
+                return;
+            }
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("\n  {0}: {1} - Declared: {2} - Called :{3} \n", symInfo.Kind, symInfo.Name, symInfo.AssignedCount, symInfo.ReferencedCount);
+            Console.ForegroundColor = ConsoleColor.White;
+
+            // List PROC signature
+            var defLine = symInfo.Uses.FirstOrDefault(u =>
+               u.symbolContext == SymbolContext.NA &&
+               u.symbolReadWrite == SymbolReadOrWrite.Assigned);
+
+            if (defLine != null)
+            {
+                int lineNumber = defLine.LineNumber;
+                ListProg(engine, new string[] { "", lineNumber.ToString() });
+            }
+            else
+            {
+                Console.WriteLine($"No DEF found for {name}");
+            }            
         }
         static void Preview(BasToolsEngine engine)
         {
@@ -435,7 +507,7 @@ namespace BasAnalysis.CLI
                 return;
             }
             int fromline = 0;
-            int toline = 0xFFFF;
+            int toline = 0xFEFF;
 
             if (arglist.Length > 1)
             {
@@ -443,6 +515,10 @@ namespace BasAnalysis.CLI
                 {
                     ListDef(engine, arglist);
                     return;
+                }
+                else
+                {
+                    toline = fromline;
                 }
             }
             if (arglist.Length > 2)
@@ -582,9 +658,9 @@ namespace BasAnalysis.CLI
             if (tag == SemanticTags.StringLiteral && string.IsNullOrWhiteSpace(name))
                 return;
 
-            SymbolKind kind = InferKind(tag, name);
+            SymbolKind kind = Utilities.InferKind(tag, name);
 
-            if (!Symbols.TryGetValue(kind + ":" + name, out var sym))
+            if (!Symbols.TryGetValue(kind + ":" + name, out var sym)) // If first sight, create SymbolInfo with key "<kind>:<name>"
             {
                 sym = new SymbolInfo { Name = name, Kind = kind };
                 Symbols.Add(kind + ":" + name, sym);
@@ -600,68 +676,28 @@ namespace BasAnalysis.CLI
                 LineNumber = line,
                 symbolReadWrite = readwrite,
                 symbolContext = context,
-                ParentProcOrFn = currentProcName,
+                ParentName = currentProcName,
                 ParentProcedureType = procedureType
             };
             sym.Uses.Add(symbolUse);
         }
-        private static SymbolKind InferKind(string tag, string name)
-        {
-            if (name.EndsWith('%') && name.Length == 2 && (char.IsAsciiLetterUpper(name[0]) || name[0] == '@'))
-                return SymbolKind.StaticInt;
-            if (name.EndsWith('%'))
-                return SymbolKind.IntVar;
-            if (name.EndsWith('$'))
-                return SymbolKind.StringVar;
-            if (tag == SemanticTags.Variable)
-                return SymbolKind.RealVar;
-            if (tag == SemanticTags.FunctionName)
-                return SymbolKind.Fn;
-            if (tag == SemanticTags.ProcName)
-                return SymbolKind.Proc;
-            if (tag == SemanticTags.Label)
-                return SymbolKind.Label;
-            if (tag == SemanticTags.StringLiteral)
-                return SymbolKind.LiteralString;
-            return SymbolKind.FuckKnows;
-            // TODO Arrays?
-        }
-        private static void PrintByKind(SymbolKind kind)
-        {
-            Console.ForegroundColor = ConsoleColor.White;
-            bool alternate = true;
-            foreach (SymbolInfo symInfo in Symbols.Values.Where(s => s.Kind == kind)
-            .OrderBy(s => s.Name))
-            {
-                Console.ForegroundColor = alternate ? ConsoleColor.White : ConsoleColor.Gray;       // mild stripes
-                alternate = !alternate;
-
-                if (kind == SymbolKind.LiteralString)
-                {
-                    Console.WriteLine("  {0,-35}{1,6}{2,10} ", symInfo.Name, symInfo.AssignedCount, symInfo.Name.Length - 2);
-                }
-                else
-                {
-                    if (symInfo.ReferencedCount == 0) Console.ForegroundColor = ConsoleColor.Red;       // assigned but unused
-                    if ((kind == SymbolKind.Fn || kind == SymbolKind.Proc) && symInfo.AssignedCount > 1)
-                    {
-                        Console.ForegroundColor = ConsoleColor.Yellow;                                  // FN or PROC defined > once
-                    }
-                    Console.WriteLine("  {0,-20}{1,10}{2,11} ", symInfo.Name, symInfo.AssignedCount, symInfo.ReferencedCount);
-                }
-            }
-            Console.ForegroundColor = ConsoleColor.White;
-        }
+        
         private static void VarDetail(string match, SymbolInfo symInfo)
         {
-            SymbolKind varKind = InferKind("", match);
+            SymbolKind varKind = Utilities.InferKind("", match);
             if (symInfo.Kind != varKind) return;
-            Console.WriteLine("  {0,10}: {1,20} - Assigned: {2,10} - Referenced :{3,11} ", symInfo.Kind, symInfo.Name, symInfo.AssignedCount, symInfo.ReferencedCount);
+
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("\n  {0}: {1} - Assigned: {2} - Referenced :{3} \n", symInfo.Kind, symInfo.Name, symInfo.AssignedCount, symInfo.ReferencedCount);
+            Console.ForegroundColor = ConsoleColor.White;
+
             foreach (var use in symInfo.Uses)
             {
-                Console.WriteLine("  at Line {0,20}, {1,10}, {2,10}, in {3,11} ", use.LineNumber,
-                    use.symbolReadWrite, use.symbolContext,
-                    (use.ParentProcedureType == ProcedureType.Proc ? "PROC" : "FN") + use.ParentProcOrFn);
+                Console.WriteLine("  at line {0,5}, {1,10}, {2,10}, in {3}",
+                    use.LineNumber,
+                    use.symbolReadWrite,
+                    use.symbolContext,
+                    use.ParentProcedureType + use.ParentName);
             }
         }
     }
