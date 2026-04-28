@@ -262,6 +262,89 @@ namespace BasTools.Core
                 }
             }
         }
+        // ******** PrintOneLine - Utility procedure to PrettyPrint a soingle line ********
+        public static bool PrintOneLine(ProgramLine progline, ref int linesprinted)
+        {
+            int printedLineLength = 0;
+
+            // line number
+            if (ConsoleColorMap.TryGetColor(SemanticTags.LineNumber, out var c, true))
+                Console.ForegroundColor = c;
+            string ln = progline.FormattedLineNumber;
+            printedLineLength = ln.Length + 1;
+            Console.Write(ln + ' ');
+            Console.ForegroundColor = ConsoleColor.White;
+
+            // Indents
+            Console.Write(new string(' ', progline.IndentLevel * 2));
+            printedLineLength += progline.IndentLevel * 2;
+
+            Console.Write(new string(' ', progline.DefIndent * 2));
+            printedLineLength += progline.DefIndent * 2;
+
+            // Line contents
+            foreach (Token tok in BasToolsEngine.WalkTagged(progline.FormattedTagged))
+            {
+                if (tok.tag != null && ConsoleColorMap.TryGetColor(tok.tag, out c, true))
+                {
+                    Console.ForegroundColor = c;
+                    Console.Write(tok.value);
+                    Console.ForegroundColor = ConsoleColor.White;
+                }
+                else
+                {
+                    Console.Write(tok.value);
+                }
+            }
+            Console.WriteLine("");
+            printedLineLength += progline.FormattedPlain.Length;
+
+            int windowWidth = Console.WindowWidth;
+            int rows = (printedLineLength / windowWidth) + 1; // For operands of integer types, the result of the / operator an integer, the quotient of the two operands rounded toward zero
+
+            linesprinted += rows;
+
+            // Deal with pausing
+            switch (SimplePauseCheck(ref linesprinted))
+            {
+                case ConsoleKey.Spacebar: linesprinted = 0; break;
+                case ConsoleKey.Enter: linesprinted--; break;
+                case ConsoleKey.Escape: return false;
+            }
+            return true;
+        }
+        private static ConsoleKey SimplePauseCheck(ref int linesprinted)
+        {
+            if (linesprinted == Console.WindowHeight - 4)
+            {
+                Console.ForegroundColor = ConsoleColor.White;
+
+                string prompt = " -- Enter - next line | Space - Continue | Esc - End --";
+                if (Console.WindowWidth <= prompt.Length)
+                {
+                    prompt = "[Enter | Space | Esc]";
+                }
+                Console.Write(prompt);
+                // Read until a valid key is pressed
+                ConsoleKey key;
+                while (true)
+                {
+                    var info = Console.ReadKey(intercept: true);
+                    key = info.Key;
+
+                    if (key == ConsoleKey.Spacebar ||
+                        key == ConsoleKey.Enter ||
+                        key == ConsoleKey.Escape)
+                    {
+                        break; // valid key
+                    }
+                }
+                // Clear the prompt once
+                ClearCurrentConsoleLine();
+                return key;
+            }
+            return ConsoleKey.None;
+        }
 
         // ******** PrintLineBody - handles plain and PrettyPrint ********
         static void PrintLineBody(string line, ListerState listerState, ListerOptions switches, ref int printedLineLength, ref int linesprinted)
@@ -357,11 +440,9 @@ namespace BasTools.Core
         }
         static void PrintIndents(ProgramLine progline, ref int printedLineLength, ListerOptions switches)
         {
-            //if (!progline.InAsm)
-            //{
             if (switches.FlgIndent)
             {
-                Console.Write(new string(' ', progline.IndentLevel * 2)); //// ignore indents in assembler - assume is in [OPT opt% loop
+                Console.Write(new string(' ', progline.IndentLevel * 2));
                 printedLineLength += progline.IndentLevel * 2;
             }
             //}

@@ -5,7 +5,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Reflection;
 using System.Text;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
+#pragma warning disable CA1861, CA1305
 
 namespace BasAnalysis.CLI
 {
@@ -156,28 +156,33 @@ namespace BasAnalysis.CLI
         }
         public static void help(string[] args)
         {
-            if (args.Length <= 1)
+            if (args.Length == 0)
             {
                 banner();
                 Console.WriteLine("    BasList <filename>");
                 Console.WriteLine("\n    COMMANDS\n");
-                Console.WriteLine("    {0,-10}{1,-10}{2,-10}{3,-10}{4,-10}{5,-10}", "help", "load", "analyze", "list", "lvar", "lvars");
-                Console.WriteLine("    {0,-10}{1,-10}{2,-10}{3,-10}{4,-10}{5,-10}", "lfn", "lproc", "tree", "preview", "cls", "clear");
-                Console.WriteLine("    {0,-10}{1,-10}{2,-10}", "exit", "quit", "x");
+                Console.WriteLine("    {0,-10}{1,-10}{2,-10}{3,-10}{4,-10}{5,-10}", "help", "load", "analyze", "preview", "list", "blist");
+                Console.WriteLine("    {0,-10}{1,-10}{2,-10}{3,-10}{4,-10}", "lvar", "lvars", "lfn", "lproc", "tree");
+                Console.WriteLine("    {0,-10}{1,-10}{2,-10}{3,-10}{4,-10}", "cls", "clear", "exit", "quit", "x");
                 Console.WriteLine("\nEnter help <command> for further help\n");
             }
             else
             {
-                Console.WriteLine("");
-                switch (args[1].ToLower(CultureInfo.InvariantCulture))
+                Console.WriteLine("\n< > - arguments; [ ] - optional; | - or; { } - list of one or more\n");
+                switch (args[0].ToLower(CultureInfo.InvariantCulture))
                 {
                     case "load":
                         Console.WriteLine("load <file spec> - If file spec contains spaces, enclose in double quotes");
                         break;
+                    case "blist":
+                        Console.WriteLine("blist         - As List with syntax colouring");
+                        help(new string[] { "list" });
+                        break;
                     case "list":
-                        Console.WriteLine("list        - Display entire program");
-                        Console.WriteLine("list nn nn  - Display program lines (from to)");
-                        Console.WriteLine("list <name> - Display PROC or FN (list)");
+                        Console.WriteLine("list          - Display entire program");
+                        Console.WriteLine("list nn       - Display program line");
+                        Console.WriteLine("list nn nn    - Display program lines (from to)");
+                        Console.WriteLine("list {<name>} - Display PROC or FN (list)");
                         break;
                     case "preview":
                         Console.WriteLine("preview     - Display first 20 lines of program");
@@ -199,7 +204,7 @@ namespace BasAnalysis.CLI
                         Console.WriteLine("lproc <PROC name> - Display detailed analysis of named procedure");
                         break;
                     case "listif":
-                        Console.WriteLine("listif <text>     - Display lines that contain <text> (list)");
+                        Console.WriteLine("listif {<text>}   - Display lines that contain <text> (list)");
                         break;
                     case "cls":
                     case "clear":
@@ -209,10 +214,10 @@ namespace BasAnalysis.CLI
                     case "quit":
                     case "x":
                     case "end":
-                        Console.WriteLine($"{args[1]} - Leave BasAnalysis");
+                        Console.WriteLine($"{args[0]} - Leave BasAnalysis");
                         break;
                     default:
-                        Console.WriteLine($"'{args[1]}' not recognised");
+                        Console.WriteLine($"'{args[0]}' not recognised");
                         break;
                 }
             }

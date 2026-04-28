@@ -30,7 +30,7 @@ namespace BasAnalysis.CLI
         Local,      // LOCAL var
         Parameter,  // Part of formal parameters (so in effect local)
         Call,       // Call to FN/PROC
-        NA,         // Not applicable, currently a DEF
+        NA,         // Not applicable, currently a DEF, string literal
         TBD         // placeholder
     }
     public enum ProcedureType
@@ -41,6 +41,8 @@ namespace BasAnalysis.CLI
     }
     public class SymbolUse
     {
+        public string? CalledName { get; init; }
+        public SymbolKind? CalledKind { get; init; }
         public int LineNumber { get; init; }
         public SymbolContext symbolContext { get; init; }       // Global, Local, Parameter, Call etc
         public SymbolReadOrWrite symbolReadWrite { get; init; } // Assigned / Referenced

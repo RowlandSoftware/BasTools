@@ -70,6 +70,10 @@
                 throw new BasToolsException($"Program '{filename}' could not be processed", e2);
             }
         }
+        public static bool PrintOneLine(ProgramLine progline, ref int linesprinted)
+        {
+            return BasLister.PrintOneLine(progline, ref linesprinted);
+        }
         public static IEnumerable<Token> WalkTagged(string line)
         {
             if (line == null) yield break;
