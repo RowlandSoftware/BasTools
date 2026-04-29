@@ -159,7 +159,9 @@ namespace BasTools.Core
             foreach (string mnemonic in mnemonics)
             {
                 if (!string.IsNullOrEmpty(mnemonic))
+                {
                     set.Add(mnemonic.Trim());
+                }                   
             }
             return set;
         }

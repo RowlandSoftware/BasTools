@@ -22,6 +22,7 @@ namespace BasTools.Core
         private readonly HashSet<string> Z80Mnemonics;
         private readonly HashSet<string> Z80Registers;
         Dictionary<string, KeywordRole> KeywordRoles;
+        //public HashSet<string> TokensWithOpenParen;
 
         public BasToolsEngine()
         {
@@ -51,9 +52,12 @@ namespace BasTools.Core
                 "IX","IY","IXH","IXL","IYH","IYL","SP","PC","I","R"
             };
 
+            //TokensWithOpenParen = new HashSet<string>();
             KeywordRoles = new();
             readTokenTable(token, "BasTools.Core.TokenTable.txt");      // actually a mix of all single-byte tokens
             readTokenTable(Vtoken, "BasTools.Core.VTokenTable.txt");    // double-byte tokens
+
+            
         }        
         internal bool ProcessRawProgram(string fn, Listing listing, ProgInfo progInfo)
         {
@@ -1099,7 +1103,7 @@ namespace BasTools.Core
             linenospaces += addition;
             taggedline += addition;
         }
-        private void readTokenTable(Dictionary<int, string> toktable, string filename)
+        private void readTokenTable(Dictionary<int, string> toktable, string filename) //, HashSet<string> TokensWithOpenParen
         {
             string table = GetEmbeddedResourceContent(filename);
             string[] tokenlist = table.Split("\r\n");
@@ -1116,6 +1120,7 @@ namespace BasTools.Core
                 {
                     int key = byte.Parse(temp[1]);
                     toktable.Add(key, temp[0]);
+                    
                     if (Enum.TryParse<KeywordRole>(temp[2], true, out var role))
                     {
                         KeywordRoles[temp[0]] = role;   // overwrite or insert
@@ -1124,7 +1129,11 @@ namespace BasTools.Core
                     {
                         KeywordRoles[temp[0]] = KeywordRole.Unknown;
                     }
-
+                    /*if (temp[0].EndsWith('('))
+                    {
+                        if (!TokensWithOpenParen.Contains(temp[0]))
+                            TokensWithOpenParen.Add(temp[0]);
+                    }*/
                 }
                 // BASIC V token table: name \t hi \t lo
                 else if (temp.Length == 4)
@@ -1139,7 +1148,11 @@ namespace BasTools.Core
                     {
                         KeywordRoles[temp[0]] = KeywordRole.Unknown;
                     }
-
+                    /*if (temp[0].EndsWith('('))
+                    {
+                        if (!TokensWithOpenParen.Contains(temp[0]))
+                            TokensWithOpenParen.Add(temp[0]);
+                    }*/
                 }
                 else
                 {

@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Reflection;
 using System.Text;
+using System.Xml.Linq;
 #pragma warning disable CA1861, CA1305
 
 namespace BasAnalysis.CLI
@@ -29,7 +30,7 @@ namespace BasAnalysis.CLI
                 return SymbolKind.Label;
             if (tag == SemanticTags.StringLiteral)
                 return SymbolKind.LiteralString;
-            return SymbolKind.FuckKnows;
+            return SymbolKind.Unknown;
             // TODO Arrays?
         }
         public static void PrintByKind(SymbolKind kind, Dictionary<string, SymbolInfo> Symbols)
@@ -56,7 +57,7 @@ namespace BasAnalysis.CLI
                     SymbolKind refKind = InferKind(SemanticTags.Variable, name);
 
                     SymbolInfo refVar;
-                    if (refKind != SymbolKind.FuckKnows)
+                    if (refKind != SymbolKind.Unknown)
                     {
                         refVar = Symbols[refKind + ":" + name];
                         //Console.WriteLine($"{refVar.Name} - {refVar.ReferencedCount} - ");
@@ -159,11 +160,11 @@ namespace BasAnalysis.CLI
             if (args.Length == 0)
             {
                 banner();
-                Console.WriteLine("    BasList <filename>");
+                Console.WriteLine("    BasList <filename> [/analyse | /analyze] [/preview]");
                 Console.WriteLine("\n    COMMANDS\n");
                 Console.WriteLine("    {0,-10}{1,-10}{2,-10}{3,-10}{4,-10}{5,-10}", "help", "load", "analyze", "preview", "list", "blist");
-                Console.WriteLine("    {0,-10}{1,-10}{2,-10}{3,-10}{4,-10}", "lvar", "lvars", "lfn", "lproc", "tree");
-                Console.WriteLine("    {0,-10}{1,-10}{2,-10}{3,-10}{4,-10}", "cls", "clear", "exit", "quit", "x");
+                Console.WriteLine("    {0,-10}{1,-10}{2,-10}{3,-10}{4,-10}{5,-10}", "lvar", "lvars", "lfn", "lproc", "tree", "x");
+                Console.WriteLine("    {0,-10}{1,-10}{2,-10}{3,-10}{4,-10}{5,-10}", "cls", "clear", "cat", "dir", "exit", "quit");
                 Console.WriteLine("\nEnter help <command> for further help\n");
             }
             else
@@ -210,6 +211,11 @@ namespace BasAnalysis.CLI
                     case "clear":
                         Console.WriteLine("cls | clear - Clear screen");
                         break;
+                    case "cat":
+                    case "dir":
+                    case ".":
+                        Console.WriteLine("cat | dir - Catalogue current directory");
+                        break;
                     case "exit":
                     case "quit":
                     case "x":
@@ -222,7 +228,35 @@ namespace BasAnalysis.CLI
                 }
             }
         }
-
+        /******** Tree Helpers **********/
+        public static CallNode GetOrAdd(Dictionary<string, CallNode> dict, string name)
+        {
+            if (!dict.TryGetValue(name, out var node))
+            {
+                node = new CallNode(name);
+                dict[name] = node;
+            }
+            return node;
+        }
+        public static string FullName(ProcedureType? procType, string name)
+        {
+            return procType switch
+            {
+                ProcedureType.Proc => "PROC" + name,
+                ProcedureType.Fn => "FN" + name,
+                ProcedureType.Root => "ROOT",
+                _ => name
+            };
+        }
+        public static string FullName(SymbolKind? kind, string name)
+        {
+            return kind switch
+            {
+                SymbolKind.Proc => "PROC" + name,
+                SymbolKind.Fn => "FN" + name,
+                _ => name
+            };
+        }
         // Print line and check for pause
         // Returns: true - continue, false - stop listing
         internal static bool printLine(ProgramLine progLine, ref int linesprinted)
@@ -244,7 +278,7 @@ namespace BasAnalysis.CLI
                 case ConsoleKey.Escape: return false;
             }
             return true;
-        }
+        }        
         public static ConsoleKey CheckForPause(ref int linesprinted)
         {
             if (linesprinted == Console.WindowHeight - 4)
@@ -275,6 +309,10 @@ namespace BasAnalysis.CLI
             }
             return ConsoleKey.None;
         }
+        public static string InitCap(string s)
+        {
+            return char.ToUpper(s[0],CultureInfo.InvariantCulture).ToString() + s[1..].ToLowerInvariant();
+        }
         private static void ClearCurrentConsoleLine()
         {
             if (Console.IsOutputRedirected) return;
@@ -284,5 +322,49 @@ namespace BasAnalysis.CLI
                 Console.Write(" ");
             Console.SetCursorPosition(0, currentLineCursor);
         }
+        public static void Command_DirW()
+        {
+            string cwd = Directory.GetCurrentDirectory();
+
+            Console.WriteLine();
+            Console.ForegroundColor = ConsoleColor.Blue;
+            Console.WriteLine(" Directory of " + cwd);
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.WriteLine();
+
+            var entries = Directory.GetFileSystemEntries(cwd)
+                .Select(path => Path.GetFileName(path))
+                .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (entries.Count == 0)
+            {
+                Console.WriteLine(" <empty>");
+                return;
+            }
+
+            // Choose column width
+            int colWidth = 20; // adjust if you like
+            int cols = Math.Max(1, Console.WindowWidth / colWidth);
+
+            int index = 0;
+            while (index < entries.Count)
+            {
+                for (int c = 0; c < cols && index < entries.Count; c++, index++)
+                {
+                    string name = entries[index];
+
+                    // Mark directories
+                    if (Directory.Exists(Path.Combine(cwd, name)))
+                        name += "/";
+
+                    Console.Write(name.PadRight(colWidth));
+                }
+                Console.WriteLine();
+            }
+
+            Console.WriteLine();
+        }
+
     }
 }

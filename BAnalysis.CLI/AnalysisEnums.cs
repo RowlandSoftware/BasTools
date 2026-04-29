@@ -17,7 +17,7 @@ namespace BasAnalysis.CLI
         Fn,
         Proc,
         Label,
-        FuckKnows
+        Unknown
     }
     public enum SymbolReadOrWrite
     {
@@ -58,5 +58,31 @@ namespace BasAnalysis.CLI
         public int ReferencedCount { get; set; }
 
         public List<SymbolUse> Uses { get; } = new();   // line numbers, contexts, parent
+    }
+
+    // =====================================
+    // Call graph structures
+    // =====================================
+    class CallEdge
+    {
+        public CallNode Child { get; }
+        public int LineNumber { get; }
+
+        public CallEdge(CallNode child, int lineNumber)
+        {
+            Child = child;
+            LineNumber = lineNumber;
+        }
+    }
+    class CallNode
+    {
+        public string Name { get; }
+        public List<CallEdge> Children { get; } = new();
+        public int MaxDepth { get; set; }
+
+        public CallNode(string name)
+        {
+            Name = name;
+        }
     }
 }

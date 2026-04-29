@@ -1,6 +1,8 @@
 ﻿using BasAnalysis.CLI;
 using BasTools.Core;
 using System.Globalization;
+using System.Text.RegularExpressions;
+using Windows.Networking;
 #pragma warning disable CA1861, CA1305, CA1304
 
 namespace BasAnalysis.CLI
@@ -30,6 +32,20 @@ namespace BasAnalysis.CLI
             {
                 Console.ForegroundColor = ConsoleColor.White;
                 load(args[0], BAprogInfo, engine, ref prompt);
+                if (args.Length > 1)
+                {
+                    for (int i = 1; i < args.Length; i++)
+                    {
+                        string arg1 = args[i].ToUpper(CultureInfo.InvariantCulture);
+                        if (arg1.StartsWith('/') || arg1.StartsWith('-'))
+                            arg1 = arg1.Substring(1);
+                        if ("ANALYSE".StartsWith(arg1,StringComparison.OrdinalIgnoreCase) || "ANALYZE".StartsWith(arg1, StringComparison.OrdinalIgnoreCase))
+                                Analyse(engine, ref analyzed);
+                        if ("PREVIEW".StartsWith(arg1, StringComparison.OrdinalIgnoreCase))
+                        Preview(engine);
+                    }
+                }
+
             }
             //
             // Main Loop
@@ -43,7 +59,7 @@ namespace BasAnalysis.CLI
                 string[] arglist = Utilities.SplitArgList(input);
                 cmd = arglist[0].ToUpper(CultureInfo.InvariantCulture);
 
-                if (cmd.EndsWith('.'))
+                if (cmd.Length > 1 && cmd.EndsWith('.'))
                 {
                     string abbrev = cmd.Substring(0, cmd.Length - 1);
                     string[] commands = { "HELP", "LIST", "LISTIF", "LOAD", "ANALYZE", "ANALYSE", "CLEAR", "CLS", "LVAR", "LVARS", "LFN", "LPROC", "TREE", "PREVIEW", "EXIT", "END", "QUIT" };
@@ -64,6 +80,11 @@ namespace BasAnalysis.CLI
                     case "-H":
                     case "HELP":
                         Utilities.help(arglist[1..]);
+                        break;
+                    case "DIR":
+                    case "CAT":
+                    case ".":
+                        Utilities.Command_DirW();
                         break;
                     case "LOAD":
                         if (arglist.Length < 2)
@@ -98,6 +119,9 @@ namespace BasAnalysis.CLI
                         break;
                     case "LFN":
                         ListFn(engine, arglist[1..], analyzed);
+                        break;
+                    case "TREE":
+                        Tree(engine, arglist[1..], analyzed);
                         break;
                     case "QUIT":
                     case "EXIT":
@@ -176,7 +200,7 @@ namespace BasAnalysis.CLI
                         continue;
                     }
 
-                    if (tok.tag == SemanticTags.Keyword && tok.value == "LOCAL")
+                    if (tok.tag == SemanticTags.Keyword && tok.value == "LOCAL") // variables in the LOCAL list count as assignments (initialised to 0 or "")
                     {
                         int j = i + 1;
                         while (j < tokens.Count && tokens[j].tag != SemanticTags.StatementSep)
@@ -190,10 +214,11 @@ namespace BasAnalysis.CLI
                             }
                             j++;
                         }
-                        i = j; // Skip or they get counted as references
+                        i = j; // Skip past or they get counted as references too
                         continue;
                     }
-                    if (tok.tag == SemanticTags.Keyword && tok.value == "FOR") // without this, FOR i=0 TO 4:NEXT would be an assignment without 'use'
+
+                    if (tok.tag == SemanticTags.IndentingKeyword && tok.value == "FOR") // without this, FOR i=0 TO 4:NEXT would be an assignment without 'use'
                     {
                         Token? nextVar = Utilities.PeekNextNonSpaceToken(tokens, i);
                         if (nextVar != null && nextVar.tag == SemanticTags.Variable) // anything other than variable is illegal as control variable
@@ -201,7 +226,7 @@ namespace BasAnalysis.CLI
                             RecordUse(SemanticTags.Variable,
                                 nextVar.value,
                                 line.LineNumber,
-                                SymbolReadOrWrite.Referenced,   // synthetic reference
+                                SymbolReadOrWrite.Referenced,                       // synthetic reference
                                 SymbolContext.Local, procedureName, procedureType
                             );
                         }
@@ -337,6 +362,7 @@ namespace BasAnalysis.CLI
             return true;
         }
         static void Listvar(BasToolsEngine engine, string[] arglist, bool analyzed)
+
         {
             if (engine.CurrentListing == null)
             {
@@ -350,17 +376,57 @@ namespace BasAnalysis.CLI
             }
 
             // Find variable
-            for (int j = 1; j < arglist.Length; j++)
+            //foreach (string k in Symbols.Keys) { Console.WriteLine(k); }
+            for (int j = 0; j < arglist.Length; j++)
             {
                 string arg = arglist[j];
 
-                foreach (SymbolInfo symInfo in Symbols.Values.Where(s => s.Kind is SymbolKind.StaticInt
-                or SymbolKind.IntVar
-                or SymbolKind.RealVar
-                or SymbolKind.StringVar))
+                var varUsage = Symbols.Values.Where(s => s.Name == arg &&
+                       (s.Kind == SymbolKind.IntVar ||
+                        s.Kind == SymbolKind.RealVar ||
+                        s.Kind == SymbolKind.StringVar ||
+                        s.Kind == SymbolKind.StaticInt))
+                .SelectMany(s => s.Uses)
+                .GroupBy(u => new { u.ParentName, u.ParentProcedureType, u.symbolContext })
+                .Select(g => new
                 {
-                    if (arg == symInfo.Name)
-                        VarDetail(arg, symInfo);
+                    ProcName = g.Key.ParentName,
+                    ProcType = g.Key.ParentProcedureType,
+                    Context = g.Key.symbolContext,
+                    Assigned = g.Count(u => u.symbolReadWrite == SymbolReadOrWrite.Assigned),
+                    Referenced = g.Count(u => u.symbolReadWrite == SymbolReadOrWrite.Referenced),
+                    LineNumbers = g.Select(u => u.LineNumber)
+                                   .Distinct()
+                                   .OrderBy(n => n)
+                                   .ToList()
+                })
+                .OrderBy(x => x.ProcName)
+                .ToList();
+
+                if (varUsage.Count > 0)
+                {
+                    SymbolKind varKind = Utilities.InferKind("", arg);
+                    SymbolInfo symInfo = Symbols[varKind + ":" +arg];
+
+                    if (symInfo != null)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.WriteLine("\n  {0}: {1} - Assigned: {2} - Referenced :{3} \n", symInfo.Kind, symInfo.Name, symInfo.AssignedCount, symInfo.ReferencedCount);
+                        Console.ForegroundColor = ConsoleColor.White;
+                    }                    
+
+                    foreach (var u in varUsage)
+                    {
+                        string prefix =
+                            u.ProcType == ProcedureType.Proc ? "PROC" :
+                            u.ProcType == ProcedureType.Fn ? "FN" :
+                            "";
+
+                        Console.WriteLine($"  in {prefix}{u.ProcName}:");
+                        if (u.Assigned > 0 && u.Referenced == 0) Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine("     {0,9}, Assigned: {1,3}  Referenced: {2,3}  at {3}", u.Context, u.Assigned, u.Referenced, string.Join(", ", u.LineNumbers));
+                        Console.ForegroundColor = ConsoleColor.White;
+                    }
                 }
             }
         }
@@ -461,13 +527,14 @@ namespace BasAnalysis.CLI
                 return;
             }
 
+            // Normalise argument - PROCwrite or write -> write
             string name = arglist[0];
             if (name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
             {
                 name = name.Substring(prefix.Length);
             }
-            string key = char.ToUpper(prefix[0]).ToString() + prefix[1..].ToLowerInvariant() + ":" + name;
-            Console.WriteLine(key);
+            // Find the SymbolInfo
+            string key = Utilities.InitCap(prefix) + ":" + name;
             if (!Symbols.TryGetValue(key, out var symInfo))
             {
                 Console.WriteLine($"{prefix}{name} not found. (Tip: {prefix}s are case sensitive)");
@@ -492,62 +559,111 @@ namespace BasAnalysis.CLI
                 Console.WriteLine($"No DEF found for {prefix}{name}");
             }
 
+            // List callers
+            var usedBy = Symbols.Values.SelectMany(s => s.Uses
+                .Where(u =>
+                    u.CalledName == name &&   // ← this PROC/FN is being called
+                    u.symbolContext == SymbolContext.Call &&
+                    (u.CalledKind == SymbolKind.Proc ||
+                     u.CalledKind == SymbolKind.Fn)))
+            .GroupBy(u => new { u.ParentName, u.ParentProcedureType })  // group by caller
+            .Select(g => new
+            {
+                CallerName = g.Key.ParentName,
+                CallerType = g.Key.ParentProcedureType,
+                LineNumbers = g.Select(u => u.LineNumber)
+                               .Distinct()
+                               .OrderBy(n => n)
+                               .ToList()
+            })
+            .OrderBy(x => x.CallerName)
+            .ToList();
+
+            if (usedBy.Count > 0)
+            {
+                Console.WriteLine($"\n {prefix}{name} is used:");
+
+                foreach (var u in usedBy)
+                {
+                    Console.WriteLine($"   in {(u.CallerName == "" ? "Root" : u.CallerType.ToString().ToUpper() + u.CallerName)} at {string.Join(", ", u.LineNumbers)}");
+                }
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"\n {prefix}{name} is not called anywhere.\n");
+                Console.ForegroundColor = ConsoleColor.White;
+            }
+
             // List procs/fns used
-            var called = Symbols.Values.SelectMany(s => s.Uses
-                    .Where(u => u.ParentName == name &&
-                (u.CalledKind == SymbolKind.Proc || u.CalledKind == SymbolKind.Fn)).ToList());
-
-            if (called.Any())
+            var procsUsed = Symbols.Values.SelectMany(s => s.Uses
+                .Where(u => u.ParentName == name &&
+                       (u.CalledKind == SymbolKind.Proc ||
+                        u.CalledKind == SymbolKind.Fn)))
+            .GroupBy(u => u.CalledName)
+            .Select(g => new
             {
-                Console.WriteLine($"\n Procedures used in {prefix}{name}\n");
-                foreach (var use in called)
+                Name = g.Key,
+                Kind = g.First().CalledKind,
+                Context = g.First().symbolContext,
+                LineNumbers = g.Select(u => u.LineNumber)
+                               .Distinct()
+                               .OrderBy(n => n)
+                               .ToList()
+            })
+            .OrderBy(v => v.Name)
+            .ToList();
+
+            if (procsUsed.Count > 0)
+            {
+                Console.WriteLine($"\n Sub-procedures used in {prefix}{name}\n");
+
+                foreach (var p in procsUsed)
                 {
-                    Console.WriteLine("   {0}: {1}{2} at {3}", use.symbolContext, use.CalledKind.ToString().ToUpper(), use.CalledName, use.LineNumber);
+                    Console.WriteLine(
+                        "   {1}{2} at {3}",
+                        p.Context,
+                        p.Kind.ToString().ToUpper(),
+                        p.Name,
+                        string.Join(", ", p.LineNumbers));
                 }
             }
+
             // List vars used
-            /*called = Symbols.Values.SelectMany(s => s.Uses
-                    .Where(u => u.ParentName == name &&
-                (u.CalledKind == SymbolKind.IntVar || u.CalledKind == SymbolKind.RealVar || u.CalledKind == SymbolKind.StringVar || u.CalledKind == SymbolKind.StaticInt))
-                    .Distinct().ToList());
-
-            if (called.Any())
+            var varsUsed = Symbols.Values.SelectMany(s => s.Uses
+                .Where(u => u.ParentName == name &&
+                    (u.CalledKind == SymbolKind.IntVar ||
+                     u.CalledKind == SymbolKind.RealVar ||
+                     u.CalledKind == SymbolKind.StringVar ||
+                     u.CalledKind == SymbolKind.StaticInt)))
+            .GroupBy(u => u.CalledName)
+            .Select(g => new
             {
-                Console.WriteLine($"\n Variables used in {name}\n");
-                foreach (var use in called)
+                Name = g.Key,
+                Kind = g.First().CalledKind,
+                Context = g.First().symbolContext,
+                Assigned = g.Count(u => u.symbolReadWrite == SymbolReadOrWrite.Assigned),
+                Referenced = g.Count(u => u.symbolReadWrite == SymbolReadOrWrite.Referenced),
+                // collect line numbers
+                LineNumbers = g.Select(u => u.LineNumber).Distinct().OrderBy(n => n).ToList()
+            })
+            .OrderBy(v => v.Name)
+            .ToList();
+
+            if (varsUsed.Count > 0)
+            {
+                Console.WriteLine($"\n Variables used in {prefix}{name}\n");
+
+                foreach (var v in varsUsed)
                 {
-                    Console.WriteLine("   {0,10}: {1} {2,10}{3,10} at {4}", use.symbolReadWrite, use.symbolContext, use.CalledKind, use.CalledName, use.LineNumber);
+                    if (v.Assigned >0 && v.Referenced == 0) Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine(
+                        "  {0,9} {1,12} {2,10}  Assigned: {3,3}  Referenced: {4,3}  at {5}",
+                        v.Context, v.Kind, v.Name, v.Assigned, v.Referenced,
+                        string.Join(", ", v.LineNumbers));
+                    Console.ForegroundColor = ConsoleColor.White;
                 }
-            }*/
-            var varsUsed = Symbols.Values
-                .SelectMany(s => s.Uses
-                    .Where(u => u.ParentName == name &&
-                        (u.CalledKind == SymbolKind.IntVar ||
-                         u.CalledKind == SymbolKind.RealVar ||
-                         u.CalledKind == SymbolKind.StringVar ||
-                         u.CalledKind == SymbolKind.StaticInt)))
-                .GroupBy(u => u.CalledName)
-                .Select(g => new
-                {
-                    Name = g.Key,
-                    Kind = g.First().CalledKind,
-                    Context = g.First().symbolContext,   // usually Global or Local
-                    Assigned = g.Count(u => u.symbolReadWrite == SymbolReadOrWrite.Assigned),
-                    Referenced = g.Count(u => u.symbolReadWrite == SymbolReadOrWrite.Referenced)
-                })
-                .OrderBy(v => v.Name)
-                .ToList();
-
-            Console.WriteLine($"\n Variables used in {prefix}{name}\n");
-
-            foreach (var v in varsUsed)
-            {
-                Console.WriteLine(
-                    "{0,10} {1,12} {2,10}  Assigned: {3,3}  Referenced: {4,3}",
-                    v.Context, v.Kind, v.Name, v.Assigned, v.Referenced);
             }
-
-
         }
         static void Preview(BasToolsEngine engine)
         {
@@ -622,11 +738,6 @@ namespace BasAnalysis.CLI
         }
         static void List(BasToolsEngine engine, int fromline, int toline, int totLineCount, bool pretty)
         {
-            if (engine.CurrentListing == null)
-            {
-                Console.WriteLine("LIST - No program loaded.");
-                return;
-            }
             int linesprinted = 0;
             int linecount = 0;
 
@@ -655,12 +766,6 @@ namespace BasAnalysis.CLI
         }
         static void ListDef(BasToolsEngine engine, string[] arglist, bool pretty)
         {
-            if (engine.CurrentListing == null)
-            {
-                Console.WriteLine("No program loaded.");
-                return;
-            }
-
             for (int i = 0; i < arglist.Length; i++)
             {
                 if (!(arglist[i].StartsWith("FN", StringComparison.OrdinalIgnoreCase) || arglist[i].StartsWith("PROC", StringComparison.OrdinalIgnoreCase)))
@@ -724,11 +829,208 @@ namespace BasAnalysis.CLI
                 }
             }
         }
+        static void Tree(BasToolsEngine engine, string[] arglist, bool analyzed)
+        {
+            if (engine.CurrentListing == null)
+            {
+                Console.WriteLine("Tree - No program loaded.");
+                return;
+            }
+            if (!analyzed)
+            {
+                Console.WriteLine($"Tree - Program '{engine.CurrentProgInfo.ProgName}' has not been analysed.");
+                return;
+            }
+            Command_Tree(Symbols, arglist);
+        }
+
+        // =====================================
+        // 1. Build nodes (PROC/FN only)
+        // =====================================
+
+        static Dictionary<string, CallNode> BuildNodes(IReadOnlyDictionary<string, SymbolInfo> Symbols)
+        {
+            var nodes = new Dictionary<string, CallNode>(StringComparer.Ordinal);
+
+            foreach (var symInfo in Symbols.Values)
+            {
+                if (symInfo.Kind == SymbolKind.Proc || symInfo.Kind == SymbolKind.Fn)
+                {
+                    string fullName = Utilities.FullName(symInfo.Kind, symInfo.Name);
+                    Utilities.GetOrAdd(nodes, fullName);
+                }
+            }
+
+            // Ensure ROOT exists
+            Utilities.GetOrAdd(nodes, "ROOT");
+
+            return nodes;
+        }
+
+        // =====================================
+        // 2. Build edges (parent → child, with line numbers)
+        // =====================================
+
+        static void BuildCallEdges(
+            IReadOnlyDictionary<string, SymbolInfo> Symbols,
+            Dictionary<string, CallNode> nodes)
+        {
+            foreach (var symInfo in Symbols.Values)
+            {
+                foreach (var use in symInfo.Uses)
+                {
+                    if (use.CalledKind != SymbolKind.Proc &&
+                        use.CalledKind != SymbolKind.Fn)
+                        continue;
+
+                    string parentName = Utilities.FullName(use.ParentProcedureType, use.ParentName);
+                    string childName = Utilities.FullName(use.CalledKind, use.CalledName);
+
+                    var parentNode = Utilities.GetOrAdd(nodes, parentName);
+                    var childNode = Utilities.GetOrAdd(nodes, childName);
+
+                    // Add edge with call-site line number
+                    parentNode.Children.Add(new CallEdge(childNode, use.LineNumber));
+                }
+            }
+        }
+
+        // =====================================
+        // 3. Compute MaxDepth (node-based)
+        // =====================================
+
+        static int ComputeDepth(CallNode node, HashSet<CallNode> visiting)
+        {
+            if (visiting.Contains(node))
+                return node.MaxDepth; // recursion
+
+            if (node.Children.Count == 0)
+                return node.MaxDepth = Math.Max(node.MaxDepth, 1);
+
+            visiting.Add(node);
+
+            int depth = 1 + node.Children
+                .Select(e => ComputeDepth(e.Child, visiting))
+                .DefaultIfEmpty(0)
+                .Max();
+
+            visiting.Remove(node);
+
+            return node.MaxDepth = Math.Max(node.MaxDepth, depth);
+        }
+
+        // =====================================
+        // 4. Print tree (edge-ordered, node-unique)
+        // =====================================
+
+        static void PrintTree(CallNode node, string indent, bool last, HashSet<CallNode> printed)
+        {
+            string prefix = last ? "└─ " : "├─ ";
+
+            if (printed.Contains(node))
+            {
+                if (node.Children.Count == 0)
+                {
+                    // Leaf node: repeat without annotation
+                    Console.WriteLine(indent + prefix + node.Name + " *");
+                }
+                else
+                {
+                    // Non-leaf: show reference
+                    Console.WriteLine(indent + prefix + node.Name + "  (see above)");
+                }
+                return;
+            }
+            printed.Add(node);
+            Console.WriteLine(indent + prefix + node.Name);
+
+            var children = node.Children
+                .OrderBy(e => e.LineNumber)           // program order
+                .ThenByDescending(e => e.Child.MaxDepth)
+                .ToList();
+
+            for (int i = 0; i < children.Count; i++)
+            {
+                bool isLast = (i == children.Count - 1);
+                PrintTree(children[i].Child,
+                          indent + (last ? "   " : "│  "),
+                          isLast,
+                          printed);
+            }
+        }
+
+        // =====================================
+        // 5. Entry point: tree command
+        // =====================================
+
+        static void Command_Tree(IReadOnlyDictionary<string, SymbolInfo> Symbols, string[] arglist)
+        {
+            // 1. Build nodes
+            var nodes = BuildNodes(Symbols);
+
+            // 2. Build edges
+            BuildCallEdges(Symbols, nodes);
+
+            // 3. Resolve root
+            string rootName;
+
+            if (arglist.Length > 0)
+            {
+                rootName = arglist[0].Trim();
+                if (rootName == "$" || rootName.Equals("root", StringComparison.OrdinalIgnoreCase))
+                    rootName = "ROOT";
+
+                if (!rootName.StartsWith("PROC", StringComparison.OrdinalIgnoreCase) &&
+                    !rootName.StartsWith("FN", StringComparison.OrdinalIgnoreCase) &&
+                    !rootName.Equals("ROOT", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (nodes.ContainsKey("PROC" + rootName))
+                        rootName = "PROC" + rootName;
+                    else if (nodes.ContainsKey("FN" + rootName))
+                        rootName = "FN" + rootName;
+                }
+            }
+            else
+            {
+                rootName = "ROOT";
+            }
+
+            if (!nodes.TryGetValue(rootName, out var rootNode))
+            {
+                Console.WriteLine($"Unknown procedure/function: {rootName}");
+                return;
+            }
+
+            // 4. Compute depths
+            ComputeDepth(rootNode, new HashSet<CallNode>());
+
+            // 5. Print
+            var printed = new HashSet<CallNode>();
+
+            // Special-case root: print without prefix
+            if (rootNode.Name == "ROOT")
+                Console.WriteLine('$');
+            else
+                Console.WriteLine(rootNode.Name);
+
+            var children = rootNode.Children
+                .OrderBy(e => e.LineNumber)
+                .ThenByDescending(e => e.Child.MaxDepth)
+                .ToList();
+
+            for (int i = 0; i < children.Count; i++)
+            {
+                bool isLast = (i == children.Count - 1);
+                PrintTree(children[i].Child,
+                          "",   // indent starts empty
+                          isLast,
+                          printed);
+            }
+        }
         static void RecordUse(string tag, string name, int line,
             SymbolReadOrWrite readwrite, SymbolContext context,
             string currentProcName, ProcedureType procedureType) // , SymbolInfo parentSymbolInfo
         {
-            //Console.WriteLine("{0,-10}{1,-10}{2,-10},{3,-10}", name, line, context, currentProcName);
             if (tag == SemanticTags.StringLiteral && string.IsNullOrWhiteSpace(name))
                 return;
 
@@ -756,25 +1058,6 @@ namespace BasAnalysis.CLI
                 ParentProcedureType = procedureType
             };
             sym.Uses.Add(symbolUse);
-        }
-        
-        private static void VarDetail(string match, SymbolInfo symInfo)
-        {
-            SymbolKind varKind = Utilities.InferKind("", match);
-            if (symInfo.Kind != varKind) return;
-
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("\n  {0}: {1} - Assigned: {2} - Referenced :{3} \n", symInfo.Kind, symInfo.Name, symInfo.AssignedCount, symInfo.ReferencedCount);
-            Console.ForegroundColor = ConsoleColor.White;
-
-            foreach (var use in symInfo.Uses)
-            {
-                Console.WriteLine("  at line {0,5}, {1,10}, {2,10}, in {3}",
-                    use.LineNumber,
-                    use.symbolReadWrite,
-                    use.symbolContext,
-                    use.ParentProcedureType + use.ParentName);
-            }
         }
     }
 }
