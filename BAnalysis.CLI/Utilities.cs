@@ -20,6 +20,8 @@ namespace BasAnalysis.CLI
                 return SymbolKind.IntVar;
             if (name.EndsWith('$'))
                 return SymbolKind.StringVar;
+            if (name.StartsWith('.'))
+                return SymbolKind.Label;
             if (tag == SemanticTags.Variable)
                 return SymbolKind.RealVar;
             if (tag == SemanticTags.FunctionName)
@@ -160,11 +162,12 @@ namespace BasAnalysis.CLI
             if (args.Length == 0)
             {
                 banner();
-                Console.WriteLine("    BasList <filename> [/analyse | /analyze] [/preview]");
+                Console.WriteLine("    BasList [<filename>] [/analyse | /analyze] [/preview]");
                 Console.WriteLine("\n    COMMANDS\n");
                 Console.WriteLine("    {0,-10}{1,-10}{2,-10}{3,-10}{4,-10}{5,-10}", "help", "load", "analyze", "preview", "list", "blist");
                 Console.WriteLine("    {0,-10}{1,-10}{2,-10}{3,-10}{4,-10}{5,-10}", "lvar", "lvars", "lfn", "lproc", "tree", "x");
                 Console.WriteLine("    {0,-10}{1,-10}{2,-10}{3,-10}{4,-10}{5,-10}", "cls", "clear", "cat", "dir", "exit", "quit");
+                Console.WriteLine("All commands can be abbreviated with a dot, e.g. lo. (load)");
                 Console.WriteLine("\nEnter help <command> for further help\n");
             }
             else
@@ -174,9 +177,11 @@ namespace BasAnalysis.CLI
                 {
                     case "load":
                         Console.WriteLine("load <file spec> - If file spec contains spaces, enclose in double quotes");
+                        Console.WriteLine("Minimum abbreviation: lo.");
                         break;
                     case "blist":
                         Console.WriteLine("blist         - As List with syntax colouring");
+                        Console.WriteLine("Minimum abbreviation: b.");
                         help(new string[] { "list" });
                         break;
                     case "list":
@@ -184,46 +189,64 @@ namespace BasAnalysis.CLI
                         Console.WriteLine("list nn       - Display program line");
                         Console.WriteLine("list nn nn    - Display program lines (from to)");
                         Console.WriteLine("list {<name>} - Display PROC or FN (list)");
+                        Console.WriteLine("Minimum abbreviation: l.");
                         break;
                     case "preview":
                         Console.WriteLine("preview     - Display first 20 lines of program");
+                        Console.WriteLine("Minimum abbreviation: p.");
                         break;
                     case "analyse":
                     case "analyze":
                         Console.WriteLine("analyze     - (or analyse) Use after 'load' and before other options");
+                        Console.WriteLine("Minimum abbreviation: a.");
                         break;
                     case "lvars":
                         Console.WriteLine("lvars       - Display analysis of variables, procedures and strings");
+                        Console.WriteLine("No abbreviation");
                         break;
                     case "lvar":
                         Console.WriteLine("lvar <variable>   - Display detailed analysis of named variable");
+                        Console.WriteLine("Minimum abbreviation: lv.");
                         break;
                     case "lfn":
                         Console.WriteLine("lfn <FN name>     - Display detailed analysis of named function");
+                        Console.WriteLine("Minimum abbreviation: lf.");
                         break;
                     case "lproc":
                         Console.WriteLine("lproc <PROC name> - Display detailed analysis of named procedure");
+                        Console.WriteLine("Minimum abbreviation: lp.");
                         break;
                     case "listif":
                         Console.WriteLine("listif {<text>}   - Display lines that contain <text> (list)");
+                        Console.WriteLine("Minimum abbreviations: listi. l.if");
+                        break;
+                    case "tree":
+                        Console.WriteLine("tree [<node>]     - Display tree diagram from top level (root or $) or named procedure");
+                        Console.WriteLine("Minimum abbreviation: t.");
                         break;
                     case "cls":
                     case "clear":
                         Console.WriteLine("cls | clear - Clear screen");
+                        Console.WriteLine("Minimum abbreviation: cl.");
                         break;
                     case "cat":
                     case "dir":
                     case ".":
-                        Console.WriteLine("cat | dir - Catalogue current directory");
+                        Console.WriteLine("cat | dir | ls - Catalogue current directory");
+                        Console.WriteLine("Minimum abbreviation: .");
                         break;
                     case "exit":
                     case "quit":
                     case "x":
                     case "end":
                         Console.WriteLine($"{args[0]} - Leave BasAnalysis");
+                        Console.WriteLine("Minimum abbreviations: q. e. x");
                         break;
                     default:
-                        Console.WriteLine($"'{args[0]}' not recognised");
+                        Console.Write($"'{args[0]}' not recognised.");
+                        if (args[0].EndsWith('.'))
+                            Console.WriteLine(" Do not abbreviate.");
+                        else Console.WriteLine("");
                         break;
                 }
             }
@@ -278,7 +301,26 @@ namespace BasAnalysis.CLI
                 case ConsoleKey.Escape: return false;
             }
             return true;
-        }        
+        }
+        /********** General Utilities *********/
+        public static bool checkLoaded(string caller, BasToolsEngine engine)
+        {
+            if (engine.CurrentListing == null)
+            {
+                Console.WriteLine($"{caller} - No program loaded.");
+                return false;
+            }
+            return true;
+        }
+        public static bool checkAnalysed(string called, string program, bool analysed)
+        {
+            if (!analysed)
+            {
+                Console.WriteLine($"{called} - Program '{program}' has not been analysed.");
+                return false;
+            }
+            return true;
+        }
         public static ConsoleKey CheckForPause(ref int linesprinted)
         {
             if (linesprinted == Console.WindowHeight - 4)
@@ -324,6 +366,9 @@ namespace BasAnalysis.CLI
         }
         public static void Command_DirW()
         {
+            string folderIcon = "📁 ";
+            string fileIcon = "📄 ";
+
             string cwd = Directory.GetCurrentDirectory();
 
             Console.WriteLine();
@@ -356,15 +401,22 @@ namespace BasAnalysis.CLI
 
                     // Mark directories
                     if (Directory.Exists(Path.Combine(cwd, name)))
-                        name += "/";
-
-                    Console.Write(name.PadRight(colWidth));
+                    {
+                        //name = folderIcon + name;
+                        Console.ForegroundColor = ConsoleColor.Green;
+                    } else
+                    {
+                        //name = fileIcon + name;
+                    }
+                    int n = 1;
+                    if (name.Length > colWidth) { n++; c++; }
+                    Console.Write(name.PadRight(colWidth * n));
+                    Console.ResetColor();
                 }
                 Console.WriteLine();
             }
 
             Console.WriteLine();
         }
-
     }
 }

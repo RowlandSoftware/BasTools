@@ -45,7 +45,6 @@ namespace BasAnalysis.CLI
                         Preview(engine);
                     }
                 }
-
             }
             //
             // Main Loop
@@ -62,8 +61,9 @@ namespace BasAnalysis.CLI
                 if (cmd.Length > 1 && cmd.EndsWith('.'))
                 {
                     string abbrev = cmd.Substring(0, cmd.Length - 1);
-                    string[] commands = { "HELP", "LIST", "LISTIF", "LOAD", "ANALYZE", "ANALYSE", "CLEAR", "CLS", "LVAR", "LVARS", "LFN", "LPROC", "TREE", "PREVIEW", "EXIT", "END", "QUIT" };
-                    // "LISTIF", "LISTIFX", "BLIST"
+                    string[] commands = { "HELP", "BLIST", "LIST", "LISTIF", "LOAD", "ANALYZE", "ANALYSE", "CAT", "DIR", "LS",
+                        "CLEAR", "CLS", "LVAR", "LVARS", "LFN", "LPROC", "TREE", "PREVIEW", "EXIT", "END", "QUIT" };
+
                     foreach (string match in commands)
                     {
                         if (match.StartsWith(abbrev, StringComparison.OrdinalIgnoreCase))
@@ -82,6 +82,7 @@ namespace BasAnalysis.CLI
                         Utilities.help(arglist[1..]);
                         break;
                     case "DIR":
+                    case "LS":
                     case "CAT":
                     case ".":
                         Utilities.Command_DirW();
@@ -102,8 +103,10 @@ namespace BasAnalysis.CLI
                         ListProg(engine, arglist[1..], true); break;
                     case "LIST":
                         ListProg(engine, arglist[1..], false); break;
+                    case "L.IF":
                     case "LISTIF":
-                        ListIf(engine, arglist[1..]); break;
+                        ListIf(engine, arglist[1..]);
+                        break;
                     case "ANALYZE":
                     case "ANALYSE":
                         Analyse(engine, ref analyzed);
@@ -165,13 +168,9 @@ namespace BasAnalysis.CLI
             }
             return false;
         }
-        static bool Analyse(BasToolsEngine engine, ref bool analyzed)
+        static void Analyse(BasToolsEngine engine, ref bool analyzed)
         {
-            if (engine.CurrentListing == null)
-            {
-                Console.WriteLine("ANALYSE - No program loaded.");
-                return false;
-            }
+            if (!Utilities.checkLoaded("ANALYSE", engine)) return;
 
             bool expectingAssignmentTarget;
             HashSet<string> localVars = new();
@@ -207,10 +206,11 @@ namespace BasAnalysis.CLI
                         {
                             if (tokens[j].tag == SemanticTags.Variable)
                             {
-                                localVars.Add(tokens[j].value);
+                                localVars.Add(tokens[j].value);                 // build list of LOCAL vars
+
                                 RecordUse(SemanticTags.Variable, tokens[j].value, line.LineNumber,
                                     SymbolReadOrWrite.Assigned, SymbolContext.Local,
-                                    procedureName, procedureType);
+                                    procedureName, procedureType);              // and record an assignment
                             }
                             j++;
                         }
@@ -335,9 +335,16 @@ namespace BasAnalysis.CLI
                     }
                     if (tok.tag is SemanticTags.Label)
                     {
+                        // look at LOCAL and parameters lists (W/0 .)
+                        SymbolContext labcontext = SymbolContext.Assembler;
+                        if (localVars.Contains(tok.value[1..]))
+                            labcontext = SymbolContext.Local;
+                        if (parameters.Contains(tok.value[1..]))
+                            labcontext = SymbolContext.Parameter;
+
                         RecordUse(tok.tag, tok.value, line.LineNumber,
-                            SymbolReadOrWrite.Assigned,                         // .label - all assigned. References tracked in variables
-                            SymbolContext.TBD, procedureName, procedureType);   // Context should show if local
+                        SymbolReadOrWrite.Assigned,                     // .label - all assigned. References tracked in variables
+                        labcontext, procedureName, procedureType);      // Context should show if local or parameter, otherwise Assembler
 
                         expectingAssignmentTarget = false;
                         continue;
@@ -359,24 +366,15 @@ namespace BasAnalysis.CLI
             }
             Console.Write($"Analysed {Symbols.Count} unique tokens\n");
             analyzed = true;
-            return true;
+            return;
         }
         static void Listvar(BasToolsEngine engine, string[] arglist, bool analyzed)
 
         {
-            if (engine.CurrentListing == null)
-            {
-                Console.WriteLine("LVAR - No program loaded.");
-                return;
-            }
-            if (!analyzed)
-            {
-                Console.WriteLine($"LVAR - Program '{engine.CurrentProgInfo.ProgName}' has not been analysed.");
-                return;
-            }
+            if (!Utilities.checkLoaded("LVAR", engine)) return;
+            if (!Utilities.checkAnalysed("LVAR", engine.CurrentProgInfo.ProgName, analyzed)) return;
 
             // Find variable
-            //foreach (string k in Symbols.Keys) { Console.WriteLine(k); }
             for (int j = 0; j < arglist.Length; j++)
             {
                 string arg = arglist[j];
@@ -385,6 +383,7 @@ namespace BasAnalysis.CLI
                        (s.Kind == SymbolKind.IntVar ||
                         s.Kind == SymbolKind.RealVar ||
                         s.Kind == SymbolKind.StringVar ||
+                        s.Kind == SymbolKind.Label ||
                         s.Kind == SymbolKind.StaticInt))
                 .SelectMany(s => s.Uses)
                 .GroupBy(u => new { u.ParentName, u.ParentProcedureType, u.symbolContext })
@@ -403,17 +402,26 @@ namespace BasAnalysis.CLI
                 .OrderBy(x => x.ProcName)
                 .ToList();
 
-                if (varUsage.Count > 0)
+                if (varUsage.Count == 0)
                 {
-                    SymbolKind varKind = Utilities.InferKind("", arg);
-                    SymbolInfo symInfo = Symbols[varKind + ":" +arg];
-
-                    if (symInfo != null)
+                    Console.WriteLine($"No such variable '{arg}'.");
+                    return;
+                }
+                else
+                {
+                    SymbolKind varKind = Utilities.InferKind(SemanticTags.Variable, arg); // tag here only used if no %, $ or leading .
+                    //SymbolInfo symInfo = Symbols[varKind + ":" + arg];
+                    if (!Symbols.TryGetValue(varKind + ":" + arg, out SymbolInfo symInfo))
+                    {
+                        Console.WriteLine($"No such variable '{arg}'.");
+                        return;
+                    }
+                    else
                     {
                         Console.ForegroundColor = ConsoleColor.Green;
                         Console.WriteLine("\n  {0}: {1} - Assigned: {2} - Referenced :{3} \n", symInfo.Kind, symInfo.Name, symInfo.AssignedCount, symInfo.ReferencedCount);
                         Console.ForegroundColor = ConsoleColor.White;
-                    }                    
+                    }
 
                     foreach (var u in varUsage)
                     {
@@ -423,25 +431,20 @@ namespace BasAnalysis.CLI
                             "";
 
                         Console.WriteLine($"  in {prefix}{u.ProcName}:");
-                        if (u.Assigned > 0 && u.Referenced == 0) Console.ForegroundColor = ConsoleColor.Red;
+                        if (u.Assigned > 0 && u.Referenced == 0 && symInfo.Kind != SymbolKind.Label)
+                            Console.ForegroundColor = ConsoleColor.Red;
                         Console.WriteLine("     {0,9}, Assigned: {1,3}  Referenced: {2,3}  at {3}", u.Context, u.Assigned, u.Referenced, string.Join(", ", u.LineNumbers));
                         Console.ForegroundColor = ConsoleColor.White;
                     }
+                    if (symInfo.Kind == SymbolKind.Label)
+                        Listvar(engine, new string[] { symInfo.Name[1..] }, true); // also information for the variable w/o dot
                 }
             }
         }
         static void Listvars(BasToolsEngine engine, string[] arglist, bool analyzed)
         {
-            if (engine.CurrentListing == null)
-            {
-                Console.WriteLine("LVARS - No program loaded.");
-                return;
-            }
-            if (!analyzed)
-            {
-                Console.WriteLine($"LVARS - Program '{engine.CurrentProgInfo.ProgName}' has not been analysed.");
-                return;
-            }
+            if (!Utilities.checkLoaded("LVARS", engine)) return;
+            if (!Utilities.checkAnalysed("LVARS", engine.CurrentProgInfo.ProgName, analyzed)) return;
 
             // Static Integers
             Console.ForegroundColor = ConsoleColor.Green;
@@ -511,16 +514,8 @@ namespace BasAnalysis.CLI
         }
         static void ProcFnDetail(BasToolsEngine engine, string[] arglist, bool analysed, string prefix, string cmd)
         {
-            if (engine.CurrentListing == null)
-            {
-                Console.WriteLine($"{cmd} - No program loaded.");
-                return;
-            }
-            if (!analyzed)
-            {
-                Console.WriteLine($"{cmd} - Program '{engine.CurrentProgInfo.ProgName}' has not been analysed.");
-                return;
-            }
+            if (!Utilities.checkLoaded($"{cmd}", engine)) return;
+            if (!Utilities.checkAnalysed(cmd, engine.CurrentProgInfo.ProgName, analyzed)) return;
             if (arglist.Length == 0)
             {
                 Utilities.help(new string[] { cmd });
@@ -676,11 +671,7 @@ namespace BasAnalysis.CLI
         }
         static void ListProg(BasToolsEngine engine, string[] arglist, bool pretty)
         {
-            if (engine.CurrentListing == null)
-            {
-                Console.WriteLine("LIST - No program loaded.");
-                return;
-            }
+            if (!Utilities.checkLoaded("LIST", engine)) return;
             int fromline = 0;
             int toline = 0xFEFF;
 
@@ -705,11 +696,7 @@ namespace BasAnalysis.CLI
         }
         static void ListIf(BasToolsEngine engine, string[] arglist)
         {
-            if (engine.CurrentListing == null)
-            {
-                Console.WriteLine("LISTIF - No program loaded.");
-                return;
-            }
+            if (!Utilities.checkLoaded("LISTIF", engine)) return;
             if (arglist.Length < 1)
             {
                 Utilities.help(new string[] { "listif" });
@@ -831,16 +818,9 @@ namespace BasAnalysis.CLI
         }
         static void Tree(BasToolsEngine engine, string[] arglist, bool analyzed)
         {
-            if (engine.CurrentListing == null)
-            {
-                Console.WriteLine("Tree - No program loaded.");
-                return;
-            }
-            if (!analyzed)
-            {
-                Console.WriteLine($"Tree - Program '{engine.CurrentProgInfo.ProgName}' has not been analysed.");
-                return;
-            }
+            if (!Utilities.checkLoaded("TREE", engine)) return;
+            if (!Utilities.checkAnalysed("TREE", engine.CurrentProgInfo.ProgName, analyzed)) return;
+
             Command_Tree(Symbols, arglist);
         }
 

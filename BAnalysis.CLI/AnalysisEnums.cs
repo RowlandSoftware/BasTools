@@ -28,6 +28,7 @@ namespace BasAnalysis.CLI
     {
         Global,     // global var
         Local,      // LOCAL var
+        Assembler,  // assigned in assembler mode
         Parameter,  // Part of formal parameters (so in effect local)
         Call,       // Call to FN/PROC
         NA,         // Not applicable, currently a DEF, string literal
@@ -63,7 +64,7 @@ namespace BasAnalysis.CLI
     // =====================================
     // Call graph structures
     // =====================================
-    class CallEdge
+    sealed class CallEdge
     {
         public CallNode Child { get; }
         public int LineNumber { get; }
@@ -74,7 +75,7 @@ namespace BasAnalysis.CLI
             LineNumber = lineNumber;
         }
     }
-    class CallNode
+    sealed class CallNode
     {
         public string Name { get; }
         public List<CallEdge> Children { get; } = new();
