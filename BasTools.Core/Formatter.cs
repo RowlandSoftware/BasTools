@@ -29,6 +29,7 @@ namespace BasTools.Core
                 case SemanticTags.HexNumber: return (true, true);
                 case SemanticTags.BinaryNumber: return (true, false);
                 case SemanticTags.Variable: return (true, true);
+                case SemanticTags.Array: return (true, false);
                 case SemanticTags.StaticInteger: return (true, true);
                 case SemanticTags.RemText: return (false, false);
                 case SemanticTags.AssemblerComment: return (true, false);

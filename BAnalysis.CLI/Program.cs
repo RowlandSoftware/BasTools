@@ -31,18 +31,20 @@ namespace BasAnalysis.CLI
             else
             {
                 Console.ForegroundColor = ConsoleColor.White;
-                load(args[0], BAprogInfo, engine, ref prompt);
-                if (args.Length > 1)
+                if (!args[0].StartsWith('/') && !args[0].StartsWith('-'))
+                    load(args[0], BAprogInfo, engine, ref prompt);
+                for (int i = 0; i < args.Length; i++)
                 {
-                    for (int i = 1; i < args.Length; i++)
+                    string arg1 = args[i].ToUpper(CultureInfo.InvariantCulture);
+                    if (arg1.StartsWith('/') || arg1.StartsWith('-'))
                     {
-                        string arg1 = args[i].ToUpper(CultureInfo.InvariantCulture);
-                        if (arg1.StartsWith('/') || arg1.StartsWith('-'))
-                            arg1 = arg1.Substring(1);
-                        if ("ANALYSE".StartsWith(arg1,StringComparison.OrdinalIgnoreCase) || "ANALYZE".StartsWith(arg1, StringComparison.OrdinalIgnoreCase))
-                                Analyse(engine, ref analyzed);
+                        arg1 = arg1.Substring(1);
+                        if ("ANALYSE".StartsWith(arg1, StringComparison.OrdinalIgnoreCase) || "ANALYZE".StartsWith(arg1, StringComparison.OrdinalIgnoreCase))
+                            Analyse(engine, ref analyzed);
                         if ("PREVIEW".StartsWith(arg1, StringComparison.OrdinalIgnoreCase))
-                        Preview(engine);
+                            Preview(engine);
+                        if ("HELP".StartsWith(arg1, StringComparison.OrdinalIgnoreCase) || arg1 == "?")
+                            Utilities.help(Array.Empty<string>(), false);
                     }
                 }
             }
@@ -79,7 +81,7 @@ namespace BasAnalysis.CLI
                     case "?":
                     case "-H":
                     case "HELP":
-                        Utilities.help(arglist[1..]);
+                        Utilities.help(arglist[1..], true);
                         break;
                     case "DIR":
                     case "LS":
@@ -89,7 +91,7 @@ namespace BasAnalysis.CLI
                         break;
                     case "LOAD":
                         if (arglist.Length < 2)
-                            Utilities.help(new string[] { "LOAD" });
+                            Utilities.help(new string[] { "LOAD" }, false);
                         else
                             load(arglist[1], BAprogInfo, engine, ref prompt);
                         break;
@@ -175,6 +177,7 @@ namespace BasAnalysis.CLI
             bool expectingAssignmentTarget;
             HashSet<string> localVars = new();
             HashSet<string> parameters = new();
+            engine.DimLines.Clear();
 
             // Tracking which procedure or function (inc root) we are "in"
             ProcedureType procedureType = ProcedureType.Root;
@@ -184,6 +187,7 @@ namespace BasAnalysis.CLI
             {
                 // line level state
                 expectingAssignmentTarget = true; // start of line is start of statement...
+                bool readOrDim = false;
 
                 List<Token> tokens = BasToolsEngine.WalkTagged(line.TaggedLine).ToList();
 
@@ -193,22 +197,54 @@ namespace BasAnalysis.CLI
                     var tok = tokens[i];
 
                     if (tok.tag == SemanticTags.StatementSep ||
-                        (tok.tag == SemanticTags.Keyword && (tok.value is "REPEAT" or "ELSE")))
+                        (tok.tag == SemanticTags.Keyword && (tok.value is "REPEAT" or "ELSE" )))
                     {
                         expectingAssignmentTarget = true;
+                        readOrDim = false;
                         continue;
                     }
 
-                    if (tok.tag == SemanticTags.Keyword && tok.value == "LOCAL") // variables in the LOCAL list count as assignments (initialised to 0 or "")
+                    if (tok.tag == SemanticTags.Keyword && tok.value == "READ") // everything after READ is an assignment without =
                     {
+                        expectingAssignmentTarget = true;
+                        readOrDim = true;
+                        continue;
+                    }
+
+
+                    if (tok.tag == SemanticTags.Keyword && (tok.value is "LOCAL" or "DIM")) // variables in the LOCAL list count as assignments (initialised to 0 or "")
+                    {
+                        if (tok.value =="DIM") // everything after READ is an assignment without =
+                        {
+                            expectingAssignmentTarget = true;
+                            readOrDim = true;
+                        }
+                        
                         int j = i + 1;
                         while (j < tokens.Count && tokens[j].tag != SemanticTags.StatementSep)
                         {
-                            if (tokens[j].tag == SemanticTags.Variable)
+                            if (tokens[j].tag is SemanticTags.Variable)
                             {
-                                localVars.Add(tokens[j].value);                 // build list of LOCAL vars
+                                if (tok.value == "LOCAL")
+                                    localVars.Add(tokens[j].value);                 // build list of LOCAL vars
+                                else
+                                    engine.DimLines.Add(tokens[j].value, line.LineNumber);
 
                                 RecordUse(SemanticTags.Variable, tokens[j].value, line.LineNumber,
+                                    SymbolReadOrWrite.Assigned, SymbolContext.Local,
+                                    procedureName, procedureType);              // and record an assignment
+                            }
+                            else if (tokens[j].tag == SemanticTags.Array)
+                            {
+                                string fullName = tokens[j].value + "()";
+                                if (tok.value == "LOCAL")
+                                    localVars.Add(fullName);                    // build list of LOCAL vars
+                                else
+                                {
+                                    engine.DimLines.Add(fullName, line.LineNumber);
+                                }
+
+                                RecordUse(SemanticTags.Array, fullName, line.LineNumber,
                                     SymbolReadOrWrite.Assigned, SymbolContext.Local,
                                     procedureName, procedureType);              // and record an assignment
                             }
@@ -221,10 +257,12 @@ namespace BasAnalysis.CLI
                     if (tok.tag == SemanticTags.IndentingKeyword && tok.value == "FOR") // without this, FOR i=0 TO 4:NEXT would be an assignment without 'use'
                     {
                         Token? nextVar = Utilities.PeekNextNonSpaceToken(tokens, i);
-                        if (nextVar != null && nextVar.tag == SemanticTags.Variable) // anything other than variable is illegal as control variable
+                        if (nextVar != null && (nextVar.tag == SemanticTags.Variable ||
+                            nextVar.tag == SemanticTags.Array)) // anything other than variable is illegal as control variable
                         {
-                            RecordUse(SemanticTags.Variable,
-                                nextVar.value,
+                            string suffix = (nextVar.tag == SemanticTags.Array ? "()" : "");
+                            RecordUse(nextVar.tag,
+                                nextVar.value + suffix,
                                 line.LineNumber,
                                 SymbolReadOrWrite.Referenced,                       // synthetic reference
                                 SymbolContext.Local, procedureName, procedureType
@@ -232,7 +270,7 @@ namespace BasAnalysis.CLI
                         }
                     }
 
-                    if (tok.tag == SemanticTags.Variable)
+                    if (tok.tag == SemanticTags.Variable || tok.tag == SemanticTags.Array)
                     {
                         // Derive Context for variable
                         if (procedureType == ProcedureType.Root)
@@ -255,12 +293,23 @@ namespace BasAnalysis.CLI
 
                         // Look ahead to see if this is an assignment
                         Token? next = Utilities.PeekNextNonSpaceToken(tokens, i);
+                        // ... and if array skip over (..)
+                        if (tok.tag == SemanticTags.Array && next.tag == SemanticTags.OpenBracket)
+                        {
+                            while (next.tag != SemanticTags.CloseBracket)
+                            {
+                                next = Utilities.PeekNextNonSpaceToken(tokens, i++);
+                            }
+                            next = Utilities.PeekNextNonSpaceToken(tokens, i);
+                        }
 
                         bool isAssignment = expectingAssignmentTarget &&
                                             next?.tag == SemanticTags.Operator &&
                                             next?.value == "=";
+                        if (readOrDim) isAssignment = true;
 
-                        RecordUse(tok.tag, tok.value, line.LineNumber,
+                        string suffix = (tok.tag == SemanticTags.Array ? "()" : "");
+                        RecordUse(tok.tag, tok.value + suffix, line.LineNumber,
                             isAssignment ? SymbolReadOrWrite.Assigned : SymbolReadOrWrite.Referenced,
                            context, procedureName, procedureType);
 
@@ -294,7 +343,7 @@ namespace BasAnalysis.CLI
                             {
                                 if (tokens[j].value == "(") inParens = true;
                                 else if (tokens[j].value == ")") break;
-                                else if (inParens && tokens[j].tag == SemanticTags.Variable)
+                                else if (inParens && tokens[j].tag == SemanticTags.Variable) // TODO if array skip ()
                                 {
                                     parameters.Add(tokens[j].value);
                                     localVars.Add(tokens[j].value); // parameters are also local
@@ -418,9 +467,24 @@ namespace BasAnalysis.CLI
                     }
                     else
                     {
+                        Console.WriteLine($">>> {symInfo.Name}");
+                        foreach (string key in engine.DimLines.Keys)
+                        {
+                            Console.WriteLine($"<><><> {key}");
+                        }
+
                         Console.ForegroundColor = ConsoleColor.Green;
-                        Console.WriteLine("\n  {0}: {1} - Assigned: {2} - Referenced :{3} \n", symInfo.Kind, symInfo.Name, symInfo.AssignedCount, symInfo.ReferencedCount);
+                        Console.WriteLine("\n  {0}: {1} - Assigned: {2} - Referenced :{3}", symInfo.Kind, symInfo.Name, symInfo.AssignedCount, symInfo.ReferencedCount);
+                        if (symInfo.Name.EndsWith("()"))
+                        {
+                            if (engine.DimLines.TryGetValue(symInfo.Name, out int lineNumber))
+                            {
+                                Console.Write("  {0}:  ", "DIM at");
+                                ListProg(engine, new string[] { lineNumber.ToString() }, false);
+                            }
+                        }
                         Console.ForegroundColor = ConsoleColor.White;
+                        Console.WriteLine("");
                     }
 
                     foreach (var u in varUsage)
@@ -431,7 +495,7 @@ namespace BasAnalysis.CLI
                             "";
 
                         Console.WriteLine($"  in {prefix}{u.ProcName}:");
-                        if (u.Assigned > 0 && u.Referenced == 0 && symInfo.Kind != SymbolKind.Label)
+                        if (u.Context == SymbolContext.Local && (u.Assigned > 0 && u.Referenced == 0) && symInfo.Kind != SymbolKind.Label)
                             Console.ForegroundColor = ConsoleColor.Red;
                         Console.WriteLine("     {0,9}, Assigned: {1,3}  Referenced: {2,3}  at {3}", u.Context, u.Assigned, u.Referenced, string.Join(", ", u.LineNumbers));
                         Console.ForegroundColor = ConsoleColor.White;
@@ -445,6 +509,12 @@ namespace BasAnalysis.CLI
         {
             if (!Utilities.checkLoaded("LVARS", engine)) return;
             if (!Utilities.checkAnalysed("LVARS", engine.CurrentProgInfo.ProgName, analyzed)) return;
+
+            // Debug
+            foreach (SymbolInfo symInfo in Symbols.Values.OrderBy(s => s.Kind))
+            {
+                Console.WriteLine("  {0,-20}{1,10}{2,11} ", symInfo.Name, symInfo.Kind, symInfo.Uses.Count);
+            }
 
             // Static Integers
             Console.ForegroundColor = ConsoleColor.Green;
@@ -518,7 +588,7 @@ namespace BasAnalysis.CLI
             if (!Utilities.checkAnalysed(cmd, engine.CurrentProgInfo.ProgName, analyzed)) return;
             if (arglist.Length == 0)
             {
-                Utilities.help(new string[] { cmd });
+                Utilities.help(new string[] { cmd }, false);
                 return;
             }
 
@@ -699,7 +769,7 @@ namespace BasAnalysis.CLI
             if (!Utilities.checkLoaded("LISTIF", engine)) return;
             if (arglist.Length < 1)
             {
-                Utilities.help(new string[] { "listif" });
+                Utilities.help(new string[] { "listif" }, false);
                 return;
             }
 
@@ -757,9 +827,17 @@ namespace BasAnalysis.CLI
             {
                 if (!(arglist[i].StartsWith("FN", StringComparison.OrdinalIgnoreCase) || arglist[i].StartsWith("PROC", StringComparison.OrdinalIgnoreCase)))
                 {
-                    Utilities.help(new string[] { "list" });
+                    Utilities.help(new string[] { "list" }, false);
                     Console.WriteLine("                i.e. List <FNname | PROCname> [<FNname | PROCname>] ...");
                     return;
+                }
+
+                else
+                {
+                    if (!arglist[i].StartsWith("FN", StringComparison.OrdinalIgnoreCase))
+                        arglist[i] = "FN" + arglist[i][2..];
+                    if (!arglist[i].StartsWith("PROC", StringComparison.OrdinalIgnoreCase))
+                        arglist[i] = "PROC" + arglist[i][4..];
                 }
             }
 
@@ -902,8 +980,7 @@ namespace BasAnalysis.CLI
         // =====================================
         // 4. Print tree (edge-ordered, node-unique)
         // =====================================
-
-        static void PrintTree(CallNode node, string indent, bool last, HashSet<CallNode> printed)
+        static void PrintTree(CallNode node, string indent, bool last, HashSet<CallNode> printed) //, int childcount
         {
             string prefix = last ? "└─ " : "├─ ";
 
@@ -912,30 +989,59 @@ namespace BasAnalysis.CLI
                 if (node.Children.Count == 0)
                 {
                     // Leaf node: repeat without annotation
-                    Console.WriteLine(indent + prefix + node.Name + " *");
+                    string suffix = " *";// (childcount > 1) ? " (x "+ childcount.ToString() + ")" : "";
+                    Console.WriteLine(" " + indent + prefix + node.Name + suffix);
                 }
                 else
                 {
                     // Non-leaf: show reference
-                    Console.WriteLine(indent + prefix + node.Name + "  (see above)");
+                    string suffix = "";// (childcount > 1) ? " (x " + childcount.ToString() + ")" : "";
+                    Console.WriteLine(" " + indent + prefix + node.Name + suffix + "  (see above)");
                 }
                 return;
             }
             printed.Add(node);
-            Console.WriteLine(indent + prefix + node.Name);
+            Console.WriteLine(" " + indent + prefix + node.Name);
 
             var children = node.Children
                 .OrderBy(e => e.LineNumber)           // program order
                 .ThenByDescending(e => e.Child.MaxDepth)
                 .ToList();
 
+            /*/ Do a count of duplicate children
+            var localPrinted = new Dictionary<CallNode, int>();
+
             for (int i = 0; i < children.Count; i++)
             {
-                bool isLast = (i == children.Count - 1);
-                PrintTree(children[i].Child,
-                          indent + (last ? "   " : "│  "),
-                          isLast,
-                          printed);
+                if (localPrinted.TryGetValue(children[i].Child, out int n))
+                    localPrinted[children[i].Child] = n + 1;
+                else
+                {
+                    localPrinted.Add(children[i].Child, 1);
+                    //localPrinted[children[i].Child] = 1;
+                }
+            }*/
+            // Now print
+            for (int i = 0; i < children.Count; i++)
+            {
+                /*localPrinted.TryGetValue(children[i].Child, out int n);
+                if (n < 2)
+                {
+                    bool isLast = (i == children.Count - 1);
+                    PrintTree(children[i].Child,
+                              indent + (last ? "   " : "│  "),
+                              isLast,
+                              printed, 0);
+                }
+                else
+                {*/
+                    bool isLast = (i == children.Count - 1);
+                    PrintTree(children[i].Child,
+                              indent + (last ? "   " : "│  "),
+                              isLast,
+                              printed); //, n
+
+                //}
             }
         }
 
@@ -989,9 +1095,9 @@ namespace BasAnalysis.CLI
 
             // Special-case root: print without prefix
             if (rootNode.Name == "ROOT")
-                Console.WriteLine('$');
+                Console.WriteLine(" " + '$');
             else
-                Console.WriteLine(rootNode.Name);
+                Console.WriteLine(" " + rootNode.Name);
 
             var children = rootNode.Children
                 .OrderBy(e => e.LineNumber)
@@ -1004,7 +1110,7 @@ namespace BasAnalysis.CLI
                 PrintTree(children[i].Child,
                           "",   // indent starts empty
                           isLast,
-                          printed);
+                          printed);//, 0
             }
         }
         static void RecordUse(string tag, string name, int line,

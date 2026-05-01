@@ -40,6 +40,8 @@
         public Listing CurrentListing { get; private set; } = null;
         public ProgInfo CurrentProgInfo { get; private set; } = null;
 
+        public Dictionary<string, int> DimLines = new(); // for the benefit of BasAnalysis
+
         // The public 'pipeline' for BasList
         public Listing loadAndFormatFile(string filename, FormattingOptions formatOptions, ProgInfo progInfo)
         {

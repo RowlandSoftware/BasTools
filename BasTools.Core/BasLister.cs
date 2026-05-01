@@ -54,6 +54,7 @@ namespace BasTools.Core
             [SemanticTags.HexNumber] = ConsoleColor.White,
             [SemanticTags.BinaryNumber] = ConsoleColor.White,
             [SemanticTags.Variable] = ConsoleColor.Magenta,
+            [SemanticTags.Array] = ConsoleColor.Yellow,
             [SemanticTags.StaticInteger] = ConsoleColor.DarkYellow,
             [SemanticTags.RemText] = ConsoleColor.Yellow,
             [SemanticTags.AssemblerComment] = ConsoleColor.Yellow,

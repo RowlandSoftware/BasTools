@@ -58,6 +58,7 @@ namespace BasTools.Core
         HexNumber,
         BinaryNumber,
         Variable,
+        Array,
         StaticInteger,
         RemText,
         AssemblerComment,
@@ -92,6 +93,7 @@ namespace BasTools.Core
         public const string HexNumber = "{=hexnumber}";
         public const string BinaryNumber = "{=binarynumber}";
         public const string Variable = "{=var}";
+        public const string Array = "{=array}";
         public const string StaticInteger = "{=staticint}";
         public const string RemText = "{=remtext}";
         public const string AssemblerComment = "{=assemcomment}";
@@ -111,6 +113,7 @@ namespace BasTools.Core
         public const string ListSep = "{=listsep}";
         public const string OpenBracket = "{=openbracket}";
         public const string CloseBracket = "{=closebracket}";
+        public const string PLACEHOLDER = "{=placeholder}";     // Must not be emitted from Detokeniser
         public const string Reset = "{/}";
     }
     // Keyword roles
@@ -139,7 +142,7 @@ namespace BasTools.Core
         public string FormattedLineNumber { get; set; }
         public string FormattedPlain { get; set; } = "";
         public string FormattedTagged { get; set; } = "";
-
+        
         // Flags and indent level
         public int IndentLevel { get; set; }
         public bool IsDef {  get; set; }
@@ -148,6 +151,12 @@ namespace BasTools.Core
         {
             get => IsInDef ? 1 : 0;
         }
+        // Properties for Editor
+        public string EditedLine { get; set; } = "";
+        public bool Edited { get; set; } = false;
+        public bool Deleted { get; set; } = false;
+        public bool Added { get; set; } = false;
+
         // Properties for Assembler
         public bool InAsm { get; set; } = false;
         public bool IsArm { get; set; } = false;

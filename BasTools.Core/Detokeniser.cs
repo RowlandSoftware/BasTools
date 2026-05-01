@@ -589,7 +589,7 @@ namespace BasTools.Core
                 if (!flgVar && !rem && (char.IsAsciiLetter(curchar) || curbyte == '_') && !flgFnOrProc && !quote) // && !flgHex
                 {
                     flgVar = true;
-                    taggedline += SemanticTags.Variable;
+                    taggedline += SemanticTags.PLACEHOLDER; // may be scalar variable or array
                 }
 
                 // *** 2. Printable characters - NOW we add to listings ***
@@ -612,23 +612,28 @@ namespace BasTools.Core
                     // end of variables
                     if (flgVar)
                     {
-                        if (curchar is '%' or '$') // have added the last character of variable
+                        if (curchar is '%' or '$') // have added the last character of variable or array
                         {
                             flgVar = false;
                             taggedline += SemanticTags.Reset;
-                            //flgLabel = false;
+
                             var (t, v) = getTagAndValueFromTaggedLine(taggedline);
-                            NoteExprTokenInIf(SemanticTags.Variable, v, parserState);
+                            NoteExprTokenInIf(SemanticTags.Variable, v, parserState); // TODO?
                             //DBG($"[IF F] Token complete: tag={SemanticTags.Variable}, value={v}, ExprComplete={parserState.ExprComplete}");
                         }
                         else if (!char.IsAsciiLetterOrDigit(nxtchar) & nxtchar is not '_' and not '%' and not '$') // char coming up is not legal in variable names
                         {
                             flgVar = false;
                             taggedline += SemanticTags.Reset;
-                            //flgLabel = false;
+                            
                             var (t, v) = getTagAndValueFromTaggedLine(taggedline);
                             NoteExprTokenInIf(SemanticTags.Variable, v, parserState);
                             //DBG($"[IF G] Token complete: tag={t}, value={v}, ExprComplete={parserState.ExprComplete}");
+                        }
+                        if (!flgVar) // flgVar WAS true; now false because reached end
+                        {
+                            string realTag = (nxtchar == '(') ? SemanticTags.Array : SemanticTags.Variable;
+                            taggedline = taggedline.Replace(SemanticTags.PLACEHOLDER, realTag);
                         }
                     }
                     // check for end of statement

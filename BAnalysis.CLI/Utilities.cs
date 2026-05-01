@@ -14,6 +14,9 @@ namespace BasAnalysis.CLI
     {
         public static SymbolKind InferKind(string tag, string name)
         {
+            if (name.EndsWith("()"))
+                name = name[..^2];
+
             if (name.EndsWith('%') && name.Length == 2 && (char.IsAsciiLetterUpper(name[0]) || name[0] == '@'))
                 return SymbolKind.StaticInt;
             if (name.EndsWith('%'))
@@ -157,12 +160,12 @@ namespace BasAnalysis.CLI
             Console.WriteLine("Detailed analysis of a BBC BASIC program\n");
             Console.ForegroundColor = ConsoleColor.White;
         }
-        public static void help(string[] args)
+        public static void help(string[] args, bool showbanner)
         {
             if (args.Length == 0)
             {
-                banner();
-                Console.WriteLine("    BasList [<filename>] [/analyse | /analyze] [/preview]");
+                if (showbanner) banner();
+                Console.WriteLine("    BasList [<filename>] [/analyse | /analyze] [/preview] [/help | /?]");
                 Console.WriteLine("\n    COMMANDS\n");
                 Console.WriteLine("    {0,-10}{1,-10}{2,-10}{3,-10}{4,-10}{5,-10}", "help", "load", "analyze", "preview", "list", "blist");
                 Console.WriteLine("    {0,-10}{1,-10}{2,-10}{3,-10}{4,-10}{5,-10}", "lvar", "lvars", "lfn", "lproc", "tree", "x");
@@ -182,7 +185,7 @@ namespace BasAnalysis.CLI
                     case "blist":
                         Console.WriteLine("blist         - As List with syntax colouring");
                         Console.WriteLine("Minimum abbreviation: b.");
-                        help(new string[] { "list" });
+                        help(new string[] { "list" }, false);
                         break;
                     case "list":
                         Console.WriteLine("list          - Display entire program");
@@ -366,8 +369,8 @@ namespace BasAnalysis.CLI
         }
         public static void Command_DirW()
         {
-            string folderIcon = "📁 ";
-            string fileIcon = "📄 ";
+            //string folderIcon = "📁 ";
+            //string fileIcon = "📄 ";
 
             string cwd = Directory.GetCurrentDirectory();
 
