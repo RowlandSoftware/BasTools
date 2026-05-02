@@ -1,13 +1,6 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Reflection;
-using System.Reflection.PortableExecutable;
-using System.Runtime.CompilerServices;
+﻿using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Channels;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace BasTools.Core
 {
@@ -57,8 +50,8 @@ namespace BasTools.Core
             readTokenTable(token, "BasTools.Core.TokenTable.txt");      // actually a mix of all single-byte tokens
             readTokenTable(Vtoken, "BasTools.Core.VTokenTable.txt");    // double-byte tokens
 
-            
-        }        
+
+        }
         internal bool ProcessRawProgram(string fn, Listing listing, ProgInfo progInfo)
         {
             ParserState State = new();
@@ -177,9 +170,9 @@ namespace BasTools.Core
         private void processLineBody(ParserState parserState, byte[] tokenisedLine, ProgramLine returnObject, ProgInfo progInfo)
         {
             firstPass(parserState, tokenisedLine, returnObject, progInfo);
-            
+
             secondPass(returnObject);
-            
+
             thirdPass(returnObject);
         }
         private void firstPass(ParserState parserState, byte[] tokenisedLine, ProgramLine returnObject, ProgInfo progInfo)
@@ -386,7 +379,7 @@ namespace BasTools.Core
                         else
                         {
                             string possibleMnemonic = readMnemonic(tokenisedLine, i);
-                            
+
                             if (possibleMnemonic != string.Empty)
                             {
                                 bool isMnemonic;
@@ -625,7 +618,7 @@ namespace BasTools.Core
                         {
                             flgVar = false;
                             taggedline += SemanticTags.Reset;
-                            
+
                             var (t, v) = getTagAndValueFromTaggedLine(taggedline);
                             NoteExprTokenInIf(SemanticTags.Variable, v, parserState);
                             //DBG($"[IF G] Token complete: tag={t}, value={v}, ExprComplete={parserState.ExprComplete}");
@@ -734,7 +727,7 @@ namespace BasTools.Core
                 prevbyte = curbyte;
             }
             if (rem || flgFnOrProc || flgVar || asmComment || closeTag) taggedline += SemanticTags.Reset; // close hanging tags at end of line
-            
+
             //if (parserState.InAsm) //DBG($"InAsm {parserState.InAsm} - {taggedline}");
 
             returnObject.PlainDetokenisedLine = plainline;
@@ -904,7 +897,7 @@ namespace BasTools.Core
 
                 // Enter boolean context
                 if ((tok.tag == SemanticTags.Keyword && tok.value == "IF") ||
-                    (tok.tag == SemanticTags.IndentingKeyword && tok.value == "WHILE") || 
+                    (tok.tag == SemanticTags.IndentingKeyword && tok.value == "WHILE") ||
                     (tok.tag == SemanticTags.OutdentingKeyword && tok.value == "UNTIL"))
                     insideBoolean = true;
 
@@ -1027,7 +1020,7 @@ namespace BasTools.Core
                 byte3 ^= A;                // EOR with byte3; this is now MSB
                 return (byte3 * 256 + byte2).ToString();
             }
-            catch (KeyNotFoundException k)
+            catch (KeyNotFoundException)
             {
                 return "[" + curbyte.ToString("X") + "]";
             }
@@ -1046,22 +1039,22 @@ namespace BasTools.Core
 
             if (parserState.IfParenDepth > 0)
             {
-            parserState.ExprComplete = false;
-            return;
+                parserState.ExprComplete = false;
+                return;
             }
 
             // Keywords that continue an expression
             if (tag == SemanticTags.Keyword && keyword is "AND" or "OR" or "EOR")
             {
-            parserState.ExprComplete = false;
-            return;
+                parserState.ExprComplete = false;
+                return;
             }
 
             // Operators / built-in functions / indirection etc. should also reset
             if (tag == SemanticTags.Operator || tag == SemanticTags.BuiltInFn || tag == SemanticTags.IndirectionOperator) // is the last condition accurate?
             {
-            parserState.ExprComplete = false;
-            return;
+                parserState.ExprComplete = false;
+                return;
             }
 
             // Variables, numbers, string literals, closing ) at depth 0 ? potentially complete
@@ -1093,7 +1086,7 @@ namespace BasTools.Core
             {
                 throw new BasToolsException("Malformed tag in '" + taggedline + "'");
             }
-            string tag = taggedline.Substring(x, y-x+1);
+            string tag = taggedline.Substring(x, y - x + 1);
             if (taggedline.EndsWith(tag))
             {
                 taggedline = taggedline.Substring(0, x);
@@ -1125,7 +1118,7 @@ namespace BasTools.Core
                 {
                     int key = byte.Parse(temp[1]);
                     toktable.Add(key, temp[0]);
-                    
+
                     if (Enum.TryParse<KeywordRole>(temp[2], true, out var role))
                     {
                         KeywordRoles[temp[0]] = role;   // overwrite or insert

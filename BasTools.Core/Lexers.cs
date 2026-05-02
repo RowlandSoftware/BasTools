@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using System.Text;
 
 namespace BasTools.Core
 {
@@ -161,7 +159,7 @@ namespace BasTools.Core
                 if (!string.IsNullOrEmpty(mnemonic))
                 {
                     set.Add(mnemonic.Trim());
-                }                   
+                }
             }
             return set;
         }

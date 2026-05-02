@@ -1,18 +1,8 @@
-﻿using System.Diagnostics;
-
-namespace BasList.CLI
+﻿namespace BasList.CLI
 {
     using BasTools.Core;
-    using System.CodeDom.Compiler;
-    using System.Collections;
-    using System.ComponentModel.Design;
     using System.Diagnostics;
     using System.Reflection;
-    using System.Reflection.Emit;
-    using System.Security.Cryptography.X509Certificates;
-    using System.Text;
-    using System.Text.RegularExpressions;
-    using System.Xml.Linq;
 
     //using System.Windows.Forms
 
@@ -299,7 +289,7 @@ namespace BasList.CLI
                         if (switches.ToLine == -1) switches.ToLine = switches.FromLine;
                         switches.checkFromTo(); // reverse From Line and To Line if wrong way round
                     }
-                    catch (System.FormatException fe)
+                    catch (System.FormatException)
                     {
                         Console.Error.WriteLine("Line numbers not in correct format");
                         //Console.WriteLine(fe.Message);
@@ -341,7 +331,7 @@ namespace BasList.CLI
                 Console.Error.WriteLine("Error: No filename found");
                 help();
                 Environment.Exit(0);
-            }            
+            }
             if (switches.Bare) switches.FlgPause = false;
         }
         static void getDirectiveParams(string[] args, CommandSwitches s)

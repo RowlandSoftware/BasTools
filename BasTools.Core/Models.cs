@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics.Metrics;
-using System.Text;
-
-namespace BasTools.Core
+﻿namespace BasTools.Core
 {
     //***************** ProgInfo *****************
     // Just a little collection of information. Also used to pass some information
@@ -108,7 +103,7 @@ namespace BasTools.Core
         public const string Operator = "{=operator}";
         public const string IsEqualTo_Operator = "{==}";
         public const string IndirectionOperator = "{=indirectionoperator}";
-        public const string ImmediateOperator = "{=immediateoperator}";        
+        public const string ImmediateOperator = "{=immediateoperator}";
         public const string StatementSep = "{=statementsep}";
         public const string ListSep = "{=listsep}";
         public const string OpenBracket = "{=openbracket}";
@@ -142,10 +137,10 @@ namespace BasTools.Core
         public string FormattedLineNumber { get; set; }
         public string FormattedPlain { get; set; } = "";
         public string FormattedTagged { get; set; } = "";
-        
+
         // Flags and indent level
         public int IndentLevel { get; set; }
-        public bool IsDef {  get; set; }
+        public bool IsDef { get; set; }
         public bool IsInDef { get; set; }
         public int DefIndent
         {
@@ -163,7 +158,7 @@ namespace BasTools.Core
         public bool IsZ80 { get; set; } = false;
         // Properties needed for SplitLines
         public FormatterState fstate;
-        public ProgramLine (ProgramLine other)
+        public ProgramLine(ProgramLine other)
         {
             LineNumber = other.LineNumber;
             IndentLevel = other.IndentLevel;
@@ -343,7 +338,7 @@ namespace BasTools.Core
             opts.ExtraColumnWidth = ColumnWidth;
 
             return opts;
-        }        
+        }
         public void SwopIfLight()
         {
             if (!FlgDark) (ForeColor, BackColor) = (BackColor, ForeColor);

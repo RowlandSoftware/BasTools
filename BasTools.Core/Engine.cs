@@ -1,25 +1,8 @@
 ﻿namespace BasTools.Core
 {
-    using Microsoft.Win32;
     using System;
-    using System.Collections;
     using System.Collections.Generic;
-    using System.Collections.ObjectModel;
-    using System.ComponentModel.Design;
-    using System.Diagnostics;
-    using System.Drawing;
-    using System.IO;
-    using System.Linq;
-    using System.Linq.Expressions;
-    using System.Numerics;
     using System.Reflection;
-    using System.Reflection.Emit;
-    using System.Reflection.PortableExecutable;
-    using System.Runtime.Intrinsics.X86;
-    using System.Security.Cryptography;
-    using System.Text;
-    using System.Text.RegularExpressions;
-    using static System.Runtime.InteropServices.JavaScript.JSType;
 
     //***************** Exceptions *****************
     public class BasToolsException : Exception
@@ -31,7 +14,7 @@
 
         public BasToolsException(string message, Exception inner)
             : base(message, inner) { }
-    }    
+    }
     //
     //***************** The Engine *****************
     //
@@ -56,8 +39,8 @@
                         FormatProgram(listing, formatOptions, progInfo);
                         {
                             CurrentListing = listing;
-                            CurrentProgInfo = progInfo; 
-                            
+                            CurrentProgInfo = progInfo;
+
                             return listing;
                         }
                     }
@@ -101,7 +84,7 @@
                 if (line[i] == '{' && i + 2 < line.Length && line[i + 1] == '=')
                 {
                     int tagStart = i;
-                    
+
                     int tagEnd = line.IndexOf('}', tagStart);
                     if (tagEnd < 0) break;
 
@@ -125,7 +108,7 @@
                 {
                     // Untagged text — collect until next '{'
                     int start = i;
-                    int next = line.IndexOf('{', i+1);
+                    int next = line.IndexOf('{', i + 1);
                     if (next < 0) next = line.Length;
 
                     string text = line.Substring(start, next - start);

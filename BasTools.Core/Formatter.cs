@@ -1,12 +1,4 @@
-﻿using BasTools.Core;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Reflection.Emit;
-using System.Runtime.CompilerServices;
-using System.Security.Permissions;
-using System.Text;
-using System.Text.RegularExpressions;
+﻿using System.Text;
 
 namespace BasTools.Core
 {
@@ -93,7 +85,7 @@ namespace BasTools.Core
     }
     public partial class BasToolsEngine
     {
-     #region Assembler Columns
+        #region Assembler Columns
         public sealed class AsmColumnConfig
         {
             public int LabelCol { get; init; }      // 0‑based index where label starts
@@ -141,7 +133,7 @@ namespace BasTools.Core
                 formatLineNumber(progline, switches, state, progInfo);
 
                 var tokens = BasToolsEngine.WalkTagged(progline.TaggedLine).ToList();
-                
+
                 if (progline.InAsm && switches.AssemblerColumns)
                 {
                     //DBG($"{progline.LineNumber} {progline.TaggedLine} == {progline.InAsm} [{switches.AssemblerColumns}]");
@@ -261,8 +253,8 @@ namespace BasTools.Core
                 formattedLineNumber = formattedLineNumber.PadLeft(5);
 
             progLine.FormattedLineNumber = formattedLineNumber;
-        }        
-        private void  HandleIndents(Token token1, FormatterState state, ProgInfo progInfo, bool InSplitLines)
+        }
+        private void HandleIndents(Token token1, FormatterState state, ProgInfo progInfo, bool InSplitLines)
         {
             if (token1.tag == SemanticTags.Keyword)
             {
@@ -358,12 +350,12 @@ namespace BasTools.Core
                 return true;
 
             // lookahead
-            for (int j = ++i; j < lines.Lines.Count ; j++)
+            for (int j = ++i; j < lines.Lines.Count; j++)
             {
                 ProgramLine line = lines.Lines[j];
 
                 string temp = line.NoSpacesLine.Replace(":", ""); // skip empty lines and just colons
-                
+
                 int remPos = temp.IndexOf("REM");
                 int dataPos = temp.IndexOf("DATA");
 
@@ -401,7 +393,7 @@ namespace BasTools.Core
                 if (!string.IsNullOrWhiteSpace(v))
                     return tokens[j];
             }
-            return new Token(null,null, false);
+            return new Token(null, null, false);
         }
         static bool IsUnaryMinus(List<Token> tokens, int i)
         {
@@ -450,7 +442,7 @@ namespace BasTools.Core
 
                 if (string.IsNullOrWhiteSpace(t.value))
                     continue;
-                
+
                 // Parentheses tracking
                 if (t.tag == SemanticTags.OpenBracket)
                 {
@@ -559,7 +551,8 @@ namespace BasTools.Core
                     sbPlain = new(sbPlain.ToString().TrimEnd());
                     sbTagged = new(sbTagged.ToString().TrimEnd());
 
-                    if (sbPlain.Length == 0){
+                    if (sbPlain.Length == 0)
+                    {
                         sbTagged.Clear();
                     }
                     int cldbe = targetCol - sbPlain.Length;
@@ -568,7 +561,7 @@ namespace BasTools.Core
                     //Console.WriteLine($"{sbPlain.Length} - {comment} [{cldbe}]");
                     sbPlain.Append(new string(' ', cldbe));
                     sbTagged.Append(new string(' ', cldbe));
-                    
+
                     sbTagged.Append(padOut(SemanticTags.AssemblerComment, ref comment, cols.CommentCol));
                     sbPlain.Append(comment);
                 }

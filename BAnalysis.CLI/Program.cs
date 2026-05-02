@@ -1,8 +1,5 @@
-﻿using BasAnalysis.CLI;
-using BasTools.Core;
+﻿using BasTools.Core;
 using System.Globalization;
-using System.Text.RegularExpressions;
-using Windows.Networking;
 #pragma warning disable CA1861, CA1305, CA1304
 
 namespace BasAnalysis.CLI
@@ -209,7 +206,7 @@ namespace BasAnalysis.CLI
                     var tok = tokens[i];
 
                     if (tok.tag == SemanticTags.StatementSep ||
-                        (tok.tag == SemanticTags.Keyword && (tok.value is "REPEAT" or "ELSE" )))
+                        (tok.tag == SemanticTags.Keyword && (tok.value is "REPEAT" or "ELSE")))
                     {
                         expectingAssignmentTarget = true;
                         readOrDim = false;
@@ -226,12 +223,12 @@ namespace BasAnalysis.CLI
 
                     if (tok.tag == SemanticTags.Keyword && (tok.value is "LOCAL" or "DIM")) // variables in the LOCAL list count as assignments (initialised to 0 or "")
                     {
-                        if (tok.value =="DIM") // everything after READ is an assignment without =
+                        if (tok.value == "DIM") // everything after READ is an assignment without =
                         {
                             expectingAssignmentTarget = true;
                             readOrDim = true;
                         }
-                        
+
                         int j = i + 1;
                         while (j < tokens.Count && tokens[j].tag != SemanticTags.StatementSep)
                         {
@@ -338,7 +335,7 @@ namespace BasAnalysis.CLI
                                 procedureType = ProcedureType.Proc;
                             else
                                 procedureType = ProcedureType.Fn;
-                            
+
                             procedureName = tok.value;
 
                             // We record the DEF as a 'use' to record line number etc
@@ -360,7 +357,7 @@ namespace BasAnalysis.CLI
                                     j++;
                                     continue;
                                 }
-                                    
+
                                 if (tokens[j].value == ")")
                                 {
                                     parenDepth--;
@@ -454,7 +451,7 @@ namespace BasAnalysis.CLI
                 if (!line.IsInDef && !line.IsDef)
                 {
                     procedureType = ProcedureType.Root;
-                    procedureName = "$";                    
+                    procedureName = "$";
                 }
             }
             Console.Write($"Analysed {Symbols.Count} unique tokens\n");
@@ -519,7 +516,7 @@ namespace BasAnalysis.CLI
 
                         Console.ForegroundColor = ConsoleColor.Green;
                         Console.WriteLine("\n  {0}: {1} - Assigned: {2} - Referenced :{3}", symInfo.Kind, symInfo.Name, symInfo.AssignedCount, symInfo.ReferencedCount);
-                        
+
                         // show additional information for arrays
                         if (symInfo.Name.EndsWith("()"))
                         {
@@ -541,7 +538,7 @@ namespace BasAnalysis.CLI
                             "";
 
                         Console.WriteLine($"  in {prefix}{u.ProcName}:");
-                        
+
                         if (u.Context == SymbolContext.Local && (u.Assigned > 0 && u.Referenced == 0) && symInfo.Kind != SymbolKind.Label)
                             Console.ForegroundColor = ConsoleColor.Red;
                         Console.WriteLine("     {0,9}, Assigned: {1,3}  Referenced: {2,3}  at {3}", u.Context, u.Assigned, u.Referenced, string.Join(", ", u.LineNumbers));
@@ -564,7 +561,7 @@ namespace BasAnalysis.CLI
             }*/
 
             // Static Integers
-            Utilities.PrintByKind(SymbolKind.StaticInt, Symbols, "\n  Static Integer Variables", 
+            Utilities.PrintByKind(SymbolKind.StaticInt, Symbols, "\n  Static Integer Variables",
                 string.Format("\n  {0,-20}{1,10}{2,11}\n", "Variable", "Assigned", "Referenced"));
 
             Console.WriteLine("\nDynamic Variables (may include labels)");
@@ -744,7 +741,7 @@ namespace BasAnalysis.CLI
 
                 foreach (var v in varsUsed)
                 {
-                    if (v.Assigned >0 && v.Referenced == 0) Console.ForegroundColor = ConsoleColor.Red;
+                    if (v.Assigned > 0 && v.Referenced == 0) Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine(
                         "  {0,9} {1,12} {2,10}  Assigned: {3,3}  Referenced: {4,3}  at {5}",
                         v.Context, v.Kind, v.Name, v.Assigned, v.Referenced,
@@ -799,7 +796,7 @@ namespace BasAnalysis.CLI
             int linesprinted = 0;
             bool first = true;
 
-            foreach(ProgramLine line in engine.CurrentListing.Lines)
+            foreach (ProgramLine line in engine.CurrentListing.Lines)
             {
                 foreach (string arg in arglist)
                 {
@@ -1058,11 +1055,11 @@ namespace BasAnalysis.CLI
                 }
                 else
                 {*/
-                    bool isLast = (i == children.Count - 1);
-                    PrintTree(children[i].Child,
-                              indent + (last ? "   " : "│  "),
-                              isLast,
-                              printed); //, n
+                bool isLast = (i == children.Count - 1);
+                PrintTree(children[i].Child,
+                          indent + (last ? "   " : "│  "),
+                          isLast,
+                          printed); //, n
 
                 //}
             }

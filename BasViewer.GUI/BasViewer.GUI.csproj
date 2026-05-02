@@ -1,0 +1,40 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <AssemblyName>BasViewer</AssemblyName>
+    <ApplicationIcon>RS_lg.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <AvaloniaXaml Remove="AvaloniaEditThemes\**" />
+    <AvaloniaXaml Remove="AvaloniaEdit\**" />
+    <AvaloniaXaml Remove="Styles\**" />
+    <Compile Remove="AvaloniaEditThemes\**" />
+    <Compile Remove="AvaloniaEdit\**" />
+    <Compile Remove="Styles\**" />
+    <EmbeddedResource Remove="AvaloniaEditThemes\**" />
+    <EmbeddedResource Remove="AvaloniaEdit\**" />
+    <EmbeddedResource Remove="Styles\**" />
+    <None Remove="AvaloniaEditThemes\**" />
+    <None Remove="AvaloniaEdit\**" />
+    <None Remove="Styles\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="RS_lg.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.0.1" />
+	<PackageReference Include="Avalonia.AvaloniaEdit" Version="12.0.0" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.0.1" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.1" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.1" />
+    <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.1">
+      <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
+      <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+</Project>

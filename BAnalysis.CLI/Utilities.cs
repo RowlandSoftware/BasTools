@@ -1,11 +1,8 @@
 ﻿using BasTools.Core;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.Reflection;
 using System.Text;
-using System.Xml.Linq;
 #pragma warning disable CA1861, CA1305
 
 namespace BasAnalysis.CLI
@@ -41,7 +38,7 @@ namespace BasAnalysis.CLI
             string heading1, string heading2)
         {
             var list = Symbols.Values.Where(s => s.Kind == kind).OrderBy(s => s.Name).ToList<SymbolInfo>();
-            if (list.Count == 0 ) return;
+            if (list.Count == 0) return;
 
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine(heading1);
@@ -364,7 +361,7 @@ namespace BasAnalysis.CLI
         }
         public static string InitCap(string s)
         {
-            return char.ToUpper(s[0],CultureInfo.InvariantCulture).ToString() + s[1..].ToLowerInvariant();
+            return char.ToUpper(s[0], CultureInfo.InvariantCulture).ToString() + s[1..].ToLowerInvariant();
         }
         private static void ClearCurrentConsoleLine()
         {
@@ -415,7 +412,8 @@ namespace BasAnalysis.CLI
                     {
                         //name = folderIcon + name;
                         Console.ForegroundColor = ConsoleColor.Green;
-                    } else
+                    }
+                    else
                     {
                         //name = fileIcon + name;
                     }

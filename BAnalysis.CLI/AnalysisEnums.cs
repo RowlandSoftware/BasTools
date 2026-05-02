@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace BasAnalysis.CLI
+﻿namespace BasAnalysis.CLI
 {
     public enum SymbolKind
     {
