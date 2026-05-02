@@ -618,7 +618,7 @@ namespace BasTools.Core
                             taggedline += SemanticTags.Reset;
 
                             var (t, v) = getTagAndValueFromTaggedLine(taggedline);
-                            NoteExprTokenInIf(SemanticTags.Variable, v, parserState); // TODO?
+                            NoteExprTokenInIf(SemanticTags.Variable, v, parserState);
                             //DBG($"[IF F] Token complete: tag={SemanticTags.Variable}, value={v}, ExprComplete={parserState.ExprComplete}");
                         }
                         else if (!char.IsAsciiLetterOrDigit(nxtchar) & nxtchar is not '_' and not '%' and not '$') // char coming up is not legal in variable names
@@ -643,7 +643,7 @@ namespace BasTools.Core
                         startOfStatement = false; // anything else isn't
                 }
                 else
-                // 4. Now deal with tokens
+                // 4. Now deal with tokenised keywords
                 {
                     string keyword = getKeywordOrLineNumber(tokenisedLine, curbyte, ref i, ref nxtchar, progInfo, parserState);
 

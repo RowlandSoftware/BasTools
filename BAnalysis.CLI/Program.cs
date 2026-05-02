@@ -33,19 +33,31 @@ namespace BasAnalysis.CLI
                 Console.ForegroundColor = ConsoleColor.White;
                 if (!args[0].StartsWith('/') && !args[0].StartsWith('-'))
                     load(args[0], BAprogInfo, engine, ref prompt);
-                for (int i = 0; i < args.Length; i++)
+                for (int i = 1; i < args.Length; i++)
                 {
+                    bool recognised = false;
                     string arg1 = args[i].ToUpper(CultureInfo.InvariantCulture);
                     if (arg1.StartsWith('/') || arg1.StartsWith('-'))
                     {
                         arg1 = arg1.Substring(1);
                         if ("ANALYSE".StartsWith(arg1, StringComparison.OrdinalIgnoreCase) || "ANALYZE".StartsWith(arg1, StringComparison.OrdinalIgnoreCase))
+                        {
+                            recognised = true;
                             Analyse(engine, ref analyzed);
+                        }
                         if ("PREVIEW".StartsWith(arg1, StringComparison.OrdinalIgnoreCase))
+                        {
+                            recognised = true;
                             Preview(engine);
+                        }
                         if ("HELP".StartsWith(arg1, StringComparison.OrdinalIgnoreCase) || arg1 == "?")
+                        {
+                            recognised = true;
                             Utilities.help(Array.Empty<string>(), false);
+                        }
                     }
+                    if (!recognised)
+                        Console.WriteLine($"Argument '{arg1}' not recognised");
                 }
             }
             //
@@ -181,7 +193,7 @@ namespace BasAnalysis.CLI
 
             // Tracking which procedure or function (inc root) we are "in"
             ProcedureType procedureType = ProcedureType.Root;
-            string procedureName = string.Empty;
+            string procedureName = "$"; // root
 
             foreach (ProgramLine line in engine.CurrentListing.Lines)
             {
@@ -296,11 +308,12 @@ namespace BasAnalysis.CLI
                         // ... and if array skip over (..)
                         if (tok.tag == SemanticTags.Array && next.tag == SemanticTags.OpenBracket)
                         {
+                            int k = i;
                             while (next.tag != SemanticTags.CloseBracket)
                             {
-                                next = Utilities.PeekNextNonSpaceToken(tokens, i++);
+                                next = Utilities.PeekNextNonSpaceToken(tokens, k++);
                             }
-                            next = Utilities.PeekNextNonSpaceToken(tokens, i);
+                            next = Utilities.PeekNextNonSpaceToken(tokens, k);
                         }
 
                         bool isAssignment = expectingAssignmentTarget &&
@@ -337,19 +350,50 @@ namespace BasAnalysis.CLI
 
                             // Now parse parameters
                             int j = i + 1;
-                            bool inParens = false;
+                            int parenDepth = 0;
 
-                            while (j < tokens.Count)
+                            while (j < tokens.Count && tokens[j].tag != SemanticTags.StatementSep)
                             {
-                                if (tokens[j].value == "(") inParens = true;
-                                else if (tokens[j].value == ")") break;
-                                else if (inParens && tokens[j].tag == SemanticTags.Variable) // TODO if array skip ()
+                                if (tokens[j].value == "(")
                                 {
-                                    parameters.Add(tokens[j].value);
-                                    localVars.Add(tokens[j].value); // parameters are also local
+                                    parenDepth++;
+                                    j++;
+                                    continue;
+                                }
+                                    
+                                if (tokens[j].value == ")")
+                                {
+                                    parenDepth--;
+                                    if (parenDepth == 0)
+                                        break;
+                                    j++;
+                                    continue;
+                                }
+                                // Parameter at depth 1
+                                if (parenDepth == 1)
+                                {
+                                    if (tokens[j].tag == SemanticTags.Variable)
+                                    {
+                                        parameters.Add(tokens[j].value);
+                                        localVars.Add(tokens[j].value);
+                                    }
+                                    else if (tokens[j].tag == SemanticTags.Array)
+                                    {
+                                        string full = tokens[j].value + "()";
+                                        parameters.Add(full);
+                                        localVars.Add(full);
+                                    }
                                 }
                                 j++;
                             }
+                            if (parenDepth != 0)
+                            {
+                                Console.ForegroundColor = ConsoleColor.Red;
+                                string missed = parenDepth > 0 ? ")" : "(";
+                                Console.WriteLine($"Warning: Missing {missed} in parameter list at line {line.LineNumber}");
+                                Console.ResetColor();
+                            }
+                            // scanned parameters, so...
                             i = j;
                             // Now record a synthetic assignment for each
                             foreach (var p in parameters)
@@ -365,7 +409,7 @@ namespace BasAnalysis.CLI
                                 );
                             }
                         }
-                        else // is a PROC or FN call
+                        else // is a PROC or FN *call*
                         {
                             RecordUse(tok.tag, tok.value, line.LineNumber,
                             SymbolReadOrWrite.Referenced,
@@ -377,7 +421,7 @@ namespace BasAnalysis.CLI
                     {
                         RecordUse(tok.tag, tok.value, line.LineNumber,
                             SymbolReadOrWrite.Assigned,
-                            SymbolContext.NA, procedureName, procedureType);    // TODO SymbolContext should record whether part of an argument
+                            SymbolContext.NA, procedureName, procedureType);
 
                         expectingAssignmentTarget = false;
                         continue;
@@ -410,7 +454,7 @@ namespace BasAnalysis.CLI
                 if (!line.IsInDef && !line.IsDef)
                 {
                     procedureType = ProcedureType.Root;
-                    procedureName = "";                    
+                    procedureName = "$";                    
                 }
             }
             Console.Write($"Analysed {Symbols.Count} unique tokens\n");
@@ -458,8 +502,8 @@ namespace BasAnalysis.CLI
                 }
                 else
                 {
-                    SymbolKind varKind = Utilities.InferKind(SemanticTags.Variable, arg); // tag here only used if no %, $ or leading .
-                    //SymbolInfo symInfo = Symbols[varKind + ":" + arg];
+                    SymbolKind varKind = Utilities.InferKind(SemanticTags.Variable, arg); // InferKind only uses SemanticTags.Variable if no %, $ suffix or leading dot
+
                     if (!Symbols.TryGetValue(varKind + ":" + arg, out SymbolInfo symInfo))
                     {
                         Console.WriteLine($"No such variable '{arg}'.");
@@ -467,14 +511,16 @@ namespace BasAnalysis.CLI
                     }
                     else
                     {
-                        Console.WriteLine($">>> {symInfo.Name}");
+                        /*/ DebugConsole.WriteLine($">>> {symInfo.Name}");
                         foreach (string key in engine.DimLines.Keys)
                         {
-                            Console.WriteLine($"<><><> {key}");
-                        }
+                            Console.WriteLine($">> {key}");
+                        }*/
 
                         Console.ForegroundColor = ConsoleColor.Green;
                         Console.WriteLine("\n  {0}: {1} - Assigned: {2} - Referenced :{3}", symInfo.Kind, symInfo.Name, symInfo.AssignedCount, symInfo.ReferencedCount);
+                        
+                        // show additional information for arrays
                         if (symInfo.Name.EndsWith("()"))
                         {
                             if (engine.DimLines.TryGetValue(symInfo.Name, out int lineNumber))
@@ -495,6 +541,7 @@ namespace BasAnalysis.CLI
                             "";
 
                         Console.WriteLine($"  in {prefix}{u.ProcName}:");
+                        
                         if (u.Context == SymbolContext.Local && (u.Assigned > 0 && u.Referenced == 0) && symInfo.Kind != SymbolKind.Label)
                             Console.ForegroundColor = ConsoleColor.Red;
                         Console.WriteLine("     {0,9}, Assigned: {1,3}  Referenced: {2,3}  at {3}", u.Context, u.Assigned, u.Referenced, string.Join(", ", u.LineNumbers));
@@ -510,69 +557,45 @@ namespace BasAnalysis.CLI
             if (!Utilities.checkLoaded("LVARS", engine)) return;
             if (!Utilities.checkAnalysed("LVARS", engine.CurrentProgInfo.ProgName, analyzed)) return;
 
-            // Debug
+            /*/ Debug
             foreach (SymbolInfo symInfo in Symbols.Values.OrderBy(s => s.Kind))
             {
                 Console.WriteLine("  {0,-20}{1,10}{2,11} ", symInfo.Name, symInfo.Kind, symInfo.Uses.Count);
-            }
+            }*/
 
             // Static Integers
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("\n  Static Integer Variables");
-            Console.ForegroundColor = ConsoleColor.Blue;
-            Console.WriteLine("\n  {0,-20}{1,10}{2,11}\n", "Variable", "Assigned", "Referenced");
-            Utilities.PrintByKind(SymbolKind.StaticInt, Symbols);
+            Utilities.PrintByKind(SymbolKind.StaticInt, Symbols, "\n  Static Integer Variables", 
+                string.Format("\n  {0,-20}{1,10}{2,11}\n", "Variable", "Assigned", "Referenced"));
 
-            Console.WriteLine("\n  Dynamic Variables (may include labels)");
+            Console.WriteLine("\nDynamic Variables (may include labels)");
 
             // Integers
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("\n  Integer Variables");
-            Console.ForegroundColor = ConsoleColor.Blue;
-            Console.WriteLine("\n  {0,-20}{1,10}{2,11}\n", "Variable", "Assigned", "Referenced");
-            Utilities.PrintByKind(SymbolKind.IntVar, Symbols);
+            Utilities.PrintByKind(SymbolKind.IntVar, Symbols, "\n  Integer Variables",
+                string.Format("\n  {0,-20}{1,10}{2,11}\n", "Variable", "Assigned", "Referenced"));
 
             // Real variables
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("\n  Real Number Variables");
-            Console.ForegroundColor = ConsoleColor.Blue;
-            Console.WriteLine("\n  {0,-20}{1,10}{2,11}\n", "Variable", "Assigned", "Referenced");
-            Utilities.PrintByKind(SymbolKind.RealVar, Symbols);
+            Utilities.PrintByKind(SymbolKind.RealVar, Symbols, "\n  Real Number Variables",
+                string.Format("\n  {0,-20}{1,10}{2,11}\n", "Variable", "Assigned", "Referenced"));
 
             // String variables
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("\n  String Variables");
-            Console.ForegroundColor = ConsoleColor.Blue;
-            Console.WriteLine("\n  {0,-20}{1,10}{2,11}\n", "Variable", "Assigned", "Referenced");
-            Utilities.PrintByKind(SymbolKind.StringVar, Symbols);
+            Utilities.PrintByKind(SymbolKind.StringVar, Symbols, "\n  String Variables",
+                string.Format("\n  {0,-20}{1,10}{2,11}\n", "Variable", "Assigned", "Referenced"));
 
             // PROCs
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("\n  Sub-procedures (PROCs)");
-            Console.ForegroundColor = ConsoleColor.Blue;
-            Console.WriteLine("\n  {0,-20}{1,10}{2,11}\n", "PROC name", "Declared", "Referenced");
-            Utilities.PrintByKind(SymbolKind.Proc, Symbols);
+            Utilities.PrintByKind(SymbolKind.Proc, Symbols, "\n  Sub-procedures (PROCs)",
+                string.Format("\n  {0,-20}{1,10}{2,11}\n", "PROC name", "Declared", "Referenced"));
 
             // FNs
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("\n  Functions (FNs)");
-            Console.ForegroundColor = ConsoleColor.Blue;
-            Console.WriteLine("\n  {0,-20}{1,10}{2,11}\n", "FN name", "Declared", "Referenced");
-            Utilities.PrintByKind(SymbolKind.Fn, Symbols);
+            Utilities.PrintByKind(SymbolKind.Fn, Symbols, "\n  Functions (FNs)",
+                string.Format("\n  {0,-20}{1,10}{2,11}\n", "FN name", "Declared", "Referenced"));
 
             // Assembler label
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("\n  Assembler labels");
-            Console.ForegroundColor = ConsoleColor.Blue;
-            Console.WriteLine("\n  {0,-20}{1,10}{2,11}\n", "Label", "Assigned", "Referenced");
-            Utilities.PrintByKind(SymbolKind.Label, Symbols);
+            Utilities.PrintByKind(SymbolKind.Label, Symbols, "\n  Assembler labels",
+                string.Format("\n  {0,-20}{1,10}{2,11}\n", "Label", "Assigned", "Referenced"));
 
             // Strings
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("\n  Literal strings");
-            Console.ForegroundColor = ConsoleColor.Blue;
-            Console.WriteLine("\n  {0,-35}{1,6}{2,10}\n", "String", "Count", "Length");
-            Utilities.PrintByKind(SymbolKind.LiteralString, Symbols);
+            Utilities.PrintByKind(SymbolKind.LiteralString, Symbols, "\n  Literal strings",
+                string.Format("\n  {0,-35}{1,6}{2,10}\n", "String", "Count", "Length"));
         }
         static void ListProc(BasToolsEngine engine, string[] arglist, bool analysed)
         {

@@ -36,14 +36,22 @@ namespace BasAnalysis.CLI
             if (tag == SemanticTags.StringLiteral)
                 return SymbolKind.LiteralString;
             return SymbolKind.Unknown;
-            // TODO Arrays?
         }
-        public static void PrintByKind(SymbolKind kind, Dictionary<string, SymbolInfo> Symbols)
+        public static void PrintByKind(SymbolKind kind, Dictionary<string, SymbolInfo> Symbols,
+            string heading1, string heading2)
         {
+            var list = Symbols.Values.Where(s => s.Kind == kind).OrderBy(s => s.Name).ToList<SymbolInfo>();
+            if (list.Count == 0 ) return;
+
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine(heading1);
+            Console.ForegroundColor = ConsoleColor.Blue;
+            Console.WriteLine(heading2);
+
             Console.ForegroundColor = ConsoleColor.White;
             bool alternate = true;
-            foreach (SymbolInfo symInfo in Symbols.Values.Where(s => s.Kind == kind)
-            .OrderBy(s => s.Name))
+
+            foreach (SymbolInfo symInfo in list)
             {
                 Console.ForegroundColor = alternate ? ConsoleColor.White : ConsoleColor.Gray;       // mild stripes
                 alternate = !alternate;
