@@ -55,6 +55,10 @@
                 throw new BasToolsException($"Program '{filename}' could not be processed", e2);
             }
         }
+        public List<DisplayLine> prepLinesForDisplay(ListerOptions listerOptions)
+        {
+            return BasLister.prepLinesForDisplay(CurrentListing, listerOptions, CurrentProgInfo);
+        }
         public static bool PrintOneLine(ProgramLine progline, ref int linesprinted)
         {
             return BasLister.PrintOneLine(progline, ref linesprinted);

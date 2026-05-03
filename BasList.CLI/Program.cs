@@ -178,7 +178,7 @@
                 Listing formattedListing = engine.loadAndFormatFile(filename, formatOptions, progInfo);
                 //Console.WriteLine($"I got {formattedListing.Lines.Count} lines");
 
-                BasLister.displayProgramLines(formattedListing, listerOptions, progInfo);
+                //BasLister.displayProgramLines(formattedListing, listerOptions, progInfo);
             }
             catch (BasToolsException ex)
             {

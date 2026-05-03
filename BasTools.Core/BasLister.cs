@@ -200,7 +200,7 @@ namespace BasTools.Core
                                     first = false;
                                     PrintIndents(line, ref printedLineLength, switches);
 
-                                    PrintLineBody(line.FormattedTagged.TrimStart(), listerState, switches, ref printedLineLength, ref linesprinted);
+                                    PrintLineBody(line.FormattedTagged.TrimStart(), switches, ref printedLineLength, ref linesprinted);
 
                                     if (switches.FlgPause)
                                     {
@@ -260,7 +260,96 @@ namespace BasTools.Core
                 }
             }
         }
-        // ******** PrintOneLine - Utility procedure to PrettyPrint a soingle line ********
+        // ******** Make List of tagged program lines ********
+        public static List<DisplayLine> prepLinesForDisplay(Listing formattedListing, ListerOptions switches, ProgInfo progInfo)
+        {
+            List<DisplayLine> output = new();
+            ListerState listerState = new(); // this sets initial conditions
+
+            string sIndent = string.Empty;
+
+            foreach (ProgramLine progline in formattedListing.Lines)
+            {
+                if (progline.LineNumber >= switches.FromLine && progline.LineNumber <= switches.ToLine)
+                {
+                    // set flags
+                    listerState.Printme = false;
+
+                    if (switches.FlgList)
+                    {
+                        if (progline.IsDef)
+                        {
+                            listerState.Listme = nameMatch(progline.TaggedLine, switches); // automatically cancels ListMe at DEF if no match
+                        }
+                    }
+
+                    bool shouldPrint = !switches.FlgList || (switches.FlgList && listerState.Listme);
+
+                    if (shouldPrint)
+                    {
+                        if (!switches.SplitLines)
+                        {
+                            DisplayLine displayLine = new(progline.LineNumber);
+
+                            displayLine.FormattedLineNumber = progline.FormattedLineNumber;
+                            displayLine.LineBody = new string(' ', progline.IndentLevel * 2 + progline.DefIndent * 2);
+                            displayLine.LineBody += progline.FormattedTagged.TrimStart();
+
+                            output.Add(displayLine);
+                        }
+                        else // SplitLines
+                        {
+                            bool first = true;
+
+                            Listing sections = new(new List<ProgramLine>());
+
+                            // generate a 'min-program-listing' from the sections
+                            foreach (string taggedSection in SplitStatements(progline.TaggedLine))
+                            {
+                                ProgramLine line = new(progline);
+                                line.TaggedLine = taggedSection;
+
+                                line.IndentLevel = progline.IndentLevel;
+                                line.LineNumber = progline.LineNumber;
+                                line.InAsm = progline.InAsm;
+                                line.IsArm = progline.IsArm;
+                                line.IsDef = progline.IsDef;
+                                line.IsInDef = progline.IsInDef;
+
+                                sections.Lines.Add(line);
+                            }
+
+                            // Call the Formatter to format these 'lines'
+                            BasToolsEngine engine = new BasToolsEngine();
+
+                            engine.formatLines(sections, switches.copyToFormatOptions(), progline.fstate, progInfo, true);
+
+                            foreach (ProgramLine line in sections.Lines)
+                            {
+                                DisplayLine displayLine = new(progline.LineNumber);
+
+                                displayLine.FormattedLineNumber = first ? progline.FormattedLineNumber : "";
+                                first = false;
+                                displayLine.LineBody = new string(' ', line.IndentLevel * 2 + line.DefIndent * 2);
+                                displayLine.LineBody += line.FormattedTagged.TrimStart();
+
+                                output.Add(displayLine);
+                            }
+                        }
+                        // After printing the line, turn off printing PROC (so don't suppress ENDPROC)
+                        if (switches.FlgList && listerState.Listme)
+                        {
+                            if (!progline.IsDef && !progline.IsInDef)
+                            {
+                                listerState.Listme = false;
+                            }
+                        }
+                    } // end shouldprint
+                }
+            }
+            return output;
+        }
+        // ******** PrintOneLine - Utility procedure to PrettyPrint a single line ********
         public static bool PrintOneLine(ProgramLine progline, ref int linesprinted)
         {
             int printedLineLength = 0;
@@ -345,7 +434,7 @@ namespace BasTools.Core
         }
 
         // ******** PrintLineBody - handles plain and PrettyPrint ********
-        static void PrintLineBody(string line, ListerState listerState, ListerOptions switches, ref int printedLineLength, ref int linesprinted)
+        static void PrintLineBody(string line, ListerOptions switches, ref int printedLineLength, ref int linesprinted)
         {
             // Line contents
             foreach (Token tok in BasToolsEngine.WalkTagged(line))
@@ -379,7 +468,7 @@ namespace BasTools.Core
                 // Normal behaviour
                 PrintLineNumber(progline, switches, ref printedLineLength, true);
                 PrintIndents(progline, ref printedLineLength, switches);
-                PrintLineBody(progline.FormattedTagged, listerState, switches, ref printedLineLength, ref linesprinted);
+                PrintLineBody(progline.FormattedTagged, switches, ref printedLineLength, ref linesprinted);
             }
             else
             {

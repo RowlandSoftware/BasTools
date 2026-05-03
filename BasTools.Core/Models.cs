@@ -173,6 +173,16 @@
         int linenumber,
         byte[] lineContent
     );
+    public class DisplayLine
+    {
+        public int Linenumber { get; set; } = 0;
+        public string FormattedLineNumber { get; set; } = "";
+        public string LineBody { get; set; } = "";
+        public DisplayLine(int lineno)
+        {
+            Linenumber = lineno;
+        }
+    }
     public record Token(
         string tag,
         string value,
@@ -281,6 +291,14 @@
             AssemblerColumns = false;
             ExtraColumnWidth = 10;
         }
+        public FormattingOptions(bool goodDefaults) : this()
+        {
+            FlgAddNums = goodDefaults;
+            FlgIndent = goodDefaults;
+            FlgEmphDefs = goodDefaults;
+            Align = goodDefaults;
+            AssemblerColumns = goodDefaults;
+        }
     }
     public class ListerOptions // a copy of CommandSwitches
     {
@@ -323,6 +341,27 @@
             FlgDark = false;
             ForeColor = Console.ForegroundColor;
             BackColor = Console.BackgroundColor;
+        }
+        public ListerOptions(FormattingOptions opt) : this()
+        {
+            FlgAddNums = opt.FlgAddNums;
+            FlgIndent = opt.FlgIndent;
+            FlgEmphDefs = opt.FlgEmphDefs;
+            Align = opt.Align;
+
+            // switches for listing
+            NoFormat = opt.NoFormat;
+            NoLineNumbers = false;
+            Bare = false;
+            SplitLines = opt.SplitLines;
+            AssemblerColumns = opt.AssemblerColumns;
+            ColumnWidth = opt.ExtraColumnWidth;
+            Pretty = true;
+            FlgPause = false;
+
+            // switches for filtering listings
+            FromLine = 0;
+            ToLine = 0xFEFF;
         }
         public FormattingOptions copyToFormatOptions()
         {

@@ -15,7 +15,9 @@ namespace BasViewer.GUI
         {
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
-                desktop.MainWindow = new MainWindow();
+                var args = desktop.Args;   // ← command line args here
+
+                desktop.MainWindow = new MainWindow(args);
             }
 
             base.OnFrameworkInitializationCompleted();

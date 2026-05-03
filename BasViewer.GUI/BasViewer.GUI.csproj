@@ -23,6 +23,9 @@
     <None Remove="Styles\**" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Remove="BasLineNumberMargin.cs" />
+  </ItemGroup>
+  <ItemGroup>
     <Content Include="RS_lg.ico" />
   </ItemGroup>
 
@@ -36,5 +39,9 @@
       <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
       <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
     </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BasTools.Core\BasTools.Core.csproj" />
   </ItemGroup>
 </Project>
