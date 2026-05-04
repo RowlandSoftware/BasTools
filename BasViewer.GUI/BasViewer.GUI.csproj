@@ -1,47 +1,54 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
-    <ApplicationManifest>app.manifest</ApplicationManifest>
-    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>BasViewer</AssemblyName>
+    <AssemblyTitle>Basic Program Viewer</AssemblyTitle>
     <ApplicationIcon>RS_lg.ico</ApplicationIcon>
+    <Title>Basic Program Viewer</Title>
+    <Authors>Andrew Rowland</Authors>
+    <Company>RowlandSoftware</Company>
+    <Copyright>(c) Andrew Rowland 2026</Copyright>
+    <Description>Display BBC Basic programs</Description>
+    <PackageIcon>RS_lg.ico</PackageIcon>
   </PropertyGroup>
-  <ItemGroup>
-    <AvaloniaXaml Remove="AvaloniaEditThemes\**" />
-    <AvaloniaXaml Remove="AvaloniaEdit\**" />
-    <AvaloniaXaml Remove="Styles\**" />
-    <Compile Remove="AvaloniaEditThemes\**" />
-    <Compile Remove="AvaloniaEdit\**" />
-    <Compile Remove="Styles\**" />
-    <EmbeddedResource Remove="AvaloniaEditThemes\**" />
-    <EmbeddedResource Remove="AvaloniaEdit\**" />
-    <EmbeddedResource Remove="Styles\**" />
-    <None Remove="AvaloniaEditThemes\**" />
-    <None Remove="AvaloniaEdit\**" />
-    <None Remove="Styles\**" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Remove="BasLineNumberMargin.cs" />
-  </ItemGroup>
+
   <ItemGroup>
     <Content Include="RS_lg.ico" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia" Version="12.0.1" />
-	<PackageReference Include="Avalonia.AvaloniaEdit" Version="12.0.0" />
-    <PackageReference Include="Avalonia.Desktop" Version="12.0.1" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.1" />
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.1" />
-    <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.1">
-      <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
-      <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
-    </PackageReference>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3912.50" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\BasTools.Core\BasTools.Core.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Properties\Resources.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="RS_lg.ico">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
+
 </Project>

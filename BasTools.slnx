@@ -2,5 +2,5 @@
   <Project Path="BAnalysis.CLI/BAnalysis.CLI.csproj" />
   <Project Path="BasList.CLI/BasList.CLI.csproj" />
   <Project Path="BasTools.Core/BasTools.Core.csproj" />
-  <Project Path="BasViewer.GUI/BasViewer.GUI.csproj" Id="d310b386-480a-43db-80d8-c5453a02b3ff" />
+  <Project Path="BasViewer.GUI/BasViewer.GUI.csproj" Id="8568f538-2ee0-41f6-b665-86ed7e17fee9" />
 </Solution>

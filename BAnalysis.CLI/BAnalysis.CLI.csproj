@@ -23,6 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\BasList.CLI\BasList.CLI.csproj" />
     <ProjectReference Include="..\BasTools.Core\BasTools.Core.csproj" />
   </ItemGroup>
 

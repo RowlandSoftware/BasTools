@@ -1,7 +1,9 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
 using Avalonia.Controls.Shapes;
 using Avalonia.Input;
+using Avalonia.Media;
 using BasTools.Core;
 using System;
 using System.Collections.Generic;
@@ -10,31 +12,38 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace BasViewer.GUI
+namespace BasViewer
 {
     public partial class MainWindow : Window
     {
-        ProgInfo? progInfo;
+        /*ProgInfo? progInfo;
         FormattingOptions? formatOptions;
         BasToolsEngine? engine;
-        private List<DisplayLine> _displayLines = new();
-        public MainWindow(string[] args)
+        private List<DisplayLine> _displayLines = new();*/
+        public MainWindow()
         {
+            InitializeComponent();
+        }
+        
+    }
+}
+/*public MainWindow(string[] args)
+        { }
             InitializeComponent();
 
             if (Design.IsDesignMode)
                 return;
 
-            bool flgZ80 = false;
+            /*bool flgZ80 = false;
             engine = new BasToolsEngine();
             progInfo = new ProgInfo(flgZ80, false, "");
             formatOptions = new FormattingOptions(true);
 
             this.AddHandler(DragDrop.DragOverEvent, DragOver);
             this.AddHandler(DragDrop.DropEvent, Drop);
-            // Add custom gutter renderer
-            Editor.TextArea.TextView.BackgroundRenderers.Add(
-                new BasLineNumberRenderer(GetFormattedLineNumber));
+            Application.Current.Resources.MergedDictionaries.Clear();
+            Application.Current.Resources.MergedDictionaries.Add(new LightTheme());
+
 
             if (args != null && args.Length > 0)
             {
@@ -58,7 +67,7 @@ namespace BasViewer.GUI
                     ListerOptions listerOptions = new(formatOptions);
                     var displayList = engine.prepLinesForDisplay(listerOptions);
 
-                    LoadDisplayLines(displayList);
+                    //LoadDisplayLines(displayList);
                 }
             }
             catch
@@ -78,30 +87,64 @@ namespace BasViewer.GUI
                 : dl.FormattedLineNumber;
         }
 
-        internal void LoadDisplayLines(List<DisplayLine> lines)
+        /*internal void LoadDisplayLines(List<DisplayLine> lines)
         {
             _displayLines = lines;
-            Editor.Text = string.Join("\n", lines.Select(l => l.LineBody));
-            Editor.TextArea.TextView.InvalidateVisual();
+            LineNumbers.Text = string.Join("\n", _displayLines.Select(l => l.FormattedLineNumber));
+
+            var inlines = new List<Inline>();
+            foreach (var line in _displayLines)
+            {
+                inlines.AddRange(BuildInlines(line., line.Spans));
+                inlines.Add(new LineBreak());
+            }
+
+            CodeText.Inlines = inlines;
         }
-        /*private void LoadDisplayLines(List<DisplayLine> lines)
-        {
-            // Populate the editor body
-            Editor.Text = string.Join("\n", lines.Select(l => l.LineBody));
-
-            // Populate the gutter using your formatted numbers
-            LineNumbers.Text = string.Join("\n", lines.Select(l => l.FormattedLineNumber));
-        }*/
-
         public void LoadFile(string path)
         {
             if (File.Exists(path))
             {
-                Editor.Text = File.ReadAllText(path);
+                //Editor.Text = File.ReadAllText(path);
             }
             else
             {
-                Editor.Text = $"File not found:\n{path}";
+                //Editor.Text = $"File not found:\n{path}";
+            }
+        }
+        /*private IEnumerable<Inline> BuildInlines(string text, List<SpanInfo> spans)
+        {
+            int pos = 0;
+
+            foreach (var span in spans.OrderBy(s => s.Start))
+            {
+                if (span.Start > pos)
+                {
+                    yield return new Run
+                    {
+                        Text = text.Substring(pos, span.Start - pos),
+                        Foreground = (IBrush)Application.Current.FindResource("DefaultBrush")
+                    };
+                }
+
+                var brushKey = AvaloniaBrushMap.GetBrushKey(span.Tag);
+
+                yield return new Run
+                {
+                    Text = text.Substring(span.Start, span.Length),
+                    Foreground = (IBrush)Application.Current.FindResource(brushKey)
+                };
+
+                pos = span.Start + span.Length;
+            }
+
+            if (pos < text.Length)
+            {
+                yield return new Run
+                {
+                    Text = text.Substring(pos),
+                    Foreground = (IBrush)Application.Current.FindResource("DefaultBrush")
+                };
             }
         }
         private void DragOver(object? sender, DragEventArgs e)
@@ -136,4 +179,4 @@ namespace BasViewer.GUI
             }
         }
     }
-}
+}*/

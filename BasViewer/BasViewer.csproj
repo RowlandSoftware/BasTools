@@ -1,0 +1,64 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <AssemblyName>BasViewer</AssemblyName>
+    <ApplicationIcon>RS_lg.ico</ApplicationIcon>
+    <Title>Basic Program Viewer</Title>
+    <Authors>Andrew Rowland</Authors>
+    <Company>RowlandSoftware</Company>
+    <Copyright>(C) Andrew Rowland 2026</Copyright>
+    <RootNamespace>BasViewer</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <AvaloniaXaml Remove="AvaloniaEditThemes\**" />
+    <AvaloniaXaml Remove="AvaloniaEdit\**" />
+    <AvaloniaXaml Remove="Styles\**" />
+    <Compile Remove="AvaloniaEditThemes\**" />
+    <Compile Remove="AvaloniaEdit\**" />
+    <Compile Remove="Styles\**" />
+    <EmbeddedResource Remove="AvaloniaEditThemes\**" />
+    <EmbeddedResource Remove="AvaloniaEdit\**" />
+    <EmbeddedResource Remove="Styles\**" />
+    <None Remove="AvaloniaEditThemes\**" />
+    <None Remove="AvaloniaEdit\**" />
+    <None Remove="Styles\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="BasLineNumberMargin.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="DarkTheme.xaml" />
+    <None Remove="LightTheme.xaml" />
+  </ItemGroup>
+  <ItemGroup>
+    <AvaloniaResource Include="DarkTheme.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </AvaloniaResource>
+    <AvaloniaResource Include="LightTheme.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </AvaloniaResource>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="RS_lg.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.0.2" />
+	<PackageReference Include="Avalonia.AvaloniaEdit" Version="12.0.0" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.0.2" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.2" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.2" />
+    <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.1">
+      <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
+      <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BasTools.Core\BasTools.Core.csproj" />
+  </ItemGroup>
+</Project>
