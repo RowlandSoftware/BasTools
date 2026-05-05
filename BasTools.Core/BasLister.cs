@@ -90,63 +90,10 @@ namespace BasTools.Core
             return false;
         }
     }
-    /*/ This maps semantic tags to Avalonia brushes
-    public static class AvaloniaBrushMap
-    {
-        private static readonly Dictionary<string, string> _map =
-            new(StringComparer.OrdinalIgnoreCase)
-            {
-                [SemanticTags.Keyword] = "KeywordBrush",
-                [SemanticTags.IndentingKeyword] = "KeywordBrush",
-                [SemanticTags.OutdentingKeyword] = "KeywordBrush",
-                [SemanticTags.InOutKeyword] = "KeywordBrush",
-                [SemanticTags.BuiltInFn] = "KeywordBrush",
-
-                [SemanticTags.StringLiteral] = "StringBrush",
-
-                [SemanticTags.Number] = "NumberBrush",
-                [SemanticTags.HexNumber] = "NumberBrush",
-                [SemanticTags.BinaryNumber] = "NumberBrush",
-
-                [SemanticTags.Variable] = "VariableBrush",
-                [SemanticTags.Array] = "ArrayBrush",
-                [SemanticTags.StaticInteger] = "StaticIntegerBrush",
-
-                [SemanticTags.RemText] = "CommentBrush",
-                [SemanticTags.AssemblerComment] = "CommentBrush",
-
-                [SemanticTags.EmbeddedData] = "DefaultBrush",
-
-                [SemanticTags.ProcName] = "ProcBrush",
-                [SemanticTags.FunctionName] = "ProcBrush",
-
-                [SemanticTags.Label] = "LabelBrush",
-
-                [SemanticTags.Register] = "RegisterBrush",
-                [SemanticTags.Mnemonic] = "MnemonicBrush",
-
-                [SemanticTags.Operator] = "OperatorBrush",
-                [SemanticTags.IsEqualTo_Operator] = "OperatorBrush",
-                [SemanticTags.IndirectionOperator] = "OperatorBrush",
-                [SemanticTags.ImmediateOperator] = "OperatorBrush",
-
-                [SemanticTags.LineNumber] = "LineNumberBrush",
-
-                [SemanticTags.StarCommand] = "DefaultBrush",
-                [SemanticTags.StatementSep] = "DefaultBrush",
-                [SemanticTags.ListSep] = "DefaultBrush",
-                [SemanticTags.OpenBracket] = "DefaultBrush",
-                [SemanticTags.CloseBracket] = "DefaultBrush",
-            };
-
-        public static string GetBrushKey(string tag) =>
-            _map.TryGetValue(tag, out var key) ? key : "DefaultBrush";
-    }*/
-
     public class BasLister
     {
         //****************** Display the Output ***********
-        public static void displayProgramLines(Listing formattedListing, ListerOptions switches, ProgInfo progInfo)
+        public static void DisplayProgramLines(Listing formattedListing, ListerOptions switches, ProgInfo progInfo)
         {
             ListerState listerState = new(); // this sets initial conditions
 
@@ -167,7 +114,7 @@ namespace BasTools.Core
             string format = progInfo.BasicDialect;
             if (!switches.Bare && !switches.FlgList) Console.WriteLine($"\nListing '{progInfo.Filename}' from line {switches.FromLine} to {switches.ToLine} ({format} format)\n");
 
-            string sIndent = string.Empty;
+            //string sIndent = string.Empty;
 
             foreach (ProgramLine progline in formattedListing.Lines)
             {
@@ -344,9 +291,12 @@ namespace BasTools.Core
                         {
                             DisplayLine displayLine = new(progline.LineNumber);
 
-                            displayLine.FormattedLineNumber = progline.FormattedLineNumber;
-                            displayLine.LineBody = new string(' ', progline.IndentLevel * 2 + progline.DefIndent * 2);
-                            displayLine.LineBody += progline.FormattedTagged.TrimStart();
+                            displayLine.sLineNumber = progline.FormattedLineNumber.Trim();
+                            displayLine.Indent = progline.IndentLevel;
+                            displayLine.IsDef = progline.IsDef;
+                            displayLine.IsInDef = progline.IsInDef;
+                            displayLine.SetDefIndent(progline.DefIndent > 0);
+                            displayLine.LineBody = progline.FormattedTagged.TrimStart();
 
                             output.Add(displayLine);
                         }
@@ -381,7 +331,7 @@ namespace BasTools.Core
                             {
                                 DisplayLine displayLine = new(progline.LineNumber);
 
-                                displayLine.FormattedLineNumber = first ? progline.FormattedLineNumber : "";
+                                displayLine.sLineNumber = first ? progline.FormattedLineNumber.Trim() : "";
                                 first = false;
                                 displayLine.LineBody = new string(' ', line.IndentLevel * 2 + line.DefIndent * 2);
                                 displayLine.LineBody += line.FormattedTagged.TrimStart();

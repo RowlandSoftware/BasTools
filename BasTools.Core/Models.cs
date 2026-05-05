@@ -176,11 +176,23 @@
     public class DisplayLine
     {
         public int Linenumber { get; set; } = 0;
-        public string FormattedLineNumber { get; set; } = "";
+        public int Indent { get; set; } = 0;
+        private bool _defIndent = false;
+        public bool IsDef {  get; set; } = false;
+        public bool IsInDef { get; set; } = false;
+        public string sLineNumber { get; set; } = "";
         public string LineBody { get; set; } = "";
         public DisplayLine(int lineno)
         {
             Linenumber = lineno;
+        }
+        public int DefIndent
+        {
+            get => _defIndent ? 1 : 0;
+        }
+        public void SetDefIndent(bool value)
+        {
+            _defIndent = value;
         }
     }
     public record Token(
@@ -360,6 +372,24 @@
             FlgPause = false;
 
             // switches for filtering listings
+            FromLine = 0;
+            ToLine = 0xFEFF;
+        }
+        public ListerOptions(bool indent, bool indentDefs, bool splitLines, bool pretty) : this() // For display
+        {
+            FlgAddNums = true;
+            FlgIndent = indent;
+            FlgEmphDefs = indentDefs;
+
+            // switches for listing
+            NoFormat = false;
+            NoLineNumbers = false;
+            
+            SplitLines = splitLines;
+            //AssemblerColumns = opt.AssemblerColumns;
+            //ColumnWidth = opt.ExtraColumnWidth;
+            Pretty = pretty;
+
             FromLine = 0;
             ToLine = 0xFEFF;
         }

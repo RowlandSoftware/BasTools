@@ -31,11 +31,14 @@
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             statusStrip1 = new StatusStrip();
             toolStripStatusLabel1 = new ToolStripStatusLabel();
+            toolStripStatusLabel2 = new ToolStripStatusLabel();
             toolStrip1 = new ToolStrip();
             toolStripButton1 = new ToolStripButton();
             toolStripButton2 = new ToolStripButton();
             toolStripButton3 = new ToolStripButton();
             toolStripButton4 = new ToolStripButton();
+            toolStripLabel1 = new ToolStripLabel();
+            comboBoxTheme = new ToolStripComboBox();
             webView2 = new Microsoft.Web.WebView2.WinForms.WebView2();
             statusStrip1.SuspendLayout();
             toolStrip1.SuspendLayout();
@@ -44,24 +47,35 @@
             // 
             // statusStrip1
             // 
+            statusStrip1.Font = new Font("Segoe UI", 10.875F, FontStyle.Regular, GraphicsUnit.Point, 0);
             statusStrip1.ImageScalingSize = new Size(32, 32);
-            statusStrip1.Items.AddRange(new ToolStripItem[] { toolStripStatusLabel1 });
-            statusStrip1.Location = new Point(0, 1020);
+            statusStrip1.Items.AddRange(new ToolStripItem[] { toolStripStatusLabel1, toolStripStatusLabel2 });
+            statusStrip1.Location = new Point(0, 1012);
             statusStrip1.Name = "statusStrip1";
-            statusStrip1.Size = new Size(1381, 42);
+            statusStrip1.Size = new Size(1381, 50);
+            statusStrip1.SizingGrip = false;
             statusStrip1.TabIndex = 1;
             statusStrip1.Text = "statusStrip1";
             // 
             // toolStripStatusLabel1
             // 
             toolStripStatusLabel1.Name = "toolStripStatusLabel1";
-            toolStripStatusLabel1.Size = new Size(237, 32);
+            toolStripStatusLabel1.Size = new Size(1079, 40);
+            toolStripStatusLabel1.Spring = true;
             toolStripStatusLabel1.Text = "toolStripStatusLabel1";
+            toolStripStatusLabel1.TextAlign = ContentAlignment.MiddleLeft;
+            // 
+            // toolStripStatusLabel2
+            // 
+            toolStripStatusLabel2.Name = "toolStripStatusLabel2";
+            toolStripStatusLabel2.Size = new Size(287, 40);
+            toolStripStatusLabel2.Text = "toolStripStatusLabel2";
+            toolStripStatusLabel2.TextAlign = ContentAlignment.MiddleRight;
             // 
             // toolStrip1
             // 
             toolStrip1.ImageScalingSize = new Size(32, 32);
-            toolStrip1.Items.AddRange(new ToolStripItem[] { toolStripButton1, toolStripButton2, toolStripButton3, toolStripButton4 });
+            toolStrip1.Items.AddRange(new ToolStripItem[] { toolStripButton1, toolStripButton2, toolStripButton3, toolStripButton4, toolStripLabel1, comboBoxTheme });
             toolStrip1.Location = new Point(0, 0);
             toolStrip1.Name = "toolStrip1";
             toolStrip1.Size = new Size(1381, 42);
@@ -106,6 +120,22 @@
             toolStripButton4.Size = new Size(46, 36);
             toolStripButton4.Text = "toolStripButton4";
             // 
+            // toolStripLabel1
+            // 
+            toolStripLabel1.Name = "toolStripLabel1";
+            toolStripLabel1.Size = new Size(100, 36);
+            toolStripLabel1.Text = "Theme: ";
+            toolStripLabel1.TextAlign = ContentAlignment.MiddleRight;
+            // 
+            // comboBoxTheme
+            // 
+            comboBoxTheme.AutoSize = false;
+            comboBoxTheme.DropDownStyle = ComboBoxStyle.DropDownList;
+            comboBoxTheme.Items.AddRange(new object[] { "Dark", "Light", "Retro", "Mono" });
+            comboBoxTheme.Name = "comboBoxTheme";
+            comboBoxTheme.Size = new Size(170, 40);
+            comboBoxTheme.SelectedIndexChanged += comboBoxTheme_SelectedIndexChanged;
+            // 
             // webView2
             // 
             webView2.AllowExternalDrop = true;
@@ -114,7 +144,7 @@
             webView2.Dock = DockStyle.Fill;
             webView2.Location = new Point(0, 42);
             webView2.Name = "webView2";
-            webView2.Size = new Size(1381, 978);
+            webView2.Size = new Size(1381, 970);
             webView2.TabIndex = 3;
             webView2.ZoomFactor = 1D;
             // 
@@ -147,5 +177,8 @@
         private Microsoft.Web.WebView2.WinForms.WebView2 webView2;
         private ToolStripButton toolStripButton4;
         private ToolStripStatusLabel toolStripStatusLabel1;
+        private ToolStripStatusLabel toolStripStatusLabel2;
+        private ToolStripComboBox comboBoxTheme;
+        private ToolStripLabel toolStripLabel1;
     }
 }

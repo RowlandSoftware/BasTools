@@ -176,9 +176,9 @@
             try
             {
                 Listing formattedListing = engine.loadAndFormatFile(filename, formatOptions, progInfo);
-                //Console.WriteLine($"I got {formattedListing.Lines.Count} lines");
+                Console.WriteLine($"I got {formattedListing.Lines.Count} lines");
 
-                //BasLister.displayProgramLines(formattedListing, listerOptions, progInfo);
+                BasLister.DisplayProgramLines(formattedListing, listerOptions, progInfo);
             }
             catch (BasToolsException ex)
             {

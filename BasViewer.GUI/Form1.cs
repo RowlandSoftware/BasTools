@@ -12,9 +12,9 @@ namespace BasViewer.GUI
         FormattingOptions? formatOptions;
         BasToolsEngine? engine;
         private List<DisplayLine> _displayLines = new();
-        private string _htmlHeader;
         private string _htmlClose;
-        private string _theme;
+        private string _script;
+        private bool loaded;
         public Form1(string[] args)
         {
             InitializeComponent();
@@ -25,17 +25,18 @@ namespace BasViewer.GUI
             engine = new BasToolsEngine();
             progInfo = new ProgInfo(flgZ80, false, "");
             formatOptions = new FormattingOptions(true);
-            _theme = "default";
-            _htmlHeader = "<html>" + getCSS(_theme) + "<body><table>";
+            //_theme = "Dark";
+            loaded = false;
             _htmlClose = "</table></body></html>";
+            _script = Environment.NewLine + "<script> function toggleFold(header) {const body = header.nextElementSibling; const arrow = header.querySelector(\".fold-arrow\"); if (body.style.display === \"none\") {body.style.display = \"block\"; arrow.textContent = \"?\";} else {body.style.display = \"none\"; arrow.textContent = \"?\";}} </script>" + Environment.NewLine;
+            comboBoxTheme.SelectedIndex = 0;
 
-            Text = "BBC BASIC Viewer";
+            this.Text = "BBC BASIC Viewer";
 
             // DO NOT load files here
             // DO NOT touch WebView2 here
         }
-
-        private void something() 
+        private void something()
         {
             if (_args != null && _args.Length > 0)
             {
@@ -47,18 +48,64 @@ namespace BasViewer.GUI
 
                     if (engine.CurrentListing != null)
                     {
-                        StringBuilder sb = new StringBuilder(_htmlHeader);
-                        foreach (var line in engine.CurrentListing.Lines)
+                        loaded = true;
+                        ListerOptions listerOptions = new ListerOptions(true, false, true, true); //bool indent, bool indentDefs, bool splitLines, bool pretty
+                        List<DisplayLine> lines = engine.prepLinesForDisplay(listerOptions);
+
+                        string htmlHeader = "<html><head>" + Themes.GetCss(comboBoxTheme.Text) + _script + "</head><body><table>";
+
+                        StringBuilder sb = new StringBuilder(htmlHeader);
+                        foreach (DisplayLine line in lines)
                         {
-                            sb.Append("<tr><td>" + line.FormattedLineNumber + "</td><td>" + line.PlainDetokenisedLine + "</td></tr>");
+                            StringBuilder lineBody = new();
+                            foreach (Token tok in BasToolsEngine.WalkTagged(line.LineBody))
+                            {
+                                if (tok.tag == null)
+                                    lineBody.Append(tok.value);
+                                else
+                                {
+                                    //lineBody.Append(tok.value);
+                                    string tag = tok.tag.Substring(2, tok.tag.Length - 3);
+                                    lineBody.Append($"<span class=\"{tag}\">");
+                                    lineBody.Append(tok.value);
+                                    lineBody.Append("</span>");
+                                }
+                                //if (line.Linenumber == 10) MessageBox.Show(lineBody.ToString());
+                            }
+                            bool IsDef = false;
+                            bool IsInDef = false;
+                            if (line.IsDef)
+                            {
+                                IsDef = true;
+                                sb.Append("<div class=\"foldable\"><div class=\"fold-header\" onclick=\"toggleFold(this)\"><span class=\"fold-arrow\">?</span><span class=\"fold-title\">" + Environment.NewLine);
+                                IsInDef = true;
+                            }
+
+                            int totindent = (line.Indent + line.DefIndent) * 2;
+                            sb.Append("<tr><td>" + line.sLineNumber + "</td><td style=\"padding-left:" + totindent.ToString() + "ch\">" + lineBody.ToString() + "</td></tr>" + Environment.NewLine);
+
+                            if (IsDef)
+                            {
+                                sb.Append("</span></div>" + Environment.NewLine + "<div class=\"fold-body\">");
+                                IsDef = false;
+                            }
+                            if (IsInDef && !line.IsInDef)
+                            {
+                                sb.Append("</div>" + Environment.NewLine + "</div>" + Environment.NewLine);
+                                IsInDef = false;
+                            }
                         }
                         sb.Append(Environment.NewLine + _htmlClose);
-                        MessageBox.Show(sb.ToString());
 
-                        toolStripStatusLabel1.Text = $"{engine.CurrentProgInfo.Filename}: {engine.CurrentProgInfo.NumberOfLines} lines";
+                        toolStripStatusLabel1.Text = $"{progInfo.ProgName}: {progInfo.NumberOfLines} lines";
+                        toolStripStatusLabel2.Text = $"{progInfo.BasicDialect}";
                         webView2.NavigateToString(sb.ToString());
                     }
                 }
+            }
+            else
+            {
+                webView2.NavigateToString("<html><body style=\"background-color:blue\"><h3 style=\"color:white\">Drag 'n' drop files here</h3></body></html>");
             }
         }
         internal void loadBasicOrText(string filename, BasToolsEngine engine, FormattingOptions formatOptions, ProgInfo progInfo)
@@ -71,8 +118,6 @@ namespace BasViewer.GUI
                     //(Listing formattedListing, ListerOptions switches, ProgInfo progInfo)
                     ListerOptions listerOptions = new(formatOptions);
                     var displayList = engine.prepLinesForDisplay(listerOptions);
-
-                    //LoadDisplayLines(displayList);
                 }
             }
             catch
@@ -87,13 +132,14 @@ namespace BasViewer.GUI
                 return null;
 
             var dl = _displayLines[index];
-            return string.IsNullOrEmpty(dl.FormattedLineNumber)
+            return string.IsNullOrEmpty(dl.sLineNumber)
                 ? null
-                : dl.FormattedLineNumber;
+                : dl.sLineNumber;
         }
         private void LoadTextFile(string filename)
         {
-            string html = _htmlHeader +
+            string htmlHeader = "<html>" + Themes.GetCss(comboBoxTheme.Text) + "<body><table>";
+            string html = htmlHeader +
                 "<tr><td>200</td><td>REM A sample program</td></tr>" +
                 "<tr><td>100</td><td>REM A sample program</td></tr>" +
                 "<tr><td>200</td><td>REM A sample program</td></tr>" +
@@ -106,23 +152,17 @@ namespace BasViewer.GUI
                 "<tr><td>900</td><td>REM A sample program</td></tr>" +
                 "<tr><td>1000</td><td>REM A sample program</td></tr>" +
                 _htmlClose;
-            MessageBox.Show(html);
             webView2.NavigateToString(html);
-        }
-        private string getCSS(string theme)
-        {
-            string css = "<style> body { font-family: Consolas;font-size:14; background: #111; color: #eee; } table { border-collapse: collapse; } td:first-child { color:LightGray; background-color:SlateGrey; padding-right: 4px; text-align:right; vertical-align: top;} td:last-child { white-space: pre-wrap; word-break: break-word; } </style>\r\n";
-            return css;
         }
         private async void Form1_Shown(object? sender, EventArgs e)
         {
             // Ensure the WebView2 environment exists
-            
+
             var env = await CoreWebView2Environment.CreateAsync();
-            
+
             // Initialise the control
             await webView2.EnsureCoreWebView2Async(env);
-            
+
             // Optional: configure settings
             webView2.CoreWebView2.Settings.AreDevToolsEnabled = true;
             webView2.CoreWebView2.Settings.IsStatusBarEnabled = false;
@@ -130,6 +170,11 @@ namespace BasViewer.GUI
 
             // Now it's safe to navigate or inject HTML
             something();
+        }
+        private void comboBoxTheme_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (loaded)
+                something();
         }
     }
 }
