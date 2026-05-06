@@ -340,16 +340,16 @@ namespace BasTools.Core
         }
         static bool isEndOfProc(Listing lines, int i, bool IsSplitLines) // Line lookahead to see whether next significant line is end-of-proc
         {
-            if (IsSplitLines) return false;
-
             // dumb checks
             if (lines.Lines[i].TaggedLine.Trim().StartsWith(SemanticTags.Keyword + "ENDPROC" + SemanticTags.Reset))
                 return true;
 
-            if (lines.Lines[i].TaggedLine.Trim().StartsWith(SemanticTags.Keyword + "=" + SemanticTags.Reset))
+            if (lines.Lines[i].TaggedLine.Trim().StartsWith(SemanticTags.Operator + "=" + SemanticTags.Reset))
                 return true;
 
             // lookahead
+            if (IsSplitLines) return false; // can't return useful results
+
             for (int j = ++i; j < lines.Lines.Count; j++)
             {
                 ProgramLine line = lines.Lines[j];

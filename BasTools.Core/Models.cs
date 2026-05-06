@@ -182,6 +182,7 @@
         public bool IsInDef { get; set; } = false;
         public string sLineNumber { get; set; } = "";
         public string LineBody { get; set; } = "";
+        public string PlainLine { get; set; } = "";
         public DisplayLine(int lineno)
         {
             Linenumber = lineno;

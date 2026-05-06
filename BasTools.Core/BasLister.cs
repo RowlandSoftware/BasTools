@@ -297,6 +297,7 @@ namespace BasTools.Core
                             displayLine.IsInDef = progline.IsInDef;
                             displayLine.SetDefIndent(progline.DefIndent > 0);
                             displayLine.LineBody = progline.FormattedTagged.TrimStart();
+                            displayLine.PlainLine = progline.FormattedPlain.Trim();
 
                             output.Add(displayLine);
                         }
@@ -329,15 +330,23 @@ namespace BasTools.Core
 
                             foreach (ProgramLine line in sections.Lines)
                             {
+                                // copy bits from original progline
                                 DisplayLine displayLine = new(progline.LineNumber);
-
                                 displayLine.sLineNumber = first ? progline.FormattedLineNumber.Trim() : "";
+                                displayLine.LineBody = line.TaggedLine;
+                                displayLine.PlainLine = line.FormattedPlain.Trim();
                                 first = false;
-                                displayLine.LineBody = new string(' ', line.IndentLevel * 2 + line.DefIndent * 2);
-                                displayLine.LineBody += line.FormattedTagged.TrimStart();
+                                // copy bits from sections ???
+                                displayLine.IsDef = line.IsDef;
+                                displayLine.IsInDef = line.IsInDef;
+                                displayLine.Indent = line.IndentLevel;
+                                displayLine.SetDefIndent(line.DefIndent > 0);                                
 
                                 output.Add(displayLine);
                             }
+                            // the last one might be last of a PROC/FN, but as formatLines only got one real line...
+                            // will usually be OK, and always register when new PROC/FN found
+
                         }
                         // After printing the line, turn off printing PROC (so don't suppress ENDPROC)
                         if (switches.FlgList && listerState.Listme)

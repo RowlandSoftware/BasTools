@@ -12,6 +12,7 @@ namespace BasViewer.GUI
         {
             ["Dark"] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
+                ["font"] = "Consolas,Cascadia Code,Menlo,Monospace",
                 ["background"] = "#111",
                 ["foreground"] = "#eee",
                 ["linenumber_bg"] = "DarkSlateGray",
@@ -51,6 +52,7 @@ namespace BasViewer.GUI
 
             ["Light"] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
+                ["font"] = "Consolas,Cascadia Code,Menlo,Monospace",
                 ["background"] = "#ffffff",
                 ["foreground"] = "Snow",
                 ["linenumber_bg"] = "#dddddd",
@@ -90,6 +92,7 @@ namespace BasViewer.GUI
 
             ["Retro"] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
+                ["font"] = "Consolas,Cascadia Code,Menlo,Monospace",
                 ["background"] = "#0000FF",
                 ["foreground"] = "#FFFFFF",
                 ["linenumber_bg"] = "Black",
@@ -129,6 +132,7 @@ namespace BasViewer.GUI
 
             ["Mono"] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
+                ["font"] = "Consolas,Cascadia Code,Menlo,Monospace",
                 ["background"] = "Black",
                 ["foreground"] = "White",
                 ["linenumber_bg"] = "MediumGray",
@@ -164,6 +168,46 @@ namespace BasViewer.GUI
                 ["listsep"] = "color:white;",
                 ["openbracket"] = "color:white;",
                 ["closebracket"] = "color:white;",
+            },
+
+            ["Typewriter"] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["font"] = "American Typewriter Std Med,Courier New,Menlo,Monospace",
+                ["background"] = "BlanchedAlmond",
+                ["foreground"] = "DarkSlateGray",
+                ["linenumber_bg"] = "MediumGray",
+                ["linenumber_fg"] = "Gray",
+
+                ["keyword"] = "font-weight: bold;",
+                ["indentingkeyword"] = "font-weight: bold;",
+                ["outdentingkeyword"] = "font-weight: bold;",
+                ["inout_keyword"] = "font-weight: bold;",
+                ["builtinfn"] = "font-weight: bold;",
+                ["string"] = "font-family:Comic Sans MS;",
+                ["number"] = "color:DimGray;",
+                ["hexnumber"] = "color:DimGray;",
+                ["binarynumber"] = "color:DimGray;",
+                ["var"] = "text-decoration: underline;",
+                ["array"] = "font-weight:light; text-decoration: underline;",
+                ["staticint"] = "color:DimGray;",
+                ["remtext"] = "font-style:italic;",
+                ["assemcomment"] = "font-style:italic;",
+                ["starcommand"] = "font-variant:all-small-caps;",
+                ["embeddeddata"] = "color:Gold;",
+                ["proc"] = "color:Gray;",
+                ["fn"] = "color:Gray;",
+                ["label"] = "background-color:DarkSlateGray; color:White;",
+                ["register"] = "color:DimGray;",
+                ["mnemonic"] = "color:DarkSlateGray;",
+                ["linenumber"] = "color:gray",
+                ["operator"] = "color:DarkSlateGray;",
+                ["="] = "color:DarkSlateGray",
+                ["indirectionoperator"] = "color:DarkSlateGray;",
+                ["immediateoperator"] = "color:DarkSlateGray;",
+                ["statementsep"] = "color:DarkSlateGray;",
+                ["listsep"] = "color:DarkSlateGray;",
+                ["openbracket"] = "color:DarkSlateGray;",
+                ["closebracket"] = "color:DarkSlateGray;",
             }
         };
         public static string GetCss(string theme)
@@ -175,7 +219,7 @@ namespace BasViewer.GUI
 
             sb.Append($@"
                 body {{
-                font-family: Consolas,Cascadia Code,Menlo,Monospace;
+                font-family: {map["font"]};
                 font-size: 14px;
                 background: {map["background"]};
                 color: {map["foreground"]};
@@ -186,7 +230,7 @@ namespace BasViewer.GUI
                 width: 100%;
                 }}
 
-                td:first-child {{
+                td.line-number {{
                 color: {map["linenumber_fg"]};
                 background-color: {map["linenumber_bg"]};
                 padding-right: 4px;
@@ -198,6 +242,22 @@ namespace BasViewer.GUI
                 white-space: pre-wrap;
                 word-break: break-word;
                 }}
+                /* Folding margin */
+                td.fold-marker {{
+                    width: 14px;
+                    text-align: center;
+                    vertical-align: top;
+                    cursor: pointer;
+                    user-select: none;
+                    background-color: {map["linenumber_bg"]};
+					color: {map["linenumber_fg"]};
+                    font-family: Consolas;
+                }}
+
+                /* Body rows (inside PROC/FN) */
+                tr.fold-body {{
+                    transition: all 0.15s ease;
+                }}                
             ");
 
                 // Semantic tag classes (loop!)
@@ -217,12 +277,6 @@ namespace BasViewer.GUI
             sb.Append("</style>");
 
             return sb.ToString();
-        }
-
-        internal string _getCSS(string theme)
-        {
-            string css = "<style> body { font-family: Consolas;font-size:14; background: #111; color: #eee; } table { border-collapse: collapse; } td:first-child { color:LightGray; background-color:SlateGrey; padding-right: 4px; text-align:right; vertical-align: top;} td:last-child { white-space: pre-wrap; word-break: break-word; } </style>";
-            return css;
         }
     }
 }
