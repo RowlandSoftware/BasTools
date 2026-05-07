@@ -54,7 +54,7 @@ namespace BasViewer.GUI
             {
                 ["font"] = "Consolas,Cascadia Code,Menlo,Monospace",
                 ["background"] = "#ffffff",
-                ["foreground"] = "Snow",
+                ["foreground"] = "Black",
                 ["linenumber_bg"] = "#dddddd",
                 ["linenumber_fg"] = "DarkSlateGray",
 
@@ -172,7 +172,7 @@ namespace BasViewer.GUI
 
             ["Typewriter"] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
-                ["font"] = "American Typewriter Std Med,Courier New,Menlo,Monospace",
+                ["font"] = "ITC American Typewriter Std, Courier New,Menlo,Monospace",
                 ["background"] = "BlanchedAlmond",
                 ["foreground"] = "DarkSlateGray",
                 ["linenumber_bg"] = "MediumGray",
@@ -193,7 +193,7 @@ namespace BasViewer.GUI
                 ["remtext"] = "font-style:italic;",
                 ["assemcomment"] = "font-style:italic;",
                 ["starcommand"] = "font-variant:all-small-caps;",
-                ["embeddeddata"] = "color:Gold;",
+                ["embeddeddata"] = "font-weight:light;",
                 ["proc"] = "color:Gray;",
                 ["fn"] = "color:Gray;",
                 ["label"] = "background-color:DarkSlateGray; color:White;",

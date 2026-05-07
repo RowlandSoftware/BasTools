@@ -47,13 +47,8 @@ namespace BasViewer.GUI
                 string? filename = _args.FirstOrDefault();
                 if (!string.IsNullOrEmpty(filename))
                 {
-                    progInfo.Filename = filename;
                     LoadFile(filename);
                 }
-            }
-            else
-            {
-                webView2.NavigateToString("<html><body style=\"background-color:blue\"><h3 style=\"color:white\">Drag 'n' drop files here</h3></body></html>");
             }
         }
         private void FileOpen()
@@ -62,9 +57,6 @@ namespace BasViewer.GUI
             if (filename == null)
                 return;
 
-            //if (progInfo == null) progInfo = new ProgInfo();
-
-            progInfo.Filename = filename;
             LoadFile(filename);
         }
         internal string? getFileOpen()
@@ -97,10 +89,8 @@ namespace BasViewer.GUI
             }
             catch (Exception ex)
             {
-                {
-                    //MessageBox.Show(ex.Message);
-                    LoadTextFile(filename);
-                }
+                //MessageBox.Show(ex.Message);
+                LoadTextFile(filename);
             }
         }
         private void BasicToHtml(BasToolsEngine engine)
@@ -110,7 +100,11 @@ namespace BasViewer.GUI
             _loaded = true;
             combProcFnFinder.Items.Clear();
 
-            ListerOptions listerOptions = new ListerOptions(true, false, true, true); //bool indent, bool indentDefs, bool splitLines, bool pretty
+            bool splitLines = toolStripButton4.Checked;
+            bool pretty = toolStripButton2.Checked;
+            //MessageBox.Show($"Button status: {pretty} {splitLines}");
+
+            ListerOptions listerOptions = new ListerOptions(true, false, splitLines, true); //bool indent, bool indentDefs, bool splitLines, bool pretty (ignored)
             List<DisplayLine> lines = engine.prepLinesForDisplay(listerOptions);
 
             string htmlHeader = "<html><head>" + Themes.GetCss(comboBoxTheme.Text) + _script + "</head><body><table>";
@@ -149,12 +143,24 @@ namespace BasViewer.GUI
                 }
 
                 int totindent = (line.Indent + line.DefIndent) * 2;
-                if (IsDef)
-                    htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td class = \"line-number\">{line.sLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
-                else if (IsInDef)
-                    htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td class = \"line-number\">{line.sLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
+                if (pretty)
+                {
+                    if (IsDef)
+                        htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td class = \"line-number\">{line.sLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
+                    else if (IsInDef)
+                        htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td class = \"line-number\">{line.sLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
+                    else
+                        htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td class = \"line-number\">{line.sLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
+                }
                 else
-                    htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td class = \"line-number\">{line.sLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
+                {
+                    if (IsDef)
+                        htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td class = \"line-number\">{line.sLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{line.PlainLine}</td></tr>" + Environment.NewLine);
+                    else if (IsInDef)
+                        htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td class = \"line-number\">{line.sLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{line.PlainLine}</td></tr>" + Environment.NewLine);
+                    else
+                        htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td class = \"line-number\">{line.sLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{line.PlainLine}</td></tr>" + Environment.NewLine);
+                }
 
                 if (IsInDef && !line.IsInDef)
                     IsInDef = false;
@@ -185,6 +191,13 @@ namespace BasViewer.GUI
         }
         private void LoadTextFile(string filename)
         {
+            // load file
+
+            // process lines
+
+            // prep for display
+
+
             string htmlHeader = "<html>" + Themes.GetCss(comboBoxTheme.Text) + "<body><table>";
             string html = htmlHeader +
                 "<tr><td>200</td><td>REM A sample program</td></tr>" +
@@ -200,6 +213,18 @@ namespace BasViewer.GUI
                 "<tr><td>1000</td><td>REM A sample program</td></tr>" +
                 _htmlClose;
             webView2.NavigateToString(html);
+        }
+        private async void Reload(BasToolsEngine engine)
+        {
+            if (!_loaded)
+                return;
+
+            var scrollY = await webView2.ExecuteScriptAsync("document.scrollingElement.scrollTop");
+            int.TryParse(scrollY, out int savedScroll);
+
+            BasicToHtml(engine);
+
+            await webView2.ExecuteScriptAsync($"document.scrollingElement.scrollTop = {savedScroll};");
         }
         private async void Form1_Shown(object? sender, EventArgs e)
         {
@@ -226,7 +251,7 @@ namespace BasViewer.GUI
         private void comboBoxTheme_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (_loaded)
-                BasicToHtml(engine);
+                Reload(engine);
         }
         private void toolStripButton3_Click(object sender, EventArgs e)
         {
@@ -254,12 +279,12 @@ namespace BasViewer.GUI
 
             if (files != null && files.Length > 0)
             {
-                progInfo.Filename = files[0];
                 LoadFile(files[0]);
             }
         }
         private void LoadFile(string filename)
         {
+            progInfo.Filename = filename;
             loadBasicOrText(filename, engine, formatOptions, progInfo);
 
             if (engine.CurrentListing != null)
@@ -285,7 +310,7 @@ namespace BasViewer.GUI
                 dlg.ShowDialog(this);
             }
         }
-        private void Form1_KeyUp(object sender, KeyEventArgs e)
+        private void Form1_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Escape)
             {
@@ -311,7 +336,7 @@ namespace BasViewer.GUI
         }
         private async void toolStripTextBoxSearch_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.KeyCode == Keys.Enter)
+            if (e.KeyCode == Keys.Enter || e.KeyCode == Keys.F3)
             {
                 bool backwards = e.Shift;
                 BasicSearch(backwards);
@@ -321,7 +346,7 @@ namespace BasViewer.GUI
         {
             string text = toolStripTextBoxSearch.Text.Replace("'", "\\'");
             if (!_loaded || text.Length == 0) return;
-           
+
             if (!backwards)
             {
                 await webView2.CoreWebView2.ExecuteScriptAsync(
@@ -337,6 +362,18 @@ namespace BasViewer.GUI
         private void toolStripButton5_Click(object sender, EventArgs e)
         {
             BasicSearch(false);
+        }
+
+        private void toolStripButton2_CheckedChanged(object sender, EventArgs e)
+        {
+            if (_loaded)
+                Reload(engine);
+        }
+
+        private void toolStripButton4_CheckedChanged(object sender, EventArgs e)
+        {
+            if (_loaded)
+                Reload(engine);
         }
     }
 }

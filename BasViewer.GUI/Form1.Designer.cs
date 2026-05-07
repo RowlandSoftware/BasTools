@@ -83,11 +83,13 @@
             // 
             // toolStrip1
             // 
+            toolStrip1.BackColor = Color.LightSkyBlue;
             toolStrip1.ImageScalingSize = new Size(32, 32);
             toolStrip1.Items.AddRange(new ToolStripItem[] { toolStripButton1, toolStripButton2, toolStripButton3, toolStripButton4, toolStripLabel1, comboBoxTheme, toolStripSeparator1, combProcFnFinder, toolStripButton5, toolStripTextBoxSearch });
             toolStrip1.Location = new Point(0, 0);
+            toolStrip1.MinimumSize = new Size(0, 54);
             toolStrip1.Name = "toolStrip1";
-            toolStrip1.Size = new Size(1381, 45);
+            toolStrip1.Size = new Size(1381, 54);
             toolStrip1.Stretch = true;
             toolStrip1.TabIndex = 2;
             toolStrip1.Text = "toolStrip1";
@@ -98,20 +100,23 @@
             toolStripButton1.Image = (Image)resources.GetObject("toolStripButton1.Image");
             toolStripButton1.ImageTransparentColor = Color.Magenta;
             toolStripButton1.Name = "toolStripButton1";
-            toolStripButton1.Size = new Size(46, 39);
+            toolStripButton1.Size = new Size(46, 48);
             toolStripButton1.Text = "toolStripButton1";
             toolStripButton1.Click += toolStripButton1_Click;
             // 
             // toolStripButton2
             // 
+            toolStripButton2.Checked = true;
             toolStripButton2.CheckOnClick = true;
+            toolStripButton2.CheckState = CheckState.Checked;
             toolStripButton2.DisplayStyle = ToolStripItemDisplayStyle.Image;
             toolStripButton2.Image = (Image)resources.GetObject("toolStripButton2.Image");
             toolStripButton2.ImageTransparentColor = Color.Magenta;
             toolStripButton2.Name = "toolStripButton2";
-            toolStripButton2.Size = new Size(46, 39);
+            toolStripButton2.Size = new Size(46, 48);
             toolStripButton2.Text = "toolStripButton2";
             toolStripButton2.ToolTipText = "Prettyprint";
+            toolStripButton2.CheckedChanged += toolStripButton2_CheckedChanged;
             // 
             // toolStripButton3
             // 
@@ -120,46 +125,52 @@
             toolStripButton3.Image = (Image)resources.GetObject("toolStripButton3.Image");
             toolStripButton3.ImageTransparentColor = Color.Magenta;
             toolStripButton3.Name = "toolStripButton3";
-            toolStripButton3.Size = new Size(46, 39);
+            toolStripButton3.Size = new Size(46, 48);
             toolStripButton3.Text = "Menu";
             toolStripButton3.Click += toolStripButton3_Click;
             // 
             // toolStripButton4
             // 
+            toolStripButton4.Checked = true;
+            toolStripButton4.CheckOnClick = true;
+            toolStripButton4.CheckState = CheckState.Checked;
             toolStripButton4.DisplayStyle = ToolStripItemDisplayStyle.Image;
             toolStripButton4.Image = (Image)resources.GetObject("toolStripButton4.Image");
             toolStripButton4.ImageTransparentColor = Color.Magenta;
             toolStripButton4.Name = "toolStripButton4";
-            toolStripButton4.Size = new Size(46, 39);
+            toolStripButton4.Size = new Size(46, 48);
             toolStripButton4.Text = "toolStripButton4";
+            toolStripButton4.ToolTipText = "Split lines";
+            toolStripButton4.CheckedChanged += toolStripButton4_CheckedChanged;
             // 
             // toolStripLabel1
             // 
             toolStripLabel1.Name = "toolStripLabel1";
-            toolStripLabel1.Size = new Size(100, 39);
+            toolStripLabel1.Size = new Size(100, 48);
             toolStripLabel1.Text = "Theme: ";
             toolStripLabel1.TextAlign = ContentAlignment.MiddleRight;
             // 
             // comboBoxTheme
             // 
-            comboBoxTheme.AutoSize = false;
             comboBoxTheme.DropDownStyle = ComboBoxStyle.DropDownList;
+            comboBoxTheme.Font = new Font("Segoe UI", 10.125F, FontStyle.Regular, GraphicsUnit.Point, 0);
             comboBoxTheme.Items.AddRange(new object[] { "Dark", "Light", "Retro", "Mono", "Typewriter" });
             comboBoxTheme.Name = "comboBoxTheme";
-            comboBoxTheme.Size = new Size(170, 40);
+            comboBoxTheme.Size = new Size(170, 54);
             comboBoxTheme.SelectedIndexChanged += comboBoxTheme_SelectedIndexChanged;
             // 
             // toolStripSeparator1
             // 
             toolStripSeparator1.Name = "toolStripSeparator1";
-            toolStripSeparator1.Size = new Size(6, 45);
+            toolStripSeparator1.Size = new Size(6, 54);
             // 
             // combProcFnFinder
             // 
             combProcFnFinder.DropDownStyle = ComboBoxStyle.DropDownList;
             combProcFnFinder.Font = new Font("Segoe UI", 10.125F, FontStyle.Regular, GraphicsUnit.Point, 0);
             combProcFnFinder.Name = "combProcFnFinder";
-            combProcFnFinder.Size = new Size(500, 45);
+            combProcFnFinder.Size = new Size(500, 54);
+            combProcFnFinder.ToolTipText = "PROC and FN finder";
             combProcFnFinder.SelectedIndexChanged += combProcFnFinder_SelectedIndexChanged;
             // 
             // toolStripButton5
@@ -168,15 +179,16 @@
             toolStripButton5.Image = (Image)resources.GetObject("toolStripButton5.Image");
             toolStripButton5.ImageTransparentColor = Color.Magenta;
             toolStripButton5.Name = "toolStripButton5";
-            toolStripButton5.Size = new Size(46, 39);
+            toolStripButton5.Size = new Size(46, 48);
             toolStripButton5.Text = "toolStripButton5";
+            toolStripButton5.ToolTipText = "Quick Search";
             toolStripButton5.Click += toolStripButton5_Click;
             // 
             // toolStripTextBoxSearch
             // 
             toolStripTextBoxSearch.Font = new Font("Segoe UI", 10.125F, FontStyle.Regular, GraphicsUnit.Point, 0);
             toolStripTextBoxSearch.Name = "toolStripTextBoxSearch";
-            toolStripTextBoxSearch.Size = new Size(200, 45);
+            toolStripTextBoxSearch.Size = new Size(200, 54);
             toolStripTextBoxSearch.ToolTipText = "Search";
             toolStripTextBoxSearch.KeyDown += toolStripTextBoxSearch_KeyDown;
             // 
@@ -187,9 +199,9 @@
             webView2.DefaultBackgroundColor = Color.White;
             webView2.Dock = DockStyle.Fill;
             webView2.Enabled = false;
-            webView2.Location = new Point(0, 45);
+            webView2.Location = new Point(0, 54);
             webView2.Name = "webView2";
-            webView2.Size = new Size(1381, 995);
+            webView2.Size = new Size(1381, 986);
             webView2.TabIndex = 3;
             webView2.Visible = false;
             webView2.ZoomFactor = 1D;
@@ -201,9 +213,9 @@
             label1.Dock = DockStyle.Fill;
             label1.Font = new Font("Segoe UI", 18F, FontStyle.Regular, GraphicsUnit.Point, 0);
             label1.ForeColor = Color.White;
-            label1.Location = new Point(0, 45);
+            label1.Location = new Point(0, 54);
             label1.Name = "label1";
-            label1.Size = new Size(1381, 995);
+            label1.Size = new Size(1381, 986);
             label1.TabIndex = 4;
             label1.Text = "Drag 'n' Drop files here";
             label1.TextAlign = ContentAlignment.MiddleCenter;
@@ -252,7 +264,8 @@
             Text = "Form1";
             DragDrop += MainForm_DragDrop;
             DragEnter += MainForm_DragEnter;
-            KeyUp += Form1_KeyUp;
+            KeyDown += Form1_KeyDown;
+            KeyUp += Form1_KeyDown;
             statusStrip1.ResumeLayout(false);
             statusStrip1.PerformLayout();
             toolStrip1.ResumeLayout(false);
