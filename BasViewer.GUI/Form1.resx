@@ -541,17 +541,6 @@
         YII=
 </value>
   </data>
-  <data name="toolStripButton3.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
-    <value>
-        iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8
-        YQUAAAAJcEhZcwAAHYcAAB2HAY/l8WUAAAEwSURBVHhe7dexbQNBEATBj+mDUv4h0G9LswYFAVVAu2Os
-        dfc8AAAAAAAAwB973/fnWrc46FGXusVBj7rULQ561KVucdCjLnWLgx51qVsc9KhL3eKgR13qFgc96lK3
-        OOhRl7rFQY+61C0OetSlbnHQoy51i4MedalbHPSoS90CAAD+h77tl7rFQY+61C0OetSlbnHQoy51i4Me
-        dalbHPSoS93ioEdd6hYHPepStzjoUZe6xUGPutQtDnrUpW5x0KMudYuDHnWpWxz0qEvd4qBHXeoWAAAA
-        v9DP1VK3OOhRl7rFQY+61C0OetSlbnHQoy51i4MedalbHPSoS93ioEdd6hYHPepStzjoUZe6xUGPutQt
-        DnrUpW5x0KMudYuDHnWpWxz0qEvdAgAAAAAAAL7pA1fTmJPf3eDjAAAAAElFTkSuQmCC
-</value>
-  </data>
   <data name="toolStripButton4.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
     <value>
         iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8
@@ -577,7 +566,21 @@
         6xupIF5c1Gs8CLpn31mV9Bja/OIvFK5DpLnsVlEAAAAASUVORK5CYII=
 </value>
   </data>
+  <data name="toolStripButton3.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8
+        YQUAAAAJcEhZcwAAHYcAAB2HAY/l8WUAAAEwSURBVHhe7dexbQNBEATBj+mDUv4h0G9LswYFAVVAu2Os
+        dfc8AAAAAAAAwB973/fnWrc46FGXusVBj7rULQ561KVucdCjLnWLgx51qVsc9KhL3eKgR13qFgc96lK3
+        OOhRl7rFQY+61C0OetSlbnHQoy51i4MedalbHPSoS90CAAD+h77tl7rFQY+61C0OetSlbnHQoy51i4Me
+        dalbHPSoS93ioEdd6hYHPepStzjoUZe6xUGPutQtDnrUpW5x0KMudYuDHnWpWxz0qEvd4qBHXeoWAAAA
+        v9DP1VK3OOhRl7rFQY+61C0OetSlbnHQoy51i4MedalbHPSoS93ioEdd6hYHPepStzjoUZe6xUGPutQt
+        DnrUpW5x0KMudYuDHnWpWxz0qEvdAgAAAAAAAL7pA1fTmJPf3eDjAAAAAElFTkSuQmCC
+</value>
+  </data>
   <metadata name="contextMenuStrip1.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
     <value>597, 17</value>
+  </metadata>
+  <metadata name="$this.TrayHeight" type="System.Int32, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089">
+    <value>135</value>
   </metadata>
 </root>

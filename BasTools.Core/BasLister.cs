@@ -92,7 +92,7 @@ namespace BasTools.Core
     }
     public class BasLister
     {
-        //****************** Display the Output ***********
+        //****************** Display the Output ***********Empty.String
         public static void DisplayProgramLines(Listing formattedListing, ListerOptions switches, ProgInfo progInfo)
         {
             ListerState listerState = new(); // this sets initial conditions
@@ -113,8 +113,6 @@ namespace BasTools.Core
             //
             string format = progInfo.BasicDialect;
             if (!switches.Bare && !switches.FlgList) Console.WriteLine($"\nListing '{progInfo.Filename}' from line {switches.FromLine} to {switches.ToLine} ({format} format)\n");
-
-            //string sIndent = string.Empty;
 
             foreach (ProgramLine progline in formattedListing.Lines)
             {
@@ -332,8 +330,8 @@ namespace BasTools.Core
                             {
                                 // copy bits from original progline
                                 DisplayLine displayLine = new(progline.LineNumber);
-                                displayLine.sLineNumber = first ? progline.FormattedLineNumber.Trim() : "";
-                                displayLine.LineBody = line.TaggedLine;
+                                displayLine.sLineNumber = first ? progline.FormattedLineNumber.Trim() : "..";
+                                displayLine.LineBody = line.FormattedTagged;
                                 displayLine.PlainLine = line.FormattedPlain.Trim();
                                 first = false;
                                 // copy bits from sections ???

@@ -13,7 +13,10 @@
     <Authors>Andrew Rowland</Authors>
     <Company>RowlandSoftware</Company>
     <Copyright>(c) Andrew Rowland 2026</Copyright>
-    <Description>Display BBC Basic programs</Description>
+    <Description>Display BBC Basic programs
+* Supports Acorn, Z80 and text formats
+* Powerful search and analysis functions
+* Configurable display including syntax colouring and split apart lines</Description>
     <PackageIcon>RS_lg.ico</PackageIcon>
   </PropertyGroup>
 

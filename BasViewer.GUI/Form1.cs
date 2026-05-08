@@ -10,7 +10,7 @@ namespace BasViewer.GUI
 {
     public partial class Form1 : Form
     {
-        private string[] _args;
+        private readonly string[] _args;
         ProgInfo? progInfo;
         FormattingOptions? formatOptions;
         BasToolsEngine? engine;
@@ -21,6 +21,79 @@ namespace BasViewer.GUI
         public Form1(string[] args)
         {
             InitializeComponent();
+            // --- Build status bar zoom control ---
+
+            // Left spring label
+            statusLeft = new ToolStripStatusLabel
+            {
+                Spring = true,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+
+            // Right spring label
+            statusRight = new ToolStripStatusLabel
+            {
+                Spring = true,
+                TextAlign = ContentAlignment.MiddleRight
+            };
+
+            // Zoom slider
+            zoomSlider = new TrackBar
+            {
+                Minimum = 50,
+                Maximum = 200,
+                TickFrequency = 25,
+                Value = 100,
+                AutoSize = false,
+                Width = 150
+            };
+            
+            // Host for slider
+            zoomHost = new ToolStripControlHost(zoomSlider)
+            {
+                AutoSize = false,
+                Width = 120
+            };
+
+            // Buttons + label
+            zoomOutButton = new ToolStripButton("–");
+            zoomInButton = new ToolStripButton("+");
+            zoomPercentLabel = new ToolStripLabel("100%");
+            zoomPercentLabel.DoubleClickEnabled = true;
+
+            // Clear any old items and add new layout
+            statusStrip1.Items.Clear();
+            statusStrip1.Items.AddRange(new ToolStripItem[]
+            {
+                statusLeft,
+                zoomOutButton,
+                zoomHost,
+                zoomInButton,
+                zoomPercentLabel,
+                statusRight
+            });
+
+            // Wiring behaviour
+            zoomSlider.Scroll += (s, e) => ApplyZoom();
+
+            zoomOutButton.Click += (s, e) =>
+            {
+                zoomSlider.Value = Math.Max(zoomSlider.Minimum, zoomSlider.Value - 10);
+                ApplyZoom();
+            };
+
+            zoomInButton.Click += (s, e) =>
+            {
+                zoomSlider.Value = Math.Min(zoomSlider.Maximum, zoomSlider.Value + 10);
+                ApplyZoom();
+            };
+            zoomPercentLabel.DoubleClick += (s, e) =>
+            {
+                zoomSlider.Value = 100;
+                ApplyZoom();
+            };
+
+            // Init WebView2
             this.Shown += Form1_Shown;
 
             _args = args;
@@ -76,7 +149,6 @@ namespace BasViewer.GUI
 
             return dlg.ShowDialog() == DialogResult.OK ? dlg.FileName : null;
         }
-
         internal void loadBasicOrText(string filename, BasToolsEngine engine, FormattingOptions formatOptions, ProgInfo progInfo)
         {
             try
@@ -146,20 +218,20 @@ namespace BasViewer.GUI
                 if (pretty)
                 {
                     if (IsDef)
-                        htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td class = \"line-number\">{line.sLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
+                        htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td id = \"line_{line.sLineNumber}\" class = \"line-number\">{line.sLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
                     else if (IsInDef)
-                        htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td class = \"line-number\">{line.sLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
+                        htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td id = \"line_{line.sLineNumber}\" class = \"line-number\">{line.sLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
                     else
-                        htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td class = \"line-number\">{line.sLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
+                        htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td id = \"line_{line.sLineNumber}\" class = \"line-number\">{line.sLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
                 }
                 else
                 {
                     if (IsDef)
-                        htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td class = \"line-number\">{line.sLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{line.PlainLine}</td></tr>" + Environment.NewLine);
+                        htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td id = \"line_{line.sLineNumber}\" class = \"line-number\">{line.sLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{line.PlainLine}</td></tr>" + Environment.NewLine);
                     else if (IsInDef)
-                        htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td class = \"line-number\">{line.sLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{line.PlainLine}</td></tr>" + Environment.NewLine);
+                        htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td id = \"line_{line.sLineNumber}\" class = \"line-number\">{line.sLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{line.PlainLine}</td></tr>" + Environment.NewLine);
                     else
-                        htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td class = \"line-number\">{line.sLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{line.PlainLine}</td></tr>" + Environment.NewLine);
+                        htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td id = \"line_{line.sLineNumber}\" class = \"line-number\">{line.sLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{line.PlainLine}</td></tr>" + Environment.NewLine);
                 }
 
                 if (IsInDef && !line.IsInDef)
@@ -173,8 +245,8 @@ namespace BasViewer.GUI
             }
             htmlDoc.Append(Environment.NewLine + _htmlClose);
 
-            toolStripStatusLabel1.Text = $"{progInfo.ProgName}: {progInfo.NumberOfLines} lines";
-            toolStripStatusLabel2.Text = $"{progInfo.BasicDialect}";
+            statusLeft.Text = $"{progInfo.ProgName}: {progInfo.NumberOfLines} lines";
+            statusRight.Text = $"{progInfo.BasicDialect}";
             combProcFnFinder.SelectedIndex = 0;
             webView2.NavigateToString(htmlDoc.ToString());
         }
@@ -214,6 +286,21 @@ namespace BasViewer.GUI
                 _htmlClose;
             webView2.NavigateToString(html);
         }
+        private void LoadFile(string filename)
+        {
+            progInfo.Filename = filename;
+            loadBasicOrText(filename, engine, formatOptions, progInfo);
+
+            if (engine.CurrentListing != null)
+                _loaded = true;
+            else
+                return;
+            label1.Visible = false;
+            webView2.Visible = true;
+            webView2.Enabled = true;
+
+            BasicToHtml(engine);
+        }
         private async void Reload(BasToolsEngine engine)
         {
             if (!_loaded)
@@ -245,9 +332,65 @@ namespace BasViewer.GUI
             webView2.CoreWebView2.Settings.AreDefaultScriptDialogsEnabled = false;
             webView2.AllowExternalDrop = false;
 
+            toolStripTextBoxSearch.Width = getSrchboxWidth();
+
             // Now it's safe to navigate or inject HTML
             something();
         }
+        /**************** Search ****************/
+        private async void combProcFnFinder_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            string target = combProcFnFinder.Text;
+            target = target.Substring(target.IndexOf(' ')).Trim(); // strip off DEF
+            StringBuilder id = new();
+            if (target.StartsWith("PROC"))
+                id.Append("proc_");
+            else
+                id.Append("fn_");
+
+            for (int i = id.Length - 1; i < target.Length && target[i] != '('; i++)
+            {
+                id.Append(target[i]);
+            }
+            //MessageBox.Show(id.ToString());
+            await webView2.ExecuteScriptAsync($"document.getElementById('{id.ToString()}').scrollIntoView()");
+        }
+        private async void BasicSearch(bool backwards)
+        {
+            string text = toolStripTextBoxSearch.Text.Replace("'", "\\'");
+            if (!_loaded || text.Length == 0) return;
+
+            if (!backwards)
+            {
+                await webView2.CoreWebView2.ExecuteScriptAsync(
+                    $"window.find('{text}', false, false, true, false, false, false);");
+            }
+            else
+            {
+                await webView2.CoreWebView2.ExecuteScriptAsync(
+                    $"window.find('{text}', false, {backwards.ToString().ToLower()}, true, false, false, false);");
+            }
+            toolStripTextBoxSearch.Focus();
+        }
+        private async void DoGotoLine(string text)
+        {
+            text = text.Trim();
+            if (_loaded && text.Length > 0)
+            {
+                await webView2.ExecuteScriptAsync($"document.getElementById('line_{text}').scrollIntoView()");
+                contextMenuStrip1.Hide();
+            }
+        }
+        // ********* Zoom Control helper ********
+        private void ApplyZoom()
+        {
+            double factor = zoomSlider.Value / 100.0;
+            webView2.ZoomFactor = factor;
+            zoomPercentLabel.Text = $"{zoomSlider.Value}%";
+        }
+        //
+        // *************** Form Controls etc. *************
+        //
         private void comboBoxTheme_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (_loaded)
@@ -258,7 +401,6 @@ namespace BasViewer.GUI
             contextMenuStrip1.Show(toolStrip1,
                 new Point(toolStripButton3.Bounds.Left, toolStripButton3.Bounds.Bottom));
         }
-
         private void toolStripButton1_Click(object sender, EventArgs e)
         {
             FileOpen();
@@ -282,22 +424,6 @@ namespace BasViewer.GUI
                 LoadFile(files[0]);
             }
         }
-        private void LoadFile(string filename)
-        {
-            progInfo.Filename = filename;
-            loadBasicOrText(filename, engine, formatOptions, progInfo);
-
-            if (engine.CurrentListing != null)
-                _loaded = true;
-            else
-                return;
-            label1.Visible = false;
-            webView2.Visible = true;
-            webView2.Enabled = true;
-
-            BasicToHtml(engine);
-        }
-
         private void dragFileToLoadToolStripMenuItem_Click(object sender, EventArgs e)
         {
             label1.Visible = true;
@@ -312,27 +438,22 @@ namespace BasViewer.GUI
         }
         private void Form1_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.KeyCode == Keys.Escape)
+            switch (e.KeyCode)
             {
-                if (_loaded) label1.Visible = false;
+                case Keys.Escape:
+                    if (_loaded) label1.Visible = false;
+                    break;
+                case Keys.F:
+                    if (e.Control) toolStripTextBoxSearch.Focus();
+                    break;
+                case Keys.F3:
+                    bool backwards = e.Shift;
+                    if (_loaded && toolStripTextBoxSearch.Text.Trim().Length > 0)
+                    {
+                        BasicSearch(backwards);
+                    }
+                    break;
             }
-        }
-        private async void combProcFnFinder_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            string target = combProcFnFinder.Text;
-            target = target.Substring(target.IndexOf(' ')).Trim(); // strip off DEF
-            StringBuilder id = new();
-            if (target.StartsWith("PROC"))
-                id.Append("proc_");
-            else
-                id.Append("fn_");
-
-            for (int i = id.Length - 1; i < target.Length && target[i] != '('; i++)
-            {
-                id.Append(target[i]);
-            }
-            //MessageBox.Show(id.ToString());
-            await webView2.ExecuteScriptAsync($"document.getElementById('{id.ToString()}').scrollIntoView()");
         }
         private async void toolStripTextBoxSearch_KeyDown(object sender, KeyEventArgs e)
         {
@@ -342,38 +463,59 @@ namespace BasViewer.GUI
                 BasicSearch(backwards);
             }
         }
-        private async void BasicSearch(bool backwards)
-        {
-            string text = toolStripTextBoxSearch.Text.Replace("'", "\\'");
-            if (!_loaded || text.Length == 0) return;
-
-            if (!backwards)
-            {
-                await webView2.CoreWebView2.ExecuteScriptAsync(
-                    $"window.find('{text}', false, false, true, false, false, false);");
-            }
-            else
-            {
-                await webView2.CoreWebView2.ExecuteScriptAsync(
-                    $"window.find('{text}', false, {backwards.ToString().ToLower()}, true, false, false, false);");
-            }
-            toolStripTextBoxSearch.Focus();
-        }
         private void toolStripButton5_Click(object sender, EventArgs e)
         {
             BasicSearch(false);
         }
-
         private void toolStripButton2_CheckedChanged(object sender, EventArgs e)
         {
             if (_loaded)
                 Reload(engine);
         }
-
         private void toolStripButton4_CheckedChanged(object sender, EventArgs e)
         {
             if (_loaded)
                 Reload(engine);
+        }
+
+        private void advancedSearchToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            //
+        }
+        private void toolStripTextBoxGoto_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            if (e.KeyChar == (char)Keys.Enter)
+            {
+                e.Handled = true;
+                DoGotoLine(toolStripTextBoxGoto.Text);
+            }
+        }
+        private void toolStripTextBoxGoto_Click(object sender, EventArgs e)
+        {
+            DoGotoLine(toolStripTextBoxGoto.Text);
+        }
+        private void gotoLineToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            DoGotoLine(toolStripTextBoxGoto.Text);
+        }
+        private void toolStrip1_SizeChanged(object sender, EventArgs e)
+        {
+            toolStripTextBoxSearch.Width = getSrchboxWidth();
+        }
+        private int getSrchboxWidth()
+        {
+            int toolbarWidth = toolStrip1.Width;
+            int totwidth = 0;
+            foreach (ToolStripItem item in toolStrip1.Items)
+            {
+                totwidth += item.Width;
+            }
+            totwidth -= toolStripTextBoxSearch.Width;
+
+            if (toolbarWidth - totwidth > 150)
+                return toolbarWidth - totwidth - 40;
+            else
+                return 150;
         }
     }
 }
