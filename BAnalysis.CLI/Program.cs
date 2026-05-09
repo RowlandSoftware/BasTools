@@ -160,7 +160,7 @@ namespace BasAnalysis.CLI
                     FlgIndent = true
                 };
 
-                engine.loadAndFormatFile(filename, formatOptions, BAprogInfo);
+                engine.LoadAndFormatFile(filename, formatOptions, BAprogInfo);
 
                 prompt = "BasAnalysis " + Path.GetFileName(filename) + " >";
 
@@ -175,7 +175,7 @@ namespace BasAnalysis.CLI
             }
             catch (BasToolsException e)
             {
-                Console.WriteLine($"{e.Message}");
+                Console.WriteLine($"{e.Message}\n\n{e.InnerException?.Message ?? ""}");
             }
             return false;
         }

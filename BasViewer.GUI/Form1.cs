@@ -1,10 +1,12 @@
 using BasTools.Core;
 using Microsoft.VisualBasic;
 using Microsoft.Web.WebView2.Core;
+using Microsoft.Web.WebView2.WinForms;
 using System.Runtime.Intrinsics.Arm;
 using System.Security.Policy;
 using System.Text;
 using static System.Net.Mime.MediaTypeNames;
+using static System.Windows.Forms.LinkLabel;
 
 namespace BasViewer.GUI
 {
@@ -21,6 +23,12 @@ namespace BasViewer.GUI
         public Form1(string[] args)
         {
             InitializeComponent();
+
+            menuStripRight.BackColor = Color.LightSkyBlue;
+            toolStripLeft.Renderer = new NoBorderRenderer();
+            menuStripRight.Renderer = new NoBorderRenderer();
+
+            #region ZoomControl
             // --- Build status bar zoom control ---
 
             // Left spring label
@@ -92,7 +100,7 @@ namespace BasViewer.GUI
                 zoomSlider.Value = 100;
                 ApplyZoom();
             };
-
+            #endregion
             // Init WebView2
             this.Shown += Form1_Shown;
 
@@ -103,8 +111,8 @@ namespace BasViewer.GUI
             formatOptions = new FormattingOptions(true);
             //_theme = "Dark";
             _loaded = false;
-            _htmlClose = "</table></body></html>";
-            _script = Environment.NewLine + "<script> function toggleFold(name) { const rows = document.querySelectorAll('.' + name); const arrow = document.getElementById('arrow_' + name); const isClosed = (arrow.textContent === \"▶\"); rows.forEach(r => { r.style.display = isClosed ? \"\" : \"none\"; }); arrow.textContent = isClosed ? \"▼\" : \"▶\"} </script>";
+            _htmlClose = Environment.NewLine + "</table></body></html>";
+            _script = Environment.NewLine + "<script> function toggleFold(name) { const rows = document.querySelectorAll('.' + name); const arrow = document.getElementById('arrow_' + name); const isClosed = (arrow.textContent === \"▶\"); rows.forEach(r => { r.style.display = isClosed ? \"\" : \"none\"; }); arrow.textContent = isClosed ? \"▼\" : \"▶\"} </script>" + Environment.NewLine;
             comboBoxTheme.SelectedIndex = 0;
 
             this.Text = "BBC BASIC Viewer";
@@ -149,21 +157,103 @@ namespace BasViewer.GUI
 
             return dlg.ShowDialog() == DialogResult.OK ? dlg.FileName : null;
         }
-        internal void loadBasicOrText(string filename, BasToolsEngine engine, FormattingOptions formatOptions, ProgInfo progInfo)
+        internal bool loadBasicOrText(string filename, BasToolsEngine engine, FormattingOptions formatOptions, ProgInfo progInfo)
         {
+            bool IsTextNotBasic = false;
             try
             {
-                Listing listing = engine.loadAndFormatFile(filename, formatOptions, progInfo);
-                if (listing != null)
+                if (!engine.LoadAndFormatFile(filename, formatOptions, progInfo))
                 {
-                    return;
+                    IsTextNotBasic = true;
+                    engine.LoadAndFormatTextFile(filename, formatOptions, progInfo);
+                    
+                    // DEBUG
+                    string whatever = "";
+                    foreach (var pl in engine.CurrentListing.Lines)
+                    {
+                        whatever += $"{pl.FormattedLineNumber} {pl.TaggedLine}</br>" + Environment.NewLine;
+                    }
+                    label1.Visible = false;
+                    webView2.NavigateToString (whatever);
+                }
+                //return IsTextNotBasic;
+            }
+            catch (BasToolsException ex)
+            {
+                MessageBox.Show($"{ex.Message}\n\n{ex.InnerException?.Message ?? ""}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            return IsTextNotBasic;
+        }
+        private void TextToHtml(BasToolsEngine engine)
+        {
+            if (engine.CurrentListing == null) return;
+
+            _loaded = true;
+            combProcFnFinder.Items.Clear();
+
+            bool pretty = toolStripButton2.Checked;
+
+            string htmlHeader = "<html><head>" + Themes.GetCss(comboBoxTheme.Text) + _script + "</head>"+ Environment.NewLine + "<body><table>" + Environment.NewLine;
+
+            StringBuilder htmlDoc = new StringBuilder(htmlHeader);
+            StringBuilder lineBody = new();
+
+            bool IsDef = false;
+            bool IsInDef = false;
+            string id = string.Empty;
+            foreach (var line in engine.CurrentListing.Lines)
+            {
+                IsDef = line.IsDef;
+
+                lineBody.Clear();
+                foreach (Token tok in BasToolsEngine.WalkTagged(line.TaggedLine))
+                {
+                    if (tok.tag == null)
+                        lineBody.Append(tok.value);
+                    else
+                    {
+                        if (IsDef && (tok.tag == SemanticTags.FunctionName || tok.tag == SemanticTags.ProcName))
+                        {
+                            if (tok.tag == SemanticTags.ProcName)
+                                id = "proc_" + tok.value;
+                            else
+                                id = "fn_" + tok.value;
+
+                            combProcFnFinder.Items.Add(line.FormattedPlain);
+                        }
+                        string tag = tok.tag.Substring(2, tok.tag.Length - 3); // peel off {= ... }
+                        lineBody.Append($"<span class=\"{tag}\">");
+                        lineBody.Append(tok.value);
+                        lineBody.Append("</span>");
+                    }
+                }
+                int totindent = 0;
+                if (pretty)
+                {
+                    if (IsDef)
+                        htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td id = \"line_{line.FormattedLineNumber}\" class = \"line-number\">{line.FormattedLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
+                    else if (IsInDef)
+                        htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td id = \"line_{line.FormattedLineNumber}\" class = \"line-number\">{line.FormattedLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
+                    else
+                        htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td id = \"line_{line.FormattedLineNumber}\" class = \"line-number\">{line.FormattedLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
+                }
+                else
+                {
+                    if (IsDef)
+                        htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td id = \"line_{line.FormattedLineNumber}\" class = \"line-number\">{line.FormattedLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{line.FormattedPlain}</td></tr>" + Environment.NewLine);
+                    else if (IsInDef)
+                        htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td id = \"line_{line.FormattedLineNumber}\" class = \"line-number\">{line.FormattedLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{line.FormattedPlain}</td></tr>" + Environment.NewLine);
+                    else
+                        htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td id = \"line_{line.FormattedLineNumber}\" class = \"line-number\">{line.FormattedLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{line.FormattedPlain}</td></tr>" + Environment.NewLine);
                 }
             }
-            catch (Exception ex)
-            {
-                //MessageBox.Show(ex.Message);
-                LoadTextFile(filename);
-            }
+            htmlDoc.Append(Environment.NewLine + _htmlClose);
+
+            statusLeft.Text = $"{progInfo.ProgName}: {progInfo.NumberOfLines} lines";
+            statusRight.Text = "Text file";
+            if (combProcFnFinder.Items.Count > 0)
+                combProcFnFinder.SelectedIndex = 0;
+            webView2.NavigateToString(htmlDoc.ToString());
         }
         private void BasicToHtml(BasToolsEngine engine)
         {
@@ -247,7 +337,8 @@ namespace BasViewer.GUI
 
             statusLeft.Text = $"{progInfo.ProgName}: {progInfo.NumberOfLines} lines";
             statusRight.Text = $"{progInfo.BasicDialect}";
-            combProcFnFinder.SelectedIndex = 0;
+            if (combProcFnFinder.Items.Count > 0)
+                combProcFnFinder.SelectedIndex = 0; 
             webView2.NavigateToString(htmlDoc.ToString());
         }
         private string? GetFormattedLineNumber(int docLine)
@@ -289,17 +380,20 @@ namespace BasViewer.GUI
         private void LoadFile(string filename)
         {
             progInfo.Filename = filename;
-            loadBasicOrText(filename, engine, formatOptions, progInfo);
+            bool IsText = loadBasicOrText(filename, engine, formatOptions, progInfo);
 
             if (engine.CurrentListing != null)
                 _loaded = true;
-            else
-                return;
+            //else
+              //  return;
             label1.Visible = false;
             webView2.Visible = true;
             webView2.Enabled = true;
 
-            BasicToHtml(engine);
+            if (!IsText)
+                BasicToHtml(engine);
+            else
+                TextToHtml(engine);
         }
         private async void Reload(BasToolsEngine engine)
         {
@@ -396,10 +490,10 @@ namespace BasViewer.GUI
             if (_loaded)
                 Reload(engine);
         }
-        private void toolStripButton3_Click(object sender, EventArgs e)
+        private void toolStripButtonMenu_Click(object sender, EventArgs e)
         {
-            contextMenuStrip1.Show(toolStrip1,
-                new Point(toolStripButton3.Bounds.Left, toolStripButton3.Bounds.Bottom));
+            contextMenuStrip1.Show(toolStripLeft,
+                new Point(menuStripRight.Bounds.Left, menuStripRight.Bounds.Bottom));
         }
         private void toolStripButton1_Click(object sender, EventArgs e)
         {
@@ -453,6 +547,14 @@ namespace BasViewer.GUI
                         BasicSearch(backwards);
                     }
                     break;
+                case Keys.Add:
+                    zoomSlider.Value = Math.Min(zoomSlider.Maximum, zoomSlider.Value + 10);
+                    ApplyZoom();
+                    break;
+                case Keys.Subtract:
+                    zoomSlider.Value = Math.Max(zoomSlider.Minimum, zoomSlider.Value - 10);
+                    ApplyZoom();
+                    break;
             }
         }
         private async void toolStripTextBoxSearch_KeyDown(object sender, KeyEventArgs e)
@@ -477,7 +579,6 @@ namespace BasViewer.GUI
             if (_loaded)
                 Reload(engine);
         }
-
         private void advancedSearchToolStripMenuItem_Click(object sender, EventArgs e)
         {
             //
@@ -498,24 +599,24 @@ namespace BasViewer.GUI
         {
             DoGotoLine(toolStripTextBoxGoto.Text);
         }
-        private void toolStrip1_SizeChanged(object sender, EventArgs e)
+        private void toolStripLeft_SizeChanged(object sender, EventArgs e)
         {
             toolStripTextBoxSearch.Width = getSrchboxWidth();
         }
         private int getSrchboxWidth()
         {
-            int toolbarWidth = toolStrip1.Width;
+            int toolbarWidth = toolStripLeft.Width;
             int totwidth = 0;
-            foreach (ToolStripItem item in toolStrip1.Items)
+            foreach (ToolStripItem item in toolStripLeft.Items)
             {
                 totwidth += item.Width;
             }
             totwidth -= toolStripTextBoxSearch.Width;
 
-            if (toolbarWidth - totwidth > 150)
-                return toolbarWidth - totwidth - 40;
+            if (toolbarWidth - totwidth > 100)
+                return toolbarWidth - totwidth - 15;
             else
-                return 150;
+                return 100;
         }
     }
 }

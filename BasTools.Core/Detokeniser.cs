@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System.Diagnostics;
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -15,8 +16,8 @@ namespace BasTools.Core
         private readonly HashSet<string> Z80Mnemonics;
         private readonly HashSet<string> Z80Registers;
         Dictionary<string, KeywordRole> KeywordRoles;
-        //public HashSet<string> TokensWithOpenParen;
-
+        public static List<string> keywords;
+        
         public BasToolsEngine()
         {
             // Initialise the fields
@@ -45,11 +46,16 @@ namespace BasTools.Core
                 "IX","IY","IXH","IXL","IYH","IYL","SP","PC","I","R"
             };
 
-            //TokensWithOpenParen = new HashSet<string>();
             KeywordRoles = new();
             readTokenTable(token, "BasTools.Core.TokenTable.txt");      // actually a mix of all single-byte tokens
             readTokenTable(Vtoken, "BasTools.Core.VTokenTable.txt");    // double-byte tokens
 
+            keywords = token.Values.Concat(Vtoken.Values)
+                 .Where(s => !string.IsNullOrWhiteSpace(s))
+                 .Distinct(StringComparer.OrdinalIgnoreCase)
+                 .OrderByDescending(s => s.Length)
+                 .ThenBy(s => s, StringComparer.OrdinalIgnoreCase)
+                 .ToList();
 
         }
         internal bool ProcessRawProgram(string fn, Listing listing, ProgInfo progInfo)
@@ -59,6 +65,7 @@ namespace BasTools.Core
             // *********** Load File **************
 
             bool result = LoadFile(fn, State);
+            Console.WriteLine($"Loadfile result {result}");
             if (!result) return false;
 
             // Update progInfo
@@ -75,10 +82,13 @@ namespace BasTools.Core
                     State.Z80 = true;
                 else
                 {
-                    throw new BasToolsException("\'" + fn + "\' is not a BASIC program");
+                    Console.WriteLine($"Format not a BASIC program");
+                    return false;
+                    //throw new BasToolsException("\'" + fn + "\' is not a BASIC program");
                 }
             }
             progInfo.Z80 = State.Z80;
+            Console.WriteLine($"Format {progInfo.BasicDialect} detected");
 
             // Split the file into lines
             foreach (LineRecord progline in ParseLines(State.Data, progInfo)) // LineRecord is a temporary structure to hold int linenumber, byte[] lineContent here only
@@ -96,14 +106,14 @@ namespace BasTools.Core
             } // end foreach
 
             // update program metadata
-            progInfo.LengthInBytes = State.Data.Count();
+            progInfo.LengthInBytes = State.Data.Length;
             progInfo.NumberOfLines = listing.Lines.Count;
 
             return true;
 
         } // End ProcessRawProgram()
 
-        private bool LoadFile(string fn, ParserState State)
+        private static bool LoadFile(string fn, ParserState State)
         {
             using (FileStream stream = new(fn, FileMode.Open, FileAccess.Read))
             {
@@ -115,7 +125,6 @@ namespace BasTools.Core
                     throw new IOException("File read incomplete.");
                 }
             }
-            //DBG("Loaded");
             return true;
         }
         IEnumerable<LineRecord> ParseLines(byte[] data, ProgInfo progInfo)

@@ -31,18 +31,6 @@
             components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             statusStrip1 = new StatusStrip();
-            
-            toolStrip1 = new ToolStrip();
-            toolStripButton1 = new ToolStripButton();
-            toolStripButton2 = new ToolStripButton();
-            toolStripButton4 = new ToolStripButton();
-            toolStripLabel1 = new ToolStripLabel();
-            comboBoxTheme = new ToolStripComboBox();
-            toolStripSeparator1 = new ToolStripSeparator();
-            combProcFnFinder = new ToolStripComboBox();
-            toolStripButton5 = new ToolStripButton();
-            toolStripButton3 = new ToolStripButton();
-            toolStripTextBoxSearch = new ToolStripTextBox();
             webView2 = new Microsoft.Web.WebView2.WinForms.WebView2();
             label1 = new Label();
             contextMenuStrip1 = new ContextMenuStrip(components);
@@ -51,133 +39,37 @@
             toolStripTextBoxGoto = new ToolStripTextBox();
             advancedSearchToolStripMenuItem = new ToolStripMenuItem();
             aboutToolStripMenuItem = new ToolStripMenuItem();
-            statusStrip1.SuspendLayout();
-            toolStrip1.SuspendLayout();
+            topPanel = new Panel();
+            toolStripLeft = new ToolStrip();
+            toolStripButton7 = new ToolStripButton();
+            toolStripButton2 = new ToolStripButton();
+            toolStripButton4 = new ToolStripButton();
+            toolStripLabel2 = new ToolStripLabel();
+            comboBoxTheme = new ToolStripComboBox();
+            toolStripSeparator2 = new ToolStripSeparator();
+            combProcFnFinder = new ToolStripComboBox();
+            toolStripSeparator1 = new ToolStripSeparator();
+            toolStripButton10 = new ToolStripButton();
+            toolStripTextBoxSearch = new ToolStripTextBox();
+            menuStripRight = new ToolStrip();
+            toolStripButtonMenu = new ToolStripButton();
             ((System.ComponentModel.ISupportInitialize)webView2).BeginInit();
             contextMenuStrip1.SuspendLayout();
+            topPanel.SuspendLayout();
+            toolStripLeft.SuspendLayout();
+            menuStripRight.SuspendLayout();
             SuspendLayout();
             // 
             // statusStrip1
             // 
             statusStrip1.Font = new Font("Segoe UI", 10.875F, FontStyle.Regular, GraphicsUnit.Point, 0);
             statusStrip1.ImageScalingSize = new Size(32, 32);
-            statusStrip1.Location = new Point(0, 968);
+            statusStrip1.Location = new Point(0, 1040);
             statusStrip1.Name = "statusStrip1";
-            statusStrip1.Size = new Size(1381, 94);
+            statusStrip1.Size = new Size(1381, 22);
             statusStrip1.SizingGrip = false;
             statusStrip1.TabIndex = 1;
-            statusStrip1.Text = "statusStrip1";           
-            // 
-            // toolStrip1
-            // 
-            toolStrip1.BackColor = Color.LightSkyBlue;
-            toolStrip1.ImageScalingSize = new Size(32, 32);
-            toolStrip1.Items.AddRange(new ToolStripItem[] { toolStripButton1, toolStripButton2, toolStripButton4, toolStripLabel1, comboBoxTheme, toolStripSeparator1, combProcFnFinder, toolStripButton5, toolStripButton3, toolStripTextBoxSearch });
-            toolStrip1.Location = new Point(0, 0);
-            toolStrip1.MinimumSize = new Size(0, 54);
-            toolStrip1.Name = "toolStrip1";
-            toolStrip1.Size = new Size(1381, 54);
-            toolStrip1.Stretch = true;
-            toolStrip1.TabIndex = 2;
-            toolStrip1.Text = "toolStrip1";
-            toolStrip1.SizeChanged += toolStrip1_SizeChanged;
-            // 
-            // toolStripButton1
-            // 
-            toolStripButton1.DisplayStyle = ToolStripItemDisplayStyle.Image;
-            toolStripButton1.Image = (Image)resources.GetObject("toolStripButton1.Image");
-            toolStripButton1.ImageTransparentColor = Color.Magenta;
-            toolStripButton1.Name = "toolStripButton1";
-            toolStripButton1.Size = new Size(46, 48);
-            toolStripButton1.Text = "toolStripButton1";
-            toolStripButton1.Click += toolStripButton1_Click;
-            // 
-            // toolStripButton2
-            // 
-            toolStripButton2.Checked = true;
-            toolStripButton2.CheckOnClick = true;
-            toolStripButton2.CheckState = CheckState.Checked;
-            toolStripButton2.DisplayStyle = ToolStripItemDisplayStyle.Image;
-            toolStripButton2.Image = (Image)resources.GetObject("toolStripButton2.Image");
-            toolStripButton2.ImageTransparentColor = Color.Magenta;
-            toolStripButton2.Name = "toolStripButton2";
-            toolStripButton2.Size = new Size(46, 48);
-            toolStripButton2.Text = "toolStripButton2";
-            toolStripButton2.ToolTipText = "Prettyprint";
-            toolStripButton2.CheckedChanged += toolStripButton2_CheckedChanged;
-            // 
-            // toolStripButton4
-            // 
-            toolStripButton4.Checked = true;
-            toolStripButton4.CheckOnClick = true;
-            toolStripButton4.CheckState = CheckState.Checked;
-            toolStripButton4.DisplayStyle = ToolStripItemDisplayStyle.Image;
-            toolStripButton4.Image = (Image)resources.GetObject("toolStripButton4.Image");
-            toolStripButton4.ImageTransparentColor = Color.Magenta;
-            toolStripButton4.Name = "toolStripButton4";
-            toolStripButton4.Size = new Size(46, 48);
-            toolStripButton4.Text = "toolStripButton4";
-            toolStripButton4.ToolTipText = "Split lines";
-            toolStripButton4.CheckedChanged += toolStripButton4_CheckedChanged;
-            // 
-            // toolStripLabel1
-            // 
-            toolStripLabel1.Name = "toolStripLabel1";
-            toolStripLabel1.Size = new Size(100, 48);
-            toolStripLabel1.Text = "Theme: ";
-            toolStripLabel1.TextAlign = ContentAlignment.MiddleRight;
-            // 
-            // comboBoxTheme
-            // 
-            comboBoxTheme.DropDownStyle = ComboBoxStyle.DropDownList;
-            comboBoxTheme.Font = new Font("Segoe UI", 10.125F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            comboBoxTheme.Items.AddRange(new object[] { "Dark", "Light", "Retro", "Mono", "Typewriter" });
-            comboBoxTheme.Name = "comboBoxTheme";
-            comboBoxTheme.Size = new Size(170, 54);
-            comboBoxTheme.SelectedIndexChanged += comboBoxTheme_SelectedIndexChanged;
-            // 
-            // toolStripSeparator1
-            // 
-            toolStripSeparator1.Name = "toolStripSeparator1";
-            toolStripSeparator1.Size = new Size(6, 54);
-            // 
-            // combProcFnFinder
-            // 
-            combProcFnFinder.DropDownStyle = ComboBoxStyle.DropDownList;
-            combProcFnFinder.Font = new Font("Segoe UI", 10.125F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            combProcFnFinder.Name = "combProcFnFinder";
-            combProcFnFinder.Size = new Size(500, 54);
-            combProcFnFinder.ToolTipText = "PROC and FN finder";
-            combProcFnFinder.SelectedIndexChanged += combProcFnFinder_SelectedIndexChanged;
-            // 
-            // toolStripButton5
-            // 
-            toolStripButton5.DisplayStyle = ToolStripItemDisplayStyle.Image;
-            toolStripButton5.Image = (Image)resources.GetObject("toolStripButton5.Image");
-            toolStripButton5.ImageTransparentColor = Color.Magenta;
-            toolStripButton5.Name = "toolStripButton5";
-            toolStripButton5.Size = new Size(46, 48);
-            toolStripButton5.Text = "toolStripButton5";
-            toolStripButton5.ToolTipText = "Quick Search";
-            toolStripButton5.Click += toolStripButton5_Click;
-            // 
-            // toolStripButton3
-            // 
-            toolStripButton3.Alignment = ToolStripItemAlignment.Right;
-            toolStripButton3.DisplayStyle = ToolStripItemDisplayStyle.Image;
-            toolStripButton3.Image = (Image)resources.GetObject("toolStripButton3.Image");
-            toolStripButton3.ImageTransparentColor = Color.Magenta;
-            toolStripButton3.Name = "toolStripButton3";
-            toolStripButton3.Size = new Size(46, 48);
-            toolStripButton3.Text = "Menu";
-            toolStripButton3.Click += toolStripButton3_Click;
-            // 
-            // toolStripTextBoxSearch
-            // 
-            toolStripTextBoxSearch.AutoSize = false;
-            toolStripTextBoxSearch.Name = "toolStripTextBoxSearch";
-            toolStripTextBoxSearch.Size = new Size(100, 54);
-            toolStripTextBoxSearch.KeyDown += toolStripTextBoxSearch_KeyDown;
+            statusStrip1.Text = "statusStrip1";
             // 
             // webView2
             // 
@@ -188,7 +80,7 @@
             webView2.Enabled = false;
             webView2.Location = new Point(0, 54);
             webView2.Name = "webView2";
-            webView2.Size = new Size(1381, 914);
+            webView2.Size = new Size(1381, 986);
             webView2.TabIndex = 3;
             webView2.Visible = false;
             webView2.ZoomFactor = 1D;
@@ -202,7 +94,7 @@
             label1.ForeColor = Color.White;
             label1.Location = new Point(0, 54);
             label1.Name = "label1";
-            label1.Size = new Size(1381, 914);
+            label1.Size = new Size(1381, 986);
             label1.TabIndex = 4;
             label1.Text = "Drag 'n' Drop files here";
             label1.TextAlign = ContentAlignment.MiddleCenter;
@@ -253,6 +145,151 @@
             aboutToolStripMenuItem.Text = "About ...";
             aboutToolStripMenuItem.Click += aboutToolStripMenuItem_Click;
             // 
+            // topPanel
+            // 
+            topPanel.BackColor = Color.LightBlue;
+            topPanel.Controls.Add(toolStripLeft);
+            topPanel.Controls.Add(menuStripRight);
+            topPanel.Dock = DockStyle.Top;
+            topPanel.Location = new Point(0, 0);
+            topPanel.Name = "topPanel";
+            topPanel.Size = new Size(1381, 54);
+            topPanel.TabIndex = 5;
+            // 
+            // toolStripLeft
+            // 
+            toolStripLeft.BackColor = Color.LightSkyBlue;
+            toolStripLeft.GripStyle = ToolStripGripStyle.Hidden;
+            toolStripLeft.ImageScalingSize = new Size(48, 48);
+            toolStripLeft.Items.AddRange(new ToolStripItem[] { toolStripButton7, toolStripButton2, toolStripButton4, toolStripLabel2, comboBoxTheme, toolStripSeparator2, combProcFnFinder, toolStripSeparator1, toolStripButton10, toolStripTextBoxSearch });
+            toolStripLeft.Location = new Point(0, 0);
+            toolStripLeft.MinimumSize = new Size(0, 54);
+            toolStripLeft.Name = "toolStripLeft";
+            toolStripLeft.Size = new Size(1327, 54);
+            toolStripLeft.Stretch = true;
+            toolStripLeft.TabIndex = 3;
+            toolStripLeft.Text = "toolStripLeft";
+            toolStripLeft.SizeChanged += toolStripLeft_SizeChanged;
+            // 
+            // toolStripButton7
+            // 
+            toolStripButton7.DisplayStyle = ToolStripItemDisplayStyle.Image;
+            toolStripButton7.Image = (Image)resources.GetObject("toolStripButton7.Image");
+            toolStripButton7.ImageTransparentColor = Color.Magenta;
+            toolStripButton7.Name = "toolStripButton7";
+            toolStripButton7.Size = new Size(52, 48);
+            toolStripButton7.Text = "toolStripButton1";
+            toolStripButton7.Click += toolStripButton1_Click;
+            // 
+            // toolStripButton2
+            // 
+            toolStripButton2.Checked = true;
+            toolStripButton2.CheckOnClick = true;
+            toolStripButton2.CheckState = CheckState.Checked;
+            toolStripButton2.DisplayStyle = ToolStripItemDisplayStyle.Image;
+            toolStripButton2.Image = (Image)resources.GetObject("toolStripButton2.Image");
+            toolStripButton2.ImageTransparentColor = Color.Magenta;
+            toolStripButton2.Name = "toolStripButton2";
+            toolStripButton2.Size = new Size(52, 48);
+            toolStripButton2.Text = "toolStripButton2";
+            toolStripButton2.ToolTipText = "Prettyprint";
+            toolStripButton2.CheckedChanged += toolStripButton2_CheckedChanged;
+            // 
+            // toolStripButton4
+            // 
+            toolStripButton4.Checked = true;
+            toolStripButton4.CheckOnClick = true;
+            toolStripButton4.CheckState = CheckState.Checked;
+            toolStripButton4.DisplayStyle = ToolStripItemDisplayStyle.Image;
+            toolStripButton4.Image = (Image)resources.GetObject("toolStripButton4.Image");
+            toolStripButton4.ImageTransparentColor = Color.Magenta;
+            toolStripButton4.Name = "toolStripButton4";
+            toolStripButton4.Size = new Size(52, 48);
+            toolStripButton4.Text = "toolStripButton4";
+            toolStripButton4.ToolTipText = "Split lines";
+            toolStripButton4.CheckedChanged += toolStripButton4_CheckedChanged;
+            // 
+            // toolStripLabel2
+            // 
+            toolStripLabel2.Name = "toolStripLabel2";
+            toolStripLabel2.Size = new Size(100, 48);
+            toolStripLabel2.Text = "Theme: ";
+            toolStripLabel2.TextAlign = ContentAlignment.MiddleRight;
+            // 
+            // comboBoxTheme
+            // 
+            comboBoxTheme.DropDownStyle = ComboBoxStyle.DropDownList;
+            comboBoxTheme.Font = new Font("Segoe UI", 10.125F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            comboBoxTheme.Items.AddRange(new object[] { "Dark", "Light", "Retro", "Mono", "Typewriter" });
+            comboBoxTheme.Name = "comboBoxTheme";
+            comboBoxTheme.Size = new Size(170, 54);
+            comboBoxTheme.SelectedIndexChanged += comboBoxTheme_SelectedIndexChanged;
+            // 
+            // toolStripSeparator2
+            // 
+            toolStripSeparator2.Name = "toolStripSeparator2";
+            toolStripSeparator2.Size = new Size(6, 54);
+            // 
+            // combProcFnFinder
+            // 
+            combProcFnFinder.DropDownStyle = ComboBoxStyle.DropDownList;
+            combProcFnFinder.Font = new Font("Segoe UI", 10.125F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            combProcFnFinder.Name = "combProcFnFinder";
+            combProcFnFinder.Size = new Size(500, 54);
+            combProcFnFinder.ToolTipText = "PROC and FN finder";
+            combProcFnFinder.SelectedIndexChanged += combProcFnFinder_SelectedIndexChanged;
+            // 
+            // toolStripSeparator1
+            // 
+            toolStripSeparator1.Name = "toolStripSeparator1";
+            toolStripSeparator1.Size = new Size(6, 54);
+            // 
+            // toolStripButton10
+            // 
+            toolStripButton10.DisplayStyle = ToolStripItemDisplayStyle.Image;
+            toolStripButton10.Image = (Image)resources.GetObject("toolStripButton10.Image");
+            toolStripButton10.ImageTransparentColor = Color.Magenta;
+            toolStripButton10.Name = "toolStripButton10";
+            toolStripButton10.Size = new Size(52, 48);
+            toolStripButton10.Text = "toolStripButton5";
+            toolStripButton10.ToolTipText = "Quick Search";
+            // 
+            // toolStripTextBoxSearch
+            // 
+            toolStripTextBoxSearch.AutoSize = false;
+            toolStripTextBoxSearch.Name = "toolStripTextBoxSearch";
+            toolStripTextBoxSearch.Size = new Size(100, 54);
+            toolStripTextBoxSearch.KeyDown += toolStripTextBoxSearch_KeyDown;
+            toolStripTextBoxSearch.KeyUp += toolStripTextBoxSearch_KeyDown;
+            // 
+            // menuStripRight
+            // 
+            menuStripRight.AutoSize = false;
+            menuStripRight.Dock = DockStyle.Right;
+            menuStripRight.GripStyle = ToolStripGripStyle.Hidden;
+            menuStripRight.ImageScalingSize = new Size(32, 32);
+            menuStripRight.Items.AddRange(new ToolStripItem[] { toolStripButtonMenu });
+            menuStripRight.LayoutStyle = ToolStripLayoutStyle.Flow;
+            menuStripRight.Location = new Point(1327, 0);
+            menuStripRight.Name = "menuStripRight";
+            menuStripRight.RenderMode = ToolStripRenderMode.Professional;
+            menuStripRight.Size = new Size(54, 54);
+            menuStripRight.TabIndex = 0;
+            menuStripRight.Text = "menuStripRight";
+            // 
+            // toolStripButtonMenu
+            // 
+            toolStripButtonMenu.Alignment = ToolStripItemAlignment.Right;
+            toolStripButtonMenu.AutoSize = false;
+            toolStripButtonMenu.DisplayStyle = ToolStripItemDisplayStyle.Image;
+            toolStripButtonMenu.Image = (Image)resources.GetObject("toolStripButtonMenu.Image");
+            toolStripButtonMenu.ImageTransparentColor = Color.Magenta;
+            toolStripButtonMenu.Margin = new Padding(0);
+            toolStripButtonMenu.Name = "toolStripButtonMenu";
+            toolStripButtonMenu.Size = new Size(54, 54);
+            toolStripButtonMenu.Text = "Menu";
+            toolStripButtonMenu.Click += toolStripButtonMenu_Click;
+            // 
             // Form1
             // 
             AllowDrop = true;
@@ -261,7 +298,7 @@
             ClientSize = new Size(1381, 1062);
             Controls.Add(label1);
             Controls.Add(webView2);
-            Controls.Add(toolStrip1);
+            Controls.Add(topPanel);
             Controls.Add(statusStrip1);
             Name = "Form1";
             Text = "Form1";
@@ -269,12 +306,14 @@
             DragEnter += MainForm_DragEnter;
             KeyDown += Form1_KeyDown;
             KeyUp += Form1_KeyDown;
-            statusStrip1.ResumeLayout(false);
-            statusStrip1.PerformLayout();
-            toolStrip1.ResumeLayout(false);
-            toolStrip1.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)webView2).EndInit();
             contextMenuStrip1.ResumeLayout(false);
+            topPanel.ResumeLayout(false);
+            topPanel.PerformLayout();
+            toolStripLeft.ResumeLayout(false);
+            toolStripLeft.PerformLayout();
+            menuStripRight.ResumeLayout(false);
+            menuStripRight.PerformLayout();
             ResumeLayout(false);
             PerformLayout();
         }
@@ -289,28 +328,29 @@
         private ToolStripButton zoomInButton;
         private ToolStripLabel zoomPercentLabel;
         private TrackBar zoomSlider;
-
-        private ToolStrip toolStrip1;
-        private ToolStripButton toolStripButton1;
-        private ToolStripButton toolStripButton2;
         private Microsoft.Web.WebView2.WinForms.WebView2 webView2;
-        private ToolStripButton toolStripButton4;
-        private ToolStripComboBox comboBoxTheme;
-        private ToolStripLabel toolStripLabel1;
         private Label label1;
-        private ToolStripButton toolStripButton3;
         private ContextMenuStrip contextMenuStrip1;
         private ToolStripMenuItem dragFileToLoadToolStripMenuItem;
         private ToolStripMenuItem advancedSearchMenuItem;
         private ToolStripMenuItem aboutToolStripMenuItem;
-        private ToolStripSeparator toolStripSeparator1;
-        private ToolStripComboBox combProcFnFinder;
-        private ToolStripButton toolStripButton5;
         private ToolStripMenuItem advancedSearchToolStripMenuItem;
         private ToolStripMenuItem gotoLineToolStripMenuItem;
         private ToolStripTextBox toolStripTextBoxGoto;
-        private ToolStripTextBox toolStripTextBoxSearch;
         private ToolStripControlHost zoomHost;       // the host that goes in the StatusStrip
-
+        private Panel topPanel;
+        private ToolStrip menuStripRight;
+        private ToolStripButton toolStripButtonMenu;
+        private ToolStrip toolStripLeft;
+        private ToolStripButton toolStripButton7;
+        private ToolStripButton toolStripButton2;
+        private ToolStripButton toolStripButton4;
+        private ToolStripLabel toolStripLabel2;
+        private ToolStripComboBox comboBoxTheme;
+        private ToolStripSeparator toolStripSeparator2;
+        private ToolStripSeparator toolStripSeparator1;
+        private ToolStripComboBox combProcFnFinder;
+        private ToolStripButton toolStripButton10;
+        private ToolStripTextBox toolStripTextBoxSearch;
     }
 }

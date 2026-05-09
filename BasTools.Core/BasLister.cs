@@ -95,6 +95,9 @@ namespace BasTools.Core
         //****************** Display the Output ***********Empty.String
         public static void DisplayProgramLines(Listing formattedListing, ListerOptions switches, ProgInfo progInfo)
         {
+            if (formattedListing == null)
+                return;
+
             ListerState listerState = new(); // this sets initial conditions
 
             switches.BackColor = ConsoleColor.Black;

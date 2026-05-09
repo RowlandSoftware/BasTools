@@ -2,7 +2,10 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics.CodeAnalysis;
     using System.Reflection;
+    using System.Text;
+    using System.Text.RegularExpressions;
 
     //***************** Exceptions *****************
     public class BasToolsException : Exception
@@ -26,34 +29,156 @@
         public Dictionary<string, int> DimLines = new(); // for the benefit of BasAnalysis
 
         // The public 'pipeline' for BasList
-        public Listing loadAndFormatFile(string filename, FormattingOptions formatOptions, ProgInfo progInfo)
+        public bool LoadAndFormatFile(string filename, FormattingOptions formatOptions, ProgInfo progInfo)
+        {
+            Listing listing = new(new List<ProgramLine>());
+
+            if (ProcessRawProgram(filename, listing, progInfo)) // load, detokenise and tag
+            {
+                //Console.WriteLine($"ProcessRawProgram returned true");
+                if (FormatProgram(listing, formatOptions, progInfo))
+                {
+                    //Console.WriteLine($"FormatProgram returned true");
+                    CurrentListing = listing;
+                    CurrentProgInfo = progInfo;
+
+                    return true;
+                }
+                else
+                    return false;
+            }
+            else
+                return false;
+        }
+        public Listing LoadAndFormatTextFile(string filename, FormattingOptions formatOptions, ProgInfo progInfo)
         {
             Listing listing = new(new List<ProgramLine>());
 
             try
             {
-                ProcessRawProgram(filename, listing, progInfo); // load, detokenise and tag
+                string rawFile = File.ReadAllText(filename);
+                string[] lines = rawFile.Split(new char[] { '\r', '\n' }, StringSplitOptions.TrimEntries); // no need to Trim() each line
+                if (lines.Length == 0)
                 {
-                    try
-                    {
-                        FormatProgram(listing, formatOptions, progInfo);
-                        {
-                            CurrentListing = listing;
-                            CurrentProgInfo = progInfo;
+                    throw new BasToolsException($"Text file splits into {lines.Length} lines");
+                }
+                int fakeLineNumber = 0;
 
-                            return listing;
+                for (int i = 0; i < lines.Length - 2; i++)
+                {
+                    if (string.IsNullOrEmpty(lines[i])) // skip empty lines
+                        continue;
+
+                    string line = lines[i];
+
+                    ProgramLine progLine = new ProgramLine();
+                    int lineNumber;
+                    int j = 0;
+
+                    if (char.IsAsciiDigit(line[0]))
+                    {
+                        while (j < line.Length-1 && char.IsAsciiDigit(line[j]))
+                        {
+                            j++;
+                        }
+                        if (!int.TryParse(line.Substring(0, j), out lineNumber))
+                        {
+                            fakeLineNumber += 10;
+                            lineNumber = fakeLineNumber;
                         }
                     }
-                    catch (Exception e1)
+                    else
                     {
-                        throw new BasToolsException("Error while formatting the program", e1);
+                        fakeLineNumber += 10;
+                        lineNumber = fakeLineNumber;
                     }
+                    progLine.LineNumber = lineNumber;
+                    progLine.FormattedLineNumber = lineNumber.ToString();
+
+                    string lineTextBody = line.Substring(j).Trim();
+                    progLine.PlainDetokenisedLine = lineTextBody;
+                    progLine.FormattedPlain = lineTextBody;
+                    bool IsDef = false;
+                    progLine.TaggedLine = parseTextLine(lineTextBody, ref IsDef);
+                    progLine.IsDef = IsDef;
+
+                    listing.Lines.Add(progLine);
+                }
+                CurrentListing = listing;
+                CurrentProgInfo = progInfo;
+                return listing;
+            }
+            catch (Exception e)
+            {
+                {
+                    throw new BasToolsException("Error in LoadAndFormatTextFile", e);
                 }
             }
-            catch (Exception e2)
+        }
+        private static string parseTextLine(string textLine, ref bool IsDefLine)
+        {
+            StringBuilder output = new();
+            bool IsDef = false;
+
+            for (int i = 0; i < textLine.Length; i++)
             {
-                throw new BasToolsException($"Program '{filename}' could not be processed", e2);
+                bool match = false;
+                foreach (string keyword in keywords)
+                {
+                    match = false;
+                    if (textLine.Substring(i).StartsWith(keyword))
+                    {
+                        output.Append(SemanticTags.Keyword + keyword + SemanticTags.Reset);
+                        if (IsDef)
+                        {
+                            if (keyword == "PROC")
+                                output.Append(SemanticTags.ProcName);
+                            else if (keyword == "FN")
+                                output.Append(SemanticTags.FunctionName);
+                        }
+                        if (keyword == "DEF")
+                        {
+                            IsDef = true;
+                            IsDefLine = true;
+                        }
+                        i += keyword.Length;
+                        match = true;
+                        //break;
+                        //continue;
+                        //
+                        //goto NextChar;
+                    }
+                }
+                if (i >= textLine.Length) // if the keyword took us to EOL...
+                {
+                    if (IsDef)
+                        output.Append(SemanticTags.Reset); // close the tag
+
+                    return output.ToString();
+                }
+                //if (match) continue; // keyword found - loop again
+
+                if (textLine[i] == '"')
+                {
+                    output.Append(SemanticTags.StringLiteral + '"');
+                    while (textLine[++i] != '"' && i < textLine.Length - 1)
+                    {
+                        output.Append(textLine[i]);
+                    }
+                    output.Append('"' + SemanticTags.Reset);
+                }
+                else if (IsDef && (textLine[i] == ':' || textLine[i] == '('))
+                {
+                    output.Append(SemanticTags.Reset + textLine[i]); // close the tag
+                    IsDef = false;
+                }
+                else
+                {
+                    output.Append(textLine[i]);
+                }
+            NextChar:;
             }
+            return output.ToString();
         }
         public List<DisplayLine> prepLinesForDisplay(ListerOptions listerOptions)
         {
