@@ -20,6 +20,7 @@ namespace BasViewer.GUI
         private string _htmlClose;
         private string _script;
         private bool _loaded;
+        private bool _textFile;
         public Form1(string[] args)
         {
             InitializeComponent();
@@ -27,6 +28,19 @@ namespace BasViewer.GUI
             menuStripRight.BackColor = Color.LightSkyBlue;
             toolStripLeft.Renderer = new NoBorderRenderer();
             menuStripRight.Renderer = new NoBorderRenderer();
+
+            // Goto Line clicks
+            var dropDown = (ToolStripDropDownMenu)gotoLineToolStripMenuItem.DropDown;
+
+            dropDown.MouseDown += (s, e) =>
+            {
+                // If click is outside the textbox bounds, treat it as "Goto"
+                if (!toolStripTextBoxGoto.Bounds.Contains(e.Location))
+                {
+                    if (!string.IsNullOrWhiteSpace(toolStripTextBoxGoto.Text))
+                        DoGotoLine(toolStripTextBoxGoto.Text);
+                }
+            };
 
             #region ZoomControl
             // --- Build status bar zoom control ---
@@ -55,7 +69,7 @@ namespace BasViewer.GUI
                 AutoSize = false,
                 Width = 150
             };
-            
+
             // Host for slider
             zoomHost = new ToolStripControlHost(zoomSlider)
             {
@@ -111,6 +125,7 @@ namespace BasViewer.GUI
             formatOptions = new FormattingOptions(true);
             //_theme = "Dark";
             _loaded = false;
+            _textFile = false;
             _htmlClose = Environment.NewLine + "</table></body></html>";
             _script = Environment.NewLine + "<script> function toggleFold(name) { const rows = document.querySelectorAll('.' + name); const arrow = document.getElementById('arrow_' + name); const isClosed = (arrow.textContent === \"▶\"); rows.forEach(r => { r.style.display = isClosed ? \"\" : \"none\"; }); arrow.textContent = isClosed ? \"▼\" : \"▶\"} </script>" + Environment.NewLine;
             comboBoxTheme.SelectedIndex = 0;
@@ -166,15 +181,15 @@ namespace BasViewer.GUI
                 {
                     IsTextNotBasic = true;
                     engine.LoadAndFormatTextFile(filename, formatOptions, progInfo);
-                    
+
                     // DEBUG
-                    string whatever = "";
+                    /*string whatever = "";
                     foreach (var pl in engine.CurrentListing.Lines)
                     {
                         whatever += $"{pl.FormattedLineNumber} {pl.TaggedLine}</br>" + Environment.NewLine;
                     }
                     label1.Visible = false;
-                    webView2.NavigateToString (whatever);
+                    webView2.NavigateToString (whatever);*/
                 }
                 //return IsTextNotBasic;
             }
@@ -193,7 +208,7 @@ namespace BasViewer.GUI
 
             bool pretty = toolStripButton2.Checked;
 
-            string htmlHeader = "<html><head>" + Themes.GetCss(comboBoxTheme.Text) + _script + "</head>"+ Environment.NewLine + "<body><table>" + Environment.NewLine;
+            string htmlHeader = "<html><head>" + Themes.GetCss(comboBoxTheme.Text) + _script + "</head>" + Environment.NewLine + "<body><table>" + Environment.NewLine;
 
             StringBuilder htmlDoc = new StringBuilder(htmlHeader);
             StringBuilder lineBody = new();
@@ -245,6 +260,14 @@ namespace BasViewer.GUI
                         htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td id = \"line_{line.FormattedLineNumber}\" class = \"line-number\">{line.FormattedLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{line.FormattedPlain}</td></tr>" + Environment.NewLine);
                     else
                         htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td id = \"line_{line.FormattedLineNumber}\" class = \"line-number\">{line.FormattedLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{line.FormattedPlain}</td></tr>" + Environment.NewLine);
+                }
+                if (IsInDef && !line.IsInDef)
+                    IsInDef = false;
+
+                if (IsDef)
+                {
+                    IsDef = false;
+                    IsInDef = true;
                 }
             }
             htmlDoc.Append(Environment.NewLine + _htmlClose);
@@ -338,7 +361,7 @@ namespace BasViewer.GUI
             statusLeft.Text = $"{progInfo.ProgName}: {progInfo.NumberOfLines} lines";
             statusRight.Text = $"{progInfo.BasicDialect}";
             if (combProcFnFinder.Items.Count > 0)
-                combProcFnFinder.SelectedIndex = 0; 
+                combProcFnFinder.SelectedIndex = 0;
             webView2.NavigateToString(htmlDoc.ToString());
         }
         private string? GetFormattedLineNumber(int docLine)
@@ -352,45 +375,20 @@ namespace BasViewer.GUI
                 ? null
                 : dl.sLineNumber;
         }
-        private void LoadTextFile(string filename)
-        {
-            // load file
-
-            // process lines
-
-            // prep for display
-
-
-            string htmlHeader = "<html>" + Themes.GetCss(comboBoxTheme.Text) + "<body><table>";
-            string html = htmlHeader +
-                "<tr><td>200</td><td>REM A sample program</td></tr>" +
-                "<tr><td>100</td><td>REM A sample program</td></tr>" +
-                "<tr><td>200</td><td>REM A sample program</td></tr>" +
-                "<tr><td>300</td><td>REM A sample program</td></tr>" +
-                "<tr><td>400</td><td>REM A sample program</td></tr>" +
-                "<tr><td>500</td><td>REM A sample program</td></tr>" +
-                "<tr><td>600</td><td>REM A sample program</td></tr>" +
-                "<tr><td>700</td><td>REM A sample program</td></tr>" +
-                "<tr><td>800</td><td>REM A sample program</td></tr>" +
-                "<tr><td>900</td><td>REM A sample program</td></tr>" +
-                "<tr><td>1000</td><td>REM A sample program</td></tr>" +
-                _htmlClose;
-            webView2.NavigateToString(html);
-        }
         private void LoadFile(string filename)
         {
             progInfo.Filename = filename;
-            bool IsText = loadBasicOrText(filename, engine, formatOptions, progInfo);
+            bool _textFile = loadBasicOrText(filename, engine, formatOptions, progInfo);
 
             if (engine.CurrentListing != null)
                 _loaded = true;
             //else
-              //  return;
+            //  return;
             label1.Visible = false;
             webView2.Visible = true;
             webView2.Enabled = true;
 
-            if (!IsText)
+            if (!_textFile)
                 BasicToHtml(engine);
             else
                 TextToHtml(engine);
@@ -403,7 +401,10 @@ namespace BasViewer.GUI
             var scrollY = await webView2.ExecuteScriptAsync("document.scrollingElement.scrollTop");
             int.TryParse(scrollY, out int savedScroll);
 
-            BasicToHtml(engine);
+            if (!_textFile)
+                BasicToHtml(engine);
+            else
+                TextToHtml(engine);
 
             await webView2.ExecuteScriptAsync($"document.scrollingElement.scrollTop = {savedScroll};");
         }
@@ -435,12 +436,19 @@ namespace BasViewer.GUI
         private async void combProcFnFinder_SelectedIndexChanged(object sender, EventArgs e)
         {
             string target = combProcFnFinder.Text;
-            target = target.Substring(target.IndexOf(' ')).Trim(); // strip off DEF
+
+            if (target.StartsWith("DEF"))
+                target = target.Substring(3).Trim();
+            else
+                return;
+
             StringBuilder id = new();
             if (target.StartsWith("PROC"))
                 id.Append("proc_");
-            else
+            else if (target.StartsWith("FN"))
                 id.Append("fn_");
+            else
+                return;
 
             for (int i = id.Length - 1; i < target.Length && target[i] != '('; i++)
             {
@@ -449,7 +457,7 @@ namespace BasViewer.GUI
             //MessageBox.Show(id.ToString());
             await webView2.ExecuteScriptAsync($"document.getElementById('{id.ToString()}').scrollIntoView()");
         }
-        private async void BasicSearch(bool backwards)
+        private async void QuickSearch(bool backwards)
         {
             string text = toolStripTextBoxSearch.Text.Replace("'", "\\'");
             if (!_loaded || text.Length == 0) return;
@@ -469,6 +477,9 @@ namespace BasViewer.GUI
         private async void DoGotoLine(string text)
         {
             text = text.Trim();
+            if (!int.TryParse(text, out int dummy))
+                return;
+
             if (_loaded && text.Length > 0)
             {
                 await webView2.ExecuteScriptAsync($"document.getElementById('line_{text}').scrollIntoView()");
@@ -544,7 +555,7 @@ namespace BasViewer.GUI
                     bool backwards = e.Shift;
                     if (_loaded && toolStripTextBoxSearch.Text.Trim().Length > 0)
                     {
-                        BasicSearch(backwards);
+                        QuickSearch(backwards);
                     }
                     break;
                 case Keys.Add:
@@ -562,12 +573,12 @@ namespace BasViewer.GUI
             if (e.KeyCode == Keys.Enter || e.KeyCode == Keys.F3)
             {
                 bool backwards = e.Shift;
-                BasicSearch(backwards);
+                QuickSearch(backwards);
             }
         }
         private void toolStripButton5_Click(object sender, EventArgs e)
         {
-            BasicSearch(false);
+            QuickSearch(false);
         }
         private void toolStripButton2_CheckedChanged(object sender, EventArgs e)
         {
@@ -581,7 +592,10 @@ namespace BasViewer.GUI
         }
         private void advancedSearchToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            //
+            using (var dlg = new frmAdvancedSearch())
+            {
+                dlg.ShowDialog(this);
+            }
         }
         private void toolStripTextBoxGoto_KeyPress(object sender, KeyPressEventArgs e)
         {
@@ -589,11 +603,18 @@ namespace BasViewer.GUI
             {
                 e.Handled = true;
                 DoGotoLine(toolStripTextBoxGoto.Text);
+                return;
             }
-        }
-        private void toolStripTextBoxGoto_Click(object sender, EventArgs e)
-        {
-            DoGotoLine(toolStripTextBoxGoto.Text);
+            // Allow digits
+            if (char.IsDigit(e.KeyChar))
+                return;
+
+            // Allow control keys that appear as KeyChar = 0
+            if (char.IsControl(e.KeyChar))
+                return;
+
+            // Block everything else
+            e.Handled = true;
         }
         private void gotoLineToolStripMenuItem_Click(object sender, EventArgs e)
         {

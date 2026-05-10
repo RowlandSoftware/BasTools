@@ -96,7 +96,7 @@
             label1.Name = "label1";
             label1.Size = new Size(1381, 986);
             label1.TabIndex = 4;
-            label1.Text = "Drag 'n' Drop files here";
+            label1.Text = "Drag 'n' Drop a file here";
             label1.TextAlign = ContentAlignment.MiddleCenter;
             label1.DragDrop += MainForm_DragDrop;
             label1.DragEnter += MainForm_DragEnter;
@@ -129,7 +129,6 @@
             toolStripTextBoxGoto.Name = "toolStripTextBoxGoto";
             toolStripTextBoxGoto.Size = new Size(100, 39);
             toolStripTextBoxGoto.KeyPress += toolStripTextBoxGoto_KeyPress;
-            toolStripTextBoxGoto.Click += toolStripTextBoxGoto_Click;
             // 
             // advancedSearchToolStripMenuItem
             // 
@@ -259,6 +258,7 @@
             toolStripTextBoxSearch.AutoSize = false;
             toolStripTextBoxSearch.Name = "toolStripTextBoxSearch";
             toolStripTextBoxSearch.Size = new Size(100, 54);
+            toolStripTextBoxSearch.ToolTipText = "Quick Search";
             toolStripTextBoxSearch.KeyDown += toolStripTextBoxSearch_KeyDown;
             toolStripTextBoxSearch.KeyUp += toolStripTextBoxSearch_KeyDown;
             // 

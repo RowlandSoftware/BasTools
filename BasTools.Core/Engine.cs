@@ -56,13 +56,17 @@
 
             try
             {
+                // Load and split
                 string rawFile = File.ReadAllText(filename);
                 string[] lines = rawFile.Split(new char[] { '\r', '\n' }, StringSplitOptions.TrimEntries); // no need to Trim() each line
                 if (lines.Length == 0)
                 {
                     throw new BasToolsException($"Text file splits into {lines.Length} lines");
                 }
+
+                // loop through the lines
                 int fakeLineNumber = 0;
+                bool IsInDef = false;
 
                 for (int i = 0; i < lines.Length - 2; i++)
                 {
@@ -70,14 +74,15 @@
                         continue;
 
                     string line = lines[i];
-
                     ProgramLine progLine = new ProgramLine();
+                    
+                    // parse line number
                     int lineNumber;
                     int j = 0;
 
                     if (char.IsAsciiDigit(line[0]))
                     {
-                        while (j < line.Length-1 && char.IsAsciiDigit(line[j]))
+                        while (j < line.Length - 1 && char.IsAsciiDigit(line[j]))
                         {
                             j++;
                         }
@@ -95,12 +100,24 @@
                     progLine.LineNumber = lineNumber;
                     progLine.FormattedLineNumber = lineNumber.ToString();
 
+                    // parse line body
                     string lineTextBody = line.Substring(j).Trim();
                     progLine.PlainDetokenisedLine = lineTextBody;
                     progLine.FormattedPlain = lineTextBody;
                     bool IsDef = false;
                     progLine.TaggedLine = parseTextLine(lineTextBody, ref IsDef);
                     progLine.IsDef = IsDef;
+                    if (IsInDef)
+                    {
+                        if (lineTextBody.StartsWith("ENDPROC") || lineTextBody.StartsWith("="))
+                            IsInDef = false;
+                    }
+                    progLine.IsInDef = IsInDef;
+                    if (IsDef)
+                    {
+                        progLine.IsInDef = false;
+                        IsInDef = true;
+                    }
 
                     listing.Lines.Add(progLine);
                 }
@@ -114,7 +131,7 @@
                     throw new BasToolsException("Error in LoadAndFormatTextFile", e);
                 }
             }
-        }
+        } // LoadAndFormatTextFile
         private static string parseTextLine(string textLine, ref bool IsDefLine)
         {
             StringBuilder output = new();
@@ -123,6 +140,7 @@
             for (int i = 0; i < textLine.Length; i++)
             {
                 bool match = false;
+            keywordLoop:;
                 foreach (string keyword in keywords)
                 {
                     match = false;
@@ -141,12 +159,15 @@
                             IsDef = true;
                             IsDefLine = true;
                         }
+                        if (keyword == "REM")
+                        {
+                            i += 3;
+                            output.Append(SemanticTags.RemText + textLine.Substring(i) + SemanticTags.Reset);
+                            return output.ToString();
+                        }
                         i += keyword.Length;
                         match = true;
-                        //break;
-                        //continue;
-                        //
-                        //goto NextChar;
+                        break;
                     }
                 }
                 if (i >= textLine.Length) // if the keyword took us to EOL...
@@ -156,7 +177,7 @@
 
                     return output.ToString();
                 }
-                //if (match) continue; // keyword found - loop again
+                if (match) goto keywordLoop; // keyword found - loop again
 
                 if (textLine[i] == '"')
                 {
@@ -176,10 +197,13 @@
                 {
                     output.Append(textLine[i]);
                 }
-            NextChar:;
             }
+            // EOL
+            if (IsDef) // still not been cancelled
+                output.Append(SemanticTags.Reset);
+
             return output.ToString();
-        }
+        } // parseTextLine
         public List<DisplayLine> prepLinesForDisplay(ListerOptions listerOptions)
         {
             return BasLister.prepLinesForDisplay(CurrentListing, listerOptions, CurrentProgInfo);
