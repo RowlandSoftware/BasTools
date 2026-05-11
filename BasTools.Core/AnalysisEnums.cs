@@ -1,4 +1,4 @@
-﻿namespace BasAnalysis.CLI
+﻿namespace BasTools.Core
 {
     public enum SymbolKind
     {
@@ -60,7 +60,7 @@
     // =====================================
     // Call graph structures
     // =====================================
-    sealed class CallEdge
+    public sealed class CallEdge
     {
         public CallNode Child { get; }
         public int LineNumber { get; }
@@ -71,7 +71,7 @@
             LineNumber = lineNumber;
         }
     }
-    sealed class CallNode
+    public sealed class CallNode
     {
         public string Name { get; }
         public List<CallEdge> Children { get; } = new();

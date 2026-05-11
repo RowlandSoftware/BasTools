@@ -1,15 +1,30 @@
 using BasTools.Core;
 using Microsoft.VisualBasic;
+using Microsoft.VisualBasic.FileIO;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
+using System.Diagnostics;
 using System.Runtime.Intrinsics.Arm;
 using System.Security.Policy;
 using System.Text;
+using System.Text.RegularExpressions;
 using static System.Net.Mime.MediaTypeNames;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 using static System.Windows.Forms.LinkLabel;
 
 namespace BasViewer.GUI
 {
+    public record SearchOptions
+    {
+        public bool whole_word { get; set; } = false;
+        public bool flgRealVars { get; set; } = false;
+        public bool flgIntegers { get; set; } = false;
+        public bool flgStrings { get; set; } = false;
+        public bool flgProcs { get; set; } = false;
+        public bool flgFns { get; set; } = false;
+        public bool flgLiteralStrings { get; set; } = false;
+        public bool flgRems { get; set; } = false;
+    }
     public partial class Form1 : Form
     {
         private readonly string[] _args;
@@ -21,6 +36,11 @@ namespace BasViewer.GUI
         private string _script;
         private bool _loaded;
         private bool _textFile;
+        private readonly frmAdvancedSearch advancedSearch;
+        private frmSearchNav searchNav;
+        private int currentMatchIndex;
+        private List<SearchMatch> matches;
+       
         public Form1(string[] args)
         {
             InitializeComponent();
@@ -41,12 +61,11 @@ namespace BasViewer.GUI
                         DoGotoLine(toolStripTextBoxGoto.Text);
                 }
             };
+        #region ZoomControl
+        // --- Build status bar zoom control ---
 
-            #region ZoomControl
-            // --- Build status bar zoom control ---
-
-            // Left spring label
-            statusLeft = new ToolStripStatusLabel
+        // Left spring label
+        statusLeft = new ToolStripStatusLabel
             {
                 Spring = true,
                 TextAlign = ContentAlignment.MiddleLeft
@@ -118,6 +137,12 @@ namespace BasViewer.GUI
             // Init WebView2
             this.Shown += Form1_Shown;
 
+            // Init floating search nav
+            searchNav = new frmSearchNav();
+            searchNav.PrevClicked = () => NavigateMatch(-1);
+            searchNav.NextClicked = () => NavigateMatch(+1);
+            searchNav.Closed = ClearSearchHighlights;
+
             _args = args;
             bool flgZ80 = false;
             engine = new BasToolsEngine();
@@ -127,8 +152,14 @@ namespace BasViewer.GUI
             _loaded = false;
             _textFile = false;
             _htmlClose = Environment.NewLine + "</table></body></html>";
-            _script = Environment.NewLine + "<script> function toggleFold(name) { const rows = document.querySelectorAll('.' + name); const arrow = document.getElementById('arrow_' + name); const isClosed = (arrow.textContent === \"▶\"); rows.forEach(r => { r.style.display = isClosed ? \"\" : \"none\"; }); arrow.textContent = isClosed ? \"▼\" : \"▶\"} </script>" + Environment.NewLine;
+            _script = Themes.GetScript();
             comboBoxTheme.SelectedIndex = 0;
+
+            // Advanced Search form
+            advancedSearch = new frmAdvancedSearch();
+            advancedSearch.Engine = engine;        // inject engine
+            // set up callback
+            advancedSearch.RunSearch = (term, opts) => DoSearch(term, opts);
 
             this.Text = "BBC BASIC Viewer";
 
@@ -378,7 +409,7 @@ namespace BasViewer.GUI
         private void LoadFile(string filename)
         {
             progInfo.Filename = filename;
-            bool _textFile = loadBasicOrText(filename, engine, formatOptions, progInfo);
+            _textFile = loadBasicOrText(filename, engine, formatOptions, progInfo);
 
             if (engine.CurrentListing != null)
                 _loaded = true;
@@ -432,7 +463,7 @@ namespace BasViewer.GUI
             // Now it's safe to navigate or inject HTML
             something();
         }
-        /**************** Search ****************/
+        /**************** Search and Navigation ****************/
         private async void combProcFnFinder_SelectedIndexChanged(object sender, EventArgs e)
         {
             string target = combProcFnFinder.Text;
@@ -474,6 +505,54 @@ namespace BasViewer.GUI
             }
             toolStripTextBoxSearch.Focus();
         }
+        private async void NavigateMatch(int delta)
+        {
+            if (matches.Count == 0) return;
+
+            currentMatchIndex += delta;
+
+            if (currentMatchIndex < 0)
+                currentMatchIndex = matches.Count - 1;
+            else if (currentMatchIndex >= matches.Count)
+                currentMatchIndex = 0;
+
+            searchNav.UpdateStatus(currentMatchIndex, matches.Count);
+
+            await ScrollToMatch(currentMatchIndex);
+        }
+        /*
+        private async void NavigateMatch(int delta)
+        {
+            if (matches.Count == 0) return;
+
+            currentMatchIndex = (currentMatchIndex + delta + matches.Count) % matches.Count;
+
+            searchNav.UpdateStatus(currentMatchIndex, matches.Count);
+
+            await ScrollToMatch(currentMatchIndex);
+        }
+        */
+        private Task ScrollToMatch(int index)
+        {
+            return webView2.CoreWebView2.ExecuteScriptAsync(
+                $"window.search.scrollTo({index});");
+        }
+        private void ClearSearchHighlights()
+        {
+            webView2.CoreWebView2.ExecuteScriptAsync("window.search.clear();");
+        }
+        // ESC closes
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (keyData == Keys.Escape && searchNav.Visible)
+            {
+                searchNav.Hide();
+                ClearSearchHighlights();
+                return true;
+            }
+            return base.ProcessCmdKey(ref msg, keyData);
+        }
+
         private async void DoGotoLine(string text)
         {
             text = text.Trim();
@@ -486,6 +565,21 @@ namespace BasViewer.GUI
                 contextMenuStrip1.Hide();
             }
         }
+        //******* Advanced Search *********
+        // Callback
+        //public Action<string, SearchOptions>? RunSearch;        
+        public class SearchMatch
+        {
+            public int Line;
+            public int Column;
+            public string Text;
+            public SemanticTypes Type;
+        }
+        public void DoSearch(string term, SearchOptions opts)
+        {
+            // TODO
+        }
+        
         // ********* Zoom Control helper ********
         private void ApplyZoom()
         {
@@ -592,10 +686,9 @@ namespace BasViewer.GUI
         }
         private void advancedSearchToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            using (var dlg = new frmAdvancedSearch())
-            {
-                dlg.ShowDialog(this);
-            }
+            advancedSearch.SetVariableEnabled(_textFile);
+            advancedSearch.Show();
+            advancedSearch.BringToFront();
         }
         private void toolStripTextBoxGoto_KeyPress(object sender, KeyPressEventArgs e)
         {

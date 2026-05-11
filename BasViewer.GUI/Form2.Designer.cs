@@ -46,6 +46,7 @@
             // 
             // btnOK
             // 
+            btnOK.DialogResult = DialogResult.OK;
             btnOK.Font = new Font("Segoe UI Semibold", 10.125F, FontStyle.Bold, GraphicsUnit.Point, 0);
             btnOK.Location = new Point(744, 471);
             btnOK.Name = "btnOK";
@@ -57,6 +58,7 @@
             // 
             // btnCancel
             // 
+            btnCancel.DialogResult = DialogResult.Cancel;
             btnCancel.Font = new Font("Segoe UI", 10.125F, FontStyle.Regular, GraphicsUnit.Point, 0);
             btnCancel.Location = new Point(69, 471);
             btnCancel.Name = "btnCancel";
@@ -64,6 +66,7 @@
             btnCancel.TabIndex = 1;
             btnCancel.Text = "Cancel";
             btnCancel.UseVisualStyleBackColor = true;
+            btnCancel.Click += btnCancel_Click;
             // 
             // txtBoxAdvSearch
             // 

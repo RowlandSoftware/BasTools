@@ -9,31 +9,6 @@ namespace BasAnalysis.CLI
 {
     internal static class Utilities
     {
-        public static SymbolKind InferKind(string tag, string name)
-        {
-            if (name.EndsWith("()"))
-                name = name[..^2];
-
-            if (name.EndsWith('%') && name.Length == 2 && (char.IsAsciiLetterUpper(name[0]) || name[0] == '@'))
-                return SymbolKind.StaticInt;
-            if (name.EndsWith('%'))
-                return SymbolKind.IntVar;
-            if (name.EndsWith('$'))
-                return SymbolKind.StringVar;
-            if (name.StartsWith('.'))
-                return SymbolKind.Label;
-            if (tag == SemanticTags.Variable)
-                return SymbolKind.RealVar;
-            if (tag == SemanticTags.FunctionName)
-                return SymbolKind.Fn;
-            if (tag == SemanticTags.ProcName)
-                return SymbolKind.Proc;
-            if (tag == SemanticTags.Label)
-                return SymbolKind.Label;
-            if (tag == SemanticTags.StringLiteral)
-                return SymbolKind.LiteralString;
-            return SymbolKind.Unknown;
-        }
         public static void PrintByKind(SymbolKind kind, Dictionary<string, SymbolInfo> Symbols,
             string heading1, string heading2)
         {
@@ -64,7 +39,7 @@ namespace BasAnalysis.CLI
                     // find corresponding variable (without leading .)
                     int refCount = 0; // symInfo.ReferencedCount;
                     string name = symInfo.Name.Substring(1);
-                    SymbolKind refKind = InferKind(SemanticTags.Variable, name);
+                    SymbolKind refKind = BasToolsEngine.InferKind(SemanticTags.Variable, name);
 
                     SymbolInfo refVar;
                     if (refKind != SymbolKind.Unknown)
@@ -87,20 +62,6 @@ namespace BasAnalysis.CLI
                 }
             }
             Console.ForegroundColor = ConsoleColor.White;
-        }
-        public static Token? PeekNextNonSpaceToken(List<Token> tokens, int index)
-        {
-            for (int i = index + 1; i < tokens.Count; i++)
-            {
-                var t = tokens[i];
-
-                // Skip null-tag whitespace tokens
-                if (t.tag == null) // && string.IsNullOrWhiteSpace(t.value))
-                    continue;
-
-                return t;
-            }
-            return null;
         }
         public static string[] SplitArgList(string input)
         {

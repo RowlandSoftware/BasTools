@@ -29,8 +29,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\BAnalysis.CLI\BAnalysis.CLI.csproj" />
-    <ProjectReference Include="..\BasTools.Core\BasTools.Core.csproj" />
+    <ProjectReference Include="..\BasTools.Core\BasTools.Core.csproj">
+      <TreatAsUsed>true</TreatAsUsed>
+    </ProjectReference>
   </ItemGroup>
 
   <ItemGroup>

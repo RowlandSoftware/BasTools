@@ -1,4 +1,5 @@
-﻿using System;
+﻿using BasTools.Core;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -10,14 +11,42 @@ namespace BasViewer.GUI
 {
     public partial class frmAdvancedSearch : Form
     {
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public BasToolsEngine? Engine { get; set; }
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public Action<string, SearchOptions>? RunSearch { get; set; }
+
         public frmAdvancedSearch()
         {
             InitializeComponent();
             chkBoxVars.Checked = false;
             chkBoxProcFn.Checked = false;
             chkBoxText.Checked = false;
+            chkWholeWords.Checked = true;
         }
+        private void DoSearch()
+        {
+            SearchOptions opts = new();
+            opts.whole_word = chkWholeWords.Checked;
+            opts.flgRealVars = chkReal.Enabled && chkReal.Checked;
+            opts.flgIntegers = chkInt.Enabled && chkInt.Checked;
+            opts.flgStrings = chkString.Enabled && chkString.Checked;
+            opts.flgProcs = chkProc.Enabled && chkProc.Checked;
+            opts.flgFns = chkFn.Enabled && chkFn.Checked;
+            opts.flgLiteralStrings = chkLiteralString.Enabled && chkLiteralString.Checked;
+            opts.flgRems = chkRem.Enabled && chkRem.Checked;
 
+            // pass control to the callback in Form1
+            RunSearch?.Invoke(txtBoxAdvSearch.Text, opts);
+
+            // Hide the dialog (not close)
+            this.Hide();
+        }
+        public void SetVariableEnabled(bool IsTextFile)
+        {
+            chkBoxVars.Enabled = !IsTextFile;
+            chkBoxVars.Checked = !IsTextFile;
+        }
         private void chkBoxVars_CheckedChanged(object sender, EventArgs e)
         {
             chkReal.Enabled = chkBoxVars.Checked;
@@ -39,7 +68,25 @@ namespace BasViewer.GUI
 
         private void btnOK_Click(object sender, EventArgs e)
         {
-            //BasTools.BAnalysis.
+            if (!BasToolsEngine.analyzed)
+            {
+                bool analyzed = false; // dummy
+                Engine.Analyse(Engine, ref analyzed);
+            }
+            DoSearch();
+        }
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            if (e.CloseReason == CloseReason.UserClosing)
+            {
+                e.Cancel = true;   // prevent destruction
+                this.Hide();       // just hide it
+            }
+            base.OnFormClosing(e);
+        }
+        private void btnCancel_Click(object sender, EventArgs e)
+        {
+           this.Hide();
         }
     }
 }

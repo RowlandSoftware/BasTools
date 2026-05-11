@@ -27,6 +27,8 @@
         public ProgInfo CurrentProgInfo { get; private set; } = null;
 
         public Dictionary<string, int> DimLines = new(); // for the benefit of BasAnalysis
+        public static Dictionary<string, SymbolInfo> Symbols = new();
+        public static bool analyzed { get; private set; } = false;
 
         // The public 'pipeline' for BasList
         public bool LoadAndFormatFile(string filename, FormattingOptions formatOptions, ProgInfo progInfo)
@@ -49,6 +51,10 @@
             }
             else
                 return false;
+        }
+        public void Analyse(BasToolsEngine engine, ref bool analyzed)
+        {
+            Analyser.Analyse(engine, ref analyzed);
         }
         public Listing LoadAndFormatTextFile(string filename, FormattingOptions formatOptions, ProgInfo progInfo)
         {
@@ -285,6 +291,31 @@
             var asm = Assembly.GetExecutingAssembly();
             foreach (var name in asm.GetManifestResourceNames())
                 Console.WriteLine(name);
+        }
+        public static SymbolKind InferKind(string tag, string name)
+        {
+            if (name.EndsWith("()"))
+                name = name[..^2];
+
+            if (name.EndsWith('%') && name.Length == 2 && (char.IsAsciiLetterUpper(name[0]) || name[0] == '@'))
+                return SymbolKind.StaticInt;
+            if (name.EndsWith('%'))
+                return SymbolKind.IntVar;
+            if (name.EndsWith('$'))
+                return SymbolKind.StringVar;
+            if (name.StartsWith('.'))
+                return SymbolKind.Label;
+            if (tag == SemanticTags.Variable)
+                return SymbolKind.RealVar;
+            if (tag == SemanticTags.FunctionName)
+                return SymbolKind.Fn;
+            if (tag == SemanticTags.ProcName)
+                return SymbolKind.Proc;
+            if (tag == SemanticTags.Label)
+                return SymbolKind.Label;
+            if (tag == SemanticTags.StringLiteral)
+                return SymbolKind.LiteralString;
+            return SymbolKind.Unknown;
         }
     }//public BasToolsEngine()
 }

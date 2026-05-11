@@ -257,7 +257,15 @@ namespace BasViewer.GUI
                 /* Body rows (inside PROC/FN) */
                 tr.fold-body {{
                     transition: all 0.15s ease;
-                }}                
+                }}
+                .search-hit {{
+                    background-color: yellow;
+                    color: black;
+                    border-radius: 2px;
+                }}
+                .search-current {{
+                    background-color: orange;
+                }}
             ");
 
                 // Semantic tag classes (loop!)
@@ -277,6 +285,85 @@ namespace BasViewer.GUI
             sb.Append("</style>");
 
             return sb.ToString();
+        }
+        internal static string GetScript()
+        {
+            string script1 = Environment.NewLine + @"<script>
+                function toggleFold(name) {
+                    const rows = document.querySelectorAll('.' + name);
+                    const arrow = document.getElementById('arrow_' + name);
+                    const isClosed = (arrow.textContent === ""▶"");
+                    rows.forEach(r => { r.style.display = isClosed ? """" : ""none""; });
+                    arrow.textContent = isClosed ? ""▼"" : ""▶"";
+                };
+            ";
+
+            string script2 = Environment.NewLine + @"window.search = {
+                clear: function () {
+                    document.querySelectorAll('.search-hit').forEach(span => {
+                        const text = document.createTextNode(span.textContent);
+                        span.replaceWith(text);
+                    });
+                },
+
+                highlightAll: function (term) {
+                    if (!term) return;
+
+                    const walker = document.createTreeWalker(
+                        document.body,
+                        NodeFilter.SHOW_TEXT,
+                        null,
+                        false
+                    );
+
+                    const regex = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+
+                    let node;
+                    while (node = walker.nextNode()) {
+                        const parent = node.parentNode;
+                        if (parent.classList && parent.classList.contains('search-hit'))
+                            continue;
+
+                        const text = node.nodeValue;
+                        const frag = document.createDocumentFragment();
+                        let lastIndex = 0;
+                        let match;
+
+                        while ((match = regex.exec(text)) !== null) {
+                            const before = text.slice(lastIndex, match.index);
+                            if (before) frag.appendChild(document.createTextNode(before));
+
+                            const span = document.createElement('span');
+                            span.className = 'search-hit';
+                            span.textContent = match[0];
+                            frag.appendChild(span);
+
+                            lastIndex = match.index + match[0].length;
+                        }
+
+                        if (lastIndex === 0) continue;
+
+                        const after = text.slice(lastIndex);
+                        if (after) frag.appendChild(document.createTextNode(after));
+
+                        parent.replaceChild(frag, node);
+                    }
+                },
+
+                scrollTo: function (index) {
+                    const hits = document.querySelectorAll('.search-hit');
+                    if (hits.length === 0) return;
+
+                    hits.forEach(h => h.classList.remove('search-current'));
+
+                    const target = hits[index];
+                    target.classList.add('search-current');
+                    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                };
+            </script>" + Environment.NewLine;
+
+            return script1 + script2;
         }
     }
 }
