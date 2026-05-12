@@ -26,9 +26,10 @@
         public Listing CurrentListing { get; private set; } = null;
         public ProgInfo CurrentProgInfo { get; private set; } = null;
 
-        public Dictionary<string, int> DimLines = new(); // for the benefit of BasAnalysis
-        public static Dictionary<string, SymbolInfo> Symbols = new();
-        public static bool analyzed { get; private set; } = false;
+        public Dictionary<string, int> DimLines = new();
+        // for the benefit of BasAnalysis
+        public Dictionary<string, SymbolInfo> Symbols { get; private set; } = new();
+        public bool Analyzed { get; private set; } = false;
 
         // The public 'pipeline' for BasList
         public bool LoadAndFormatFile(string filename, FormattingOptions formatOptions, ProgInfo progInfo)
@@ -54,6 +55,8 @@
         }
         public void Analyse(BasToolsEngine engine, ref bool analyzed)
         {
+            Symbols.Clear();
+            analyzed = false;
             Analyser.Analyse(engine, ref analyzed);
         }
         public Listing LoadAndFormatTextFile(string filename, FormattingOptions formatOptions, ProgInfo progInfo)

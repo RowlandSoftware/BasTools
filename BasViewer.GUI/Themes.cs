@@ -298,57 +298,88 @@ namespace BasViewer.GUI
                 };
             ";
 
-            string script2 = Environment.NewLine + @"window.search = {
-                clear: function () {
-                    document.querySelectorAll('.search-hit').forEach(span => {
-                        const text = document.createTextNode(span.textContent);
-                        span.replaceWith(text);
-                    });
-                },
+            string script2 = Environment.NewLine + @"
+window.search = {
+    clear: function () {
+        document.querySelectorAll('.search-hit, .search-current').forEach(el => {
+            const parent = el.parentNode;
 
-                highlightAll: function (term) {
-                    if (!term) return;
+            const text = document.createTextNode(el.textContent);
+            el.replaceWith(text);
 
-                    const walker = document.createTreeWalker(
-                        document.body,
-                        NodeFilter.SHOW_TEXT,
-                        null,
-                        false
-                    );
+            if (parent) {
+                for (let i = 0; i < parent.childNodes.length - 1; i++) {
+                    const a = parent.childNodes[i];
+                    const b = parent.childNodes[i + 1];
 
-                    const regex = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-
-                    let node;
-                    while (node = walker.nextNode()) {
-                        const parent = node.parentNode;
-                        if (parent.classList && parent.classList.contains('search-hit'))
-                            continue;
-
-                        const text = node.nodeValue;
-                        const frag = document.createDocumentFragment();
-                        let lastIndex = 0;
-                        let match;
-
-                        while ((match = regex.exec(text)) !== null) {
-                            const before = text.slice(lastIndex, match.index);
-                            if (before) frag.appendChild(document.createTextNode(before));
-
-                            const span = document.createElement('span');
-                            span.className = 'search-hit';
-                            span.textContent = match[0];
-                            frag.appendChild(span);
-
-                            lastIndex = match.index + match[0].length;
-                        }
-
-                        if (lastIndex === 0) continue;
-
-                        const after = text.slice(lastIndex);
-                        if (after) frag.appendChild(document.createTextNode(after));
-
-                        parent.replaceChild(frag, node);
+                    if (a.nodeType === 3 && b.nodeType === 3) {
+                        a.textContent += b.textContent;
+                        parent.removeChild(b);
+                        i--;
                     }
-                },
+                }
+            }
+        });
+    },
+
+    highlightAll: function (term) {
+        if (!term) return;
+
+    // Escape regex metacharacters
+    const regex = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+
+    // ⭐ First pass: collect all text nodes
+    const walker = document.createTreeWalker(
+        document.body,
+        NodeFilter.SHOW_TEXT,
+        null,
+        false
+    );
+
+    const textNodes = [];
+    let node;
+    while (node = walker.nextNode()) {
+        if (node.parentNode &&
+            node.parentNode.classList &&
+            node.parentNode.classList.contains('search-hit'))
+            continue;
+
+        textNodes.push(node);
+    }
+
+    // ⭐ Second pass: process each text node safely
+    for (const node of textNodes) {
+        const text = node.nodeValue;
+
+        regex.lastIndex = 0; // reset for each node
+
+        let match;
+        let lastIndex = 0;
+        const frag = document.createDocumentFragment();
+
+        while ((match = regex.exec(text)) !== null) {
+            const before = text.slice(lastIndex, match.index);
+            if (before)
+                frag.appendChild(document.createTextNode(before));
+
+            const span = document.createElement('span');
+            span.className = 'search-hit';
+            span.textContent = match[0];
+            frag.appendChild(span);
+
+            lastIndex = match.index + match[0].length;
+        }
+
+        if (lastIndex === 0)
+            continue;
+
+        const after = text.slice(lastIndex);
+        if (after)
+            frag.appendChild(document.createTextNode(after));
+
+        node.parentNode.replaceChild(frag, node);
+    }
+},
 
                 scrollTo: function (index) {
                     const hits = document.querySelectorAll('.search-hit');

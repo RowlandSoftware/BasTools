@@ -8,6 +8,7 @@ using System.Runtime.Intrinsics.Arm;
 using System.Security.Policy;
 using System.Text;
 using System.Text.RegularExpressions;
+using static BasViewer.GUI.Form1;
 using static System.Net.Mime.MediaTypeNames;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using static System.Windows.Forms.LinkLabel;
@@ -17,6 +18,7 @@ namespace BasViewer.GUI
     public record SearchOptions
     {
         public bool whole_word { get; set; } = false;
+        public bool match_case { get; set; } = false;
         public bool flgRealVars { get; set; } = false;
         public bool flgIntegers { get; set; } = false;
         public bool flgStrings { get; set; } = false;
@@ -37,10 +39,10 @@ namespace BasViewer.GUI
         private bool _loaded;
         private bool _textFile;
         private readonly frmAdvancedSearch advancedSearch;
-        private frmSearchNav searchNav;
+        private SearchNavControl searchNav;
         private int currentMatchIndex;
         private List<SearchMatch> matches;
-       
+
         public Form1(string[] args)
         {
             InitializeComponent();
@@ -61,11 +63,11 @@ namespace BasViewer.GUI
                         DoGotoLine(toolStripTextBoxGoto.Text);
                 }
             };
-        #region ZoomControl
-        // --- Build status bar zoom control ---
+            #region ZoomControl
+            // --- Build status bar zoom control ---
 
-        // Left spring label
-        statusLeft = new ToolStripStatusLabel
+            // Left spring label
+            statusLeft = new ToolStripStatusLabel
             {
                 Spring = true,
                 TextAlign = ContentAlignment.MiddleLeft
@@ -137,11 +139,17 @@ namespace BasViewer.GUI
             // Init WebView2
             this.Shown += Form1_Shown;
 
-            // Init floating search nav
-            searchNav = new frmSearchNav();
-            searchNav.PrevClicked = () => NavigateMatch(-1);
-            searchNav.NextClicked = () => NavigateMatch(+1);
-            searchNav.Closed = ClearSearchHighlights;
+            // Init Search Navigator
+            searchNav = new SearchNavControl();
+            searchNav.Dock = DockStyle.Fill;
+            panelSearchNav.Controls.Add(searchNav);
+            searchNav.PrevClicked += () => NavigateMatch(-1);
+            searchNav.NextClicked += () => NavigateMatch(+1);
+            searchNav.StopClicked += () =>
+            {
+                panelSearchNav.Visible = false;
+                ClearSearchHighlights();
+            };
 
             _args = args;
             bool flgZ80 = false;
@@ -441,8 +449,10 @@ namespace BasViewer.GUI
         }
         private async void Form1_Shown(object? sender, EventArgs e)
         {
-            // Ensure the WebView2 environment exists
+            // Hide the navigator panel (which has to be visible initially to get layout right)
+            panelSearchNav.Visible = false;
 
+            // Ensure the WebView2 environment exists
             var env = await CoreWebView2Environment.CreateAsync();
 
             // Initialise the control
@@ -520,39 +530,22 @@ namespace BasViewer.GUI
 
             await ScrollToMatch(currentMatchIndex);
         }
-        /*
-        private async void NavigateMatch(int delta)
+        private async Task ScrollToMatch(int index)
         {
-            if (matches.Count == 0) return;
+            var m = matches[index];
 
-            currentMatchIndex = (currentMatchIndex + delta + matches.Count) % matches.Count;
+            // 1. Scroll to BASIC line number
+            await webView2.CoreWebView2.ExecuteScriptAsync(
+                $"document.getElementById('line_{m.Line}').scrollIntoView({{behavior:'smooth', block:'center'}});");
 
-            searchNav.UpdateStatus(currentMatchIndex, matches.Count);
-
-            await ScrollToMatch(currentMatchIndex);
-        }
-        */
-        private Task ScrollToMatch(int index)
-        {
-            return webView2.CoreWebView2.ExecuteScriptAsync(
+            // 2. Tell JS which highlighted span is the "current" one
+            await webView2.CoreWebView2.ExecuteScriptAsync(
                 $"window.search.scrollTo({index});");
         }
         private void ClearSearchHighlights()
         {
             webView2.CoreWebView2.ExecuteScriptAsync("window.search.clear();");
         }
-        // ESC closes
-        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
-        {
-            if (keyData == Keys.Escape && searchNav.Visible)
-            {
-                searchNav.Hide();
-                ClearSearchHighlights();
-                return true;
-            }
-            return base.ProcessCmdKey(ref msg, keyData);
-        }
-
         private async void DoGotoLine(string text)
         {
             text = text.Trim();
@@ -565,21 +558,146 @@ namespace BasViewer.GUI
                 contextMenuStrip1.Hide();
             }
         }
+
         //******* Advanced Search *********
-        // Callback
-        //public Action<string, SearchOptions>? RunSearch;        
         public class SearchMatch
         {
             public int Line;
             public int Column;
             public string Text;
-            public SemanticTypes Type;
+            public SymbolKind Type;
         }
         public void DoSearch(string term, SearchOptions opts)
         {
-            // TODO
+            if (string.IsNullOrWhiteSpace(term))
+                return;
+
+            term = term.Trim(); // ?
+
+            if (matches == null)
+                matches = new List<SearchMatch>();
+            else
+                matches.Clear();
+
+            foreach (var kvp in engine.Symbols)
+            {
+                var sym = kvp.Value;
+
+                // Filter by kind
+                if (!MatchesKind(sym, opts))
+                    continue;
+
+                // Match the symbol name itself
+                StringComparison matchCase;
+                if (opts.match_case)
+                    matchCase = StringComparison.Ordinal;
+                else
+                    matchCase = StringComparison.OrdinalIgnoreCase;
+
+                bool found;
+                if (opts.whole_word)
+                    found = sym.Name.Equals(term, matchCase);
+                else
+                    found = sym.Name.Contains(term, matchCase);
+                if (found)
+                {
+                    // Match all usages
+                    foreach (var use in sym.Uses)
+                    {
+                        // We only care about the line number
+                        matches.Add(new SearchMatch
+                        {
+                            Line = use.LineNumber,
+                            Column = 1,
+                            Text = sym.Name, //term, ?
+                            Type = sym.Kind
+                        });
+                    }
+                }
+            }
+            //var distinctLines = matches.Select(m => m.Line).Distinct().Count();
+            //Log($"Search '{term}': matches.Count = {matches.Count}, distinct lines = {distinctLines}");
+
+            ApplySearchResults(term);
         }
-        
+        private async void ApplySearchResults(string term)
+        {
+            currentMatchIndex = 0;
+
+            // Clear old highlights
+            await webView2.CoreWebView2.ExecuteScriptAsync("window.search.clear();");
+
+            if (matches.Count == 0)
+            {
+                panelSearchNav.Visible = false;
+                return;
+            }
+            else
+                searchNav.UpdateStatus(currentMatchIndex, matches.Count);
+
+            // Highlight all matches in WebView2
+            string escaped = term.Replace("'", "\\'");
+            await webView2.CoreWebView2.ExecuteScriptAsync(
+                $"window.search.highlightAll('{escaped}');");
+
+            // Scroll to first match
+            await webView2.CoreWebView2.ExecuteScriptAsync(
+                $"window.search.scrollTo({currentMatchIndex});");
+
+            // Show navigator            
+            panelSearchNav.Visible = true;
+        }
+        private static bool MatchesKind(SymbolInfo sym, SearchOptions opts)
+        {
+            switch (sym.Kind)
+            {
+                // ───────────────────────────────
+                // Integers
+                // ───────────────────────────────
+                case SymbolKind.StaticInt:
+                case SymbolKind.IntVar:
+                case SymbolKind.IntArray:
+                    return opts.flgIntegers;
+
+                // ───────────────────────────────
+                // Reals
+                // ───────────────────────────────
+                case SymbolKind.RealVar:
+                case SymbolKind.RealArray:
+                    return opts.flgRealVars;
+
+                // ───────────────────────────────
+                // Strings
+                // ───────────────────────────────
+                case SymbolKind.StringVar:
+                case SymbolKind.StringArray:
+                    return opts.flgStrings;
+
+                // ───────────────────────────────
+                // Literal strings
+                // ───────────────────────────────
+                case SymbolKind.LiteralString:
+                    return opts.flgLiteralStrings;
+
+                // ───────────────────────────────
+                // Procedures / Functions
+                // ───────────────────────────────
+                case SymbolKind.Proc:
+                    return opts.flgProcs;
+
+                case SymbolKind.Fn:
+                    return opts.flgFns;
+
+                // ───────────────────────────────
+                // REMs (if you classify them separately) TODO
+                // ───────────────────────────────
+                //case SymbolKind.RemText:
+                  //  return opts.flgRems;
+
+                default:
+                    return false;
+            }
+        }
         // ********* Zoom Control helper ********
         private void ApplyZoom()
         {
@@ -689,6 +807,7 @@ namespace BasViewer.GUI
             advancedSearch.SetVariableEnabled(_textFile);
             advancedSearch.Show();
             advancedSearch.BringToFront();
+            advancedSearch.SetTextFocus();
         }
         private void toolStripTextBoxGoto_KeyPress(object sender, KeyPressEventArgs e)
         {
@@ -731,6 +850,10 @@ namespace BasViewer.GUI
                 return toolbarWidth - totwidth - 15;
             else
                 return 100;
+        }
+        private void Log(string message)
+        {
+            File.AppendAllText("search-debug.log", message + Environment.NewLine);
         }
     }
 }

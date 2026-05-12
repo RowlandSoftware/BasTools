@@ -45,7 +45,6 @@ namespace BasTools.Core
                         continue;
                     }
 
-
                     if (tok.tag == SemanticTags.Keyword && (tok.value is "LOCAL" or "DIM")) // variables in the LOCAL list count as assignments (initialised to 0 or "")
                     {
                         if (tok.value == "DIM") // everything after READ is an assignment without =
@@ -64,7 +63,7 @@ namespace BasTools.Core
                                 else
                                     engine.DimLines.Add(tokens[j].value, line.LineNumber);
 
-                                RecordUse(SemanticTags.Variable, tokens[j].value, line.LineNumber,
+                                RecordUse(engine,SemanticTags.Variable, tokens[j].value, line.LineNumber,
                                     SymbolReadOrWrite.Assigned, SymbolContext.Local,
                                     procedureName, procedureType);              // and record an assignment
                             }
@@ -78,7 +77,7 @@ namespace BasTools.Core
                                     engine.DimLines.Add(fullName, line.LineNumber);
                                 }
 
-                                RecordUse(SemanticTags.Array, fullName, line.LineNumber,
+                                RecordUse(engine,SemanticTags.Array, fullName, line.LineNumber,
                                     SymbolReadOrWrite.Assigned, SymbolContext.Local,
                                     procedureName, procedureType);              // and record an assignment
                             }
@@ -95,7 +94,7 @@ namespace BasTools.Core
                             nextVar.tag == SemanticTags.Array)) // anything other than variable is illegal as control variable
                         {
                             string suffix = (nextVar.tag == SemanticTags.Array ? "()" : "");
-                            RecordUse(nextVar.tag,
+                            RecordUse(engine,nextVar.tag,
                                 nextVar.value + suffix,
                                 line.LineNumber,
                                 SymbolReadOrWrite.Referenced,                       // synthetic reference
@@ -144,7 +143,7 @@ namespace BasTools.Core
                         if (readOrDim) isAssignment = true;
 
                         string suffix = (tok.tag == SemanticTags.Array ? "()" : "");
-                        RecordUse(tok.tag, tok.value + suffix, line.LineNumber,
+                        RecordUse(engine,tok.tag, tok.value + suffix, line.LineNumber,
                             isAssignment ? SymbolReadOrWrite.Assigned : SymbolReadOrWrite.Referenced,
                            context, procedureName, procedureType);
 
@@ -164,7 +163,7 @@ namespace BasTools.Core
                             procedureName = tok.value;
 
                             // We record the DEF as a 'use' to record line number etc
-                            RecordUse(tok.tag, tok.value, line.LineNumber, SymbolReadOrWrite.Assigned,
+                            RecordUse(engine,tok.tag, tok.value, line.LineNumber, SymbolReadOrWrite.Assigned,
                                 SymbolContext.NA, "", procedureType); // here, procedure type = DEFPROC or DEFFN
 
                             localVars.Clear();
@@ -221,7 +220,7 @@ namespace BasTools.Core
                             foreach (var p in parameters)
                             {
                                 // Synthetic assignment at line of DEF
-                                RecordUse(SemanticTags.Variable,
+                                RecordUse(engine,SemanticTags.Variable,
                                     p,
                                     line.LineNumber,
                                     SymbolReadOrWrite.Assigned,
@@ -233,7 +232,7 @@ namespace BasTools.Core
                         }
                         else // is a PROC or FN *call*
                         {
-                            RecordUse(tok.tag, tok.value, line.LineNumber,
+                            RecordUse(engine,tok.tag, tok.value, line.LineNumber,
                             SymbolReadOrWrite.Referenced,
                             SymbolContext.Call, procedureName, procedureType);  // here, procedure name and type refer to the parent proc
                         }
@@ -241,7 +240,7 @@ namespace BasTools.Core
                     }
                     if (tok.tag is SemanticTags.StringLiteral)
                     {
-                        RecordUse(tok.tag, tok.value, line.LineNumber,
+                        RecordUse(engine, tok.tag, tok.value, line.LineNumber,
                             SymbolReadOrWrite.Assigned,
                             SymbolContext.NA, procedureName, procedureType);
 
@@ -257,7 +256,7 @@ namespace BasTools.Core
                         if (parameters.Contains(tok.value[1..]))
                             labcontext = SymbolContext.Parameter;
 
-                        RecordUse(tok.tag, tok.value, line.LineNumber,
+                        RecordUse(engine, tok.tag, tok.value, line.LineNumber,
                         SymbolReadOrWrite.Assigned,                     // .label - all assigned. References tracked in variables
                         labcontext, procedureName, procedureType);      // Context should show if local or parameter, otherwise Assembler
 
@@ -279,11 +278,11 @@ namespace BasTools.Core
                     procedureName = "$";
                 }
             }
-            Console.Write($"Analysed {BasToolsEngine.Symbols.Count} unique tokens\n");
+            Console.Write($"Analysed {engine.Symbols.Count} unique tokens\n");
             analyzed = true;
             return;
         }
-        static void RecordUse(string tag, string name, int line,
+        static void RecordUse(BasToolsEngine engine, string tag, string name, int line,
             SymbolReadOrWrite readwrite, SymbolContext context,
             string currentProcName, ProcedureType procedureType) // , SymbolInfo parentSymbolInfo
         {
@@ -292,10 +291,10 @@ namespace BasTools.Core
 
             SymbolKind kind = BasToolsEngine.InferKind(tag, name);
 
-            if (!BasToolsEngine.Symbols.TryGetValue(kind + ":" + name, out var sym)) // If first sight, create SymbolInfo with key "<kind>:<name>"
+            if (!engine.Symbols.TryGetValue(kind + ":" + name, out var sym)) // If first sight, create SymbolInfo with key "<kind>:<name>"
             {
                 sym = new SymbolInfo { Name = name, Kind = kind };
-                BasToolsEngine.Symbols.Add(kind + ":" + name, sym);
+                engine.Symbols.Add(kind + ":" + name, sym);
             }
 
             if (readwrite == SymbolReadOrWrite.Assigned)

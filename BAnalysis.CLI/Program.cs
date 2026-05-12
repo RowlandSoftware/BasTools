@@ -15,7 +15,7 @@ namespace BasAnalysis.CLI
             BasToolsEngine engine = new BasToolsEngine();
             ProgInfo BAprogInfo = new();
             FormattingOptions formatOptions = new();
-            analyzed = BasToolsEngine.analyzed;
+            analyzed = engine.Analyzed;
 
             Utilities.banner();
 
@@ -164,7 +164,7 @@ namespace BasAnalysis.CLI
 
                 prompt = "BasAnalysis " + Path.GetFileName(filename) + " >";
 
-                BasToolsEngine.Symbols.Clear();
+                engine.Symbols.Clear();
                 analyzed = false;
 
                 Console.WriteLine($"Program loaded. {BAprogInfo.NumberOfLines} lines, {BAprogInfo.LengthInBytes} bytes " +
@@ -196,7 +196,7 @@ namespace BasAnalysis.CLI
             {
                 string arg = arglist[j];
 
-                var varUsage = BasToolsEngine.Symbols.Values.Where(s => s.Name == arg &&
+                var varUsage = engine.Symbols.Values.Where(s => s.Name == arg &&
                        (s.Kind == SymbolKind.IntVar ||
                         s.Kind == SymbolKind.RealVar ||
                         s.Kind == SymbolKind.StringVar ||
@@ -228,7 +228,7 @@ namespace BasAnalysis.CLI
                 {
                     SymbolKind varKind = BasToolsEngine.InferKind(SemanticTags.Variable, arg); // InferKind only uses SemanticTags.Variable if no %, $ suffix or leading dot
 
-                    if (!BasToolsEngine.Symbols.TryGetValue(varKind + ":" + arg, out SymbolInfo symInfo))
+                    if (!engine.Symbols.TryGetValue(varKind + ":" + arg, out SymbolInfo symInfo))
                     {
                         Console.WriteLine($"No such variable '{arg}'.");
                         return;
@@ -275,7 +275,7 @@ namespace BasAnalysis.CLI
                         Listvar(engine, new string[] { symInfo.Name[1..] }, true); // also information for the variable w/o dot
                 }
             }
-        }// BasToolsEngine.Symbols - accident?
+        }// engine.Symbols - accident?
         static void Listvars(BasToolsEngine engine, string[] arglist, bool analyzed)
         {
             if (!Utilities.checkLoaded("LVARS", engine)) return;
@@ -288,37 +288,37 @@ namespace BasAnalysis.CLI
             }*/
 
             // Static Integers
-            Utilities.PrintByKind(SymbolKind.StaticInt, BasToolsEngine.Symbols, "\n  Static Integer Variables",
+            Utilities.PrintByKind(SymbolKind.StaticInt, engine.Symbols, "\n  Static Integer Variables",
                 string.Format("\n  {0,-20}{1,10}{2,11}\n", "Variable", "Assigned", "Referenced"));
 
             Console.WriteLine("\nDynamic Variables (may include labels)");
 
             // Integers
-            Utilities.PrintByKind(SymbolKind.IntVar, BasToolsEngine.Symbols, "\n  Integer Variables",
+            Utilities.PrintByKind(SymbolKind.IntVar, engine.Symbols, "\n  Integer Variables",
                 string.Format("\n  {0,-20}{1,10}{2,11}\n", "Variable", "Assigned", "Referenced"));
 
             // Real variables
-            Utilities.PrintByKind(SymbolKind.RealVar, BasToolsEngine.Symbols, "\n  Real Number Variables",
+            Utilities.PrintByKind(SymbolKind.RealVar, engine.Symbols, "\n  Real Number Variables",
                 string.Format("\n  {0,-20}{1,10}{2,11}\n", "Variable", "Assigned", "Referenced"));
 
             // String variables
-            Utilities.PrintByKind(SymbolKind.StringVar, BasToolsEngine.Symbols, "\n  String Variables",
+            Utilities.PrintByKind(SymbolKind.StringVar, engine.Symbols, "\n  String Variables",
                 string.Format("\n  {0,-20}{1,10}{2,11}\n", "Variable", "Assigned", "Referenced"));
 
             // PROCs
-            Utilities.PrintByKind(SymbolKind.Proc, BasToolsEngine.Symbols, "\n  Sub-procedures (PROCs)",
+            Utilities.PrintByKind(SymbolKind.Proc, engine.Symbols, "\n  Sub-procedures (PROCs)",
                 string.Format("\n  {0,-20}{1,10}{2,11}\n", "PROC name", "Declared", "Referenced"));
 
             // FNs
-            Utilities.PrintByKind(SymbolKind.Fn, BasToolsEngine.Symbols, "\n  Functions (FNs)",
+            Utilities.PrintByKind(SymbolKind.Fn, engine.Symbols, "\n  Functions (FNs)",
                 string.Format("\n  {0,-20}{1,10}{2,11}\n", "FN name", "Declared", "Referenced"));
 
             // Assembler label
-            Utilities.PrintByKind(SymbolKind.Label, BasToolsEngine.Symbols, "\n  Assembler labels",
+            Utilities.PrintByKind(SymbolKind.Label, engine.Symbols, "\n  Assembler labels",
                 string.Format("\n  {0,-20}{1,10}{2,11}\n", "Label", "Assigned", "Referenced"));
 
             // Strings
-            Utilities.PrintByKind(SymbolKind.LiteralString, BasToolsEngine.Symbols, "\n  Literal strings",
+            Utilities.PrintByKind(SymbolKind.LiteralString, engine.Symbols, "\n  Literal strings",
                 string.Format("\n  {0,-35}{1,6}{2,10}\n", "String", "Count", "Length"));
         }
         static void ListProc(BasToolsEngine engine, string[] arglist, bool analysed)
@@ -347,7 +347,7 @@ namespace BasAnalysis.CLI
             }
             // Find the SymbolInfo
             string key = Utilities.InitCap(prefix) + ":" + name;
-            if (!BasToolsEngine.Symbols.TryGetValue(key, out var symInfo))
+            if (!engine.Symbols.TryGetValue(key, out var symInfo))
             {
                 Console.WriteLine($"{prefix}{name} not found. (Tip: {prefix}s are case sensitive)");
                 return;
@@ -372,7 +372,7 @@ namespace BasAnalysis.CLI
             }
 
             // List callers
-            var usedBy = BasToolsEngine.Symbols.Values.SelectMany(s => s.Uses
+            var usedBy = engine.Symbols.Values.SelectMany(s => s.Uses
                 .Where(u =>
                     u.CalledName == name &&   // ← this PROC/FN is being called
                     u.symbolContext == SymbolContext.Call &&
@@ -408,7 +408,7 @@ namespace BasAnalysis.CLI
             }
 
             // List procs/fns used
-            var procsUsed = BasToolsEngine.Symbols.Values.SelectMany(s => s.Uses
+            var procsUsed = engine.Symbols.Values.SelectMany(s => s.Uses
                 .Where(u => u.ParentName == name &&
                        (u.CalledKind == SymbolKind.Proc ||
                         u.CalledKind == SymbolKind.Fn)))
@@ -442,7 +442,7 @@ namespace BasAnalysis.CLI
             }
 
             // List vars used
-            var varsUsed = BasToolsEngine.Symbols.Values.SelectMany(s => s.Uses
+            var varsUsed = engine.Symbols.Values.SelectMany(s => s.Uses
                 .Where(u => u.ParentName == name &&
                     (u.CalledKind == SymbolKind.IntVar ||
                      u.CalledKind == SymbolKind.RealVar ||
@@ -646,7 +646,7 @@ namespace BasAnalysis.CLI
             if (!Utilities.checkLoaded("TREE", engine)) return;
             if (!Utilities.checkAnalysed("TREE", engine.CurrentProgInfo.ProgName, analyzed)) return;
 
-            Command_Tree(BasToolsEngine.Symbols, arglist);
+            Command_Tree(engine.Symbols, arglist);
         }
 
         // =====================================

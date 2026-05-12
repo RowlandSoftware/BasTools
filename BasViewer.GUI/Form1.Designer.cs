@@ -53,6 +53,7 @@
             toolStripTextBoxSearch = new ToolStripTextBox();
             menuStripRight = new ToolStrip();
             toolStripButtonMenu = new ToolStripButton();
+            panelSearchNav = new Panel();
             ((System.ComponentModel.ISupportInitialize)webView2).BeginInit();
             contextMenuStrip1.SuspendLayout();
             topPanel.SuspendLayout();
@@ -290,6 +291,15 @@
             toolStripButtonMenu.Text = "Menu";
             toolStripButtonMenu.Click += toolStripButtonMenu_Click;
             // 
+            // panelSearchNav
+            // 
+            panelSearchNav.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            panelSearchNav.Dock = DockStyle.Bottom;
+            panelSearchNav.Location = new Point(0, 984);
+            panelSearchNav.Name = "panelSearchNav";
+            panelSearchNav.Size = new Size(1381, 56);
+            panelSearchNav.TabIndex = 6;
+            // 
             // Form1
             // 
             AllowDrop = true;
@@ -299,6 +309,7 @@
             Controls.Add(label1);
             Controls.Add(webView2);
             Controls.Add(topPanel);
+            Controls.Add(panelSearchNav);
             Controls.Add(statusStrip1);
             Name = "Form1";
             Text = "Form1";
@@ -352,5 +363,6 @@
         private ToolStripComboBox combProcFnFinder;
         private ToolStripButton toolStripButton10;
         private ToolStripTextBox toolStripTextBoxSearch;
+        private Panel panelSearchNav;
     }
 }
