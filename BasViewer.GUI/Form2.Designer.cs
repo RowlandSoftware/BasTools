@@ -45,13 +45,15 @@
             label1 = new Label();
             label2 = new Label();
             chkMatchCase = new CheckBox();
+            labTip = new Label();
+            labMessage = new Label();
             SuspendLayout();
             // 
             // btnOK
             // 
             btnOK.DialogResult = DialogResult.OK;
             btnOK.Font = new Font("Segoe UI Semibold", 10.125F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            btnOK.Location = new Point(744, 537);
+            btnOK.Location = new Point(743, 595);
             btnOK.Name = "btnOK";
             btnOK.Size = new Size(150, 46);
             btnOK.TabIndex = 0;
@@ -63,7 +65,7 @@
             // 
             btnCancel.DialogResult = DialogResult.Cancel;
             btnCancel.Font = new Font("Segoe UI", 10.125F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            btnCancel.Location = new Point(67, 537);
+            btnCancel.Location = new Point(66, 595);
             btnCancel.Name = "btnCancel";
             btnCancel.Size = new Size(150, 46);
             btnCancel.TabIndex = 1;
@@ -207,6 +209,7 @@
             // label1
             // 
             label1.AutoSize = true;
+            label1.ForeColor = SystemColors.HotTrack;
             label1.Location = new Point(39, 202);
             label1.Name = "label1";
             label1.Size = new Size(117, 32);
@@ -216,6 +219,7 @@
             // label2
             // 
             label2.AutoSize = true;
+            label2.ForeColor = SystemColors.HotTrack;
             label2.Location = new Point(39, 29);
             label2.Name = "label2";
             label2.Size = new Size(127, 32);
@@ -233,13 +237,37 @@
             chkMatchCase.Text = "Match case";
             chkMatchCase.UseVisualStyleBackColor = true;
             // 
+            // labTip
+            // 
+            labTip.AutoSize = true;
+            labTip.Font = new Font("Segoe UI Semibold", 10.125F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            labTip.ForeColor = SystemColors.HotTrack;
+            labTip.Location = new Point(68, 521);
+            labTip.Name = "labTip";
+            labTip.Size = new Size(63, 37);
+            labTip.TabIndex = 21;
+            labTip.Text = "TIP:";
+            // 
+            // labMessage
+            // 
+            labMessage.AutoSize = true;
+            labMessage.Font = new Font("Segoe UI", 10.125F);
+            labMessage.ForeColor = SystemColors.HotTrack;
+            labMessage.Location = new Point(156, 521);
+            labMessage.Name = "labMessage";
+            labMessage.Size = new Size(67, 37);
+            labMessage.TabIndex = 22;
+            labMessage.Text = "msg";
+            // 
             // frmAdvancedSearch
             // 
             AcceptButton = btnOK;
             AutoScaleDimensions = new SizeF(13F, 32F);
             AutoScaleMode = AutoScaleMode.Font;
             CancelButton = btnCancel;
-            ClientSize = new Size(960, 604);
+            ClientSize = new Size(960, 669);
+            Controls.Add(labMessage);
+            Controls.Add(labTip);
             Controls.Add(chkMatchCase);
             Controls.Add(label2);
             Controls.Add(label1);
@@ -286,5 +314,7 @@
         private Label label1;
         private Label label2;
         private CheckBox chkMatchCase;
+        private Label labTip;
+        private Label labMessage;
     }
 }

@@ -15,6 +15,8 @@ namespace BasViewer.GUI
         public BasToolsEngine? Engine { get; set; }
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public Action<string, SearchOptions>? RunSearch { get; set; }
+        string[] tips;
+        int tipsIndex;
 
         public frmAdvancedSearch()
         {
@@ -23,6 +25,11 @@ namespace BasViewer.GUI
             chkBoxProcFn.Checked = false;
             chkBoxText.Checked = false;
             chkWholeWords.Checked = true;
+            tips = new string[] {
+                "Search works better when you look for one term at a time",
+                "You cannot search for variables when a text file is loaded",
+                "For arrays, add empty brackets () and deselect Whole Words" };
+            tipsIndex = 0;
         }
         private void DoSearch()
         {
@@ -50,9 +57,17 @@ namespace BasViewer.GUI
             chkInt.Enabled = !IsTextFile;
             chkString.Enabled = !IsTextFile;
         }
+        public void SetMessage(string msg)
+        {
+            labTip.Visible = false;
+            labMessage.Text = msg;
+            txtBoxAdvSearch.Focus();
+        }
         public void SetTextFocus()
         {
             this.txtBoxAdvSearch.Focus();
+            labMessage.Text = tips[(tipsIndex++) % 3];
+            labTip.Visible = true;
         }
         private void chkBoxVars_CheckedChanged(object sender, EventArgs e)
         {

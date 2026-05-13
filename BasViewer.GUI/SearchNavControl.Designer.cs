@@ -42,7 +42,7 @@
             // 
             tableLayoutPanel1.ColumnCount = 3;
             tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 454F));
+            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 384F));
             tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             tableLayoutPanel1.Controls.Add(flowLayoutPanel1, 1, 0);
             tableLayoutPanel1.Dock = DockStyle.Fill;
@@ -59,9 +59,9 @@
             flowLayoutPanel1.Controls.Add(labStatus);
             flowLayoutPanel1.Controls.Add(btnStop);
             flowLayoutPanel1.Controls.Add(btnNext);
-            flowLayoutPanel1.Location = new Point(517, 3);
+            flowLayoutPanel1.Location = new Point(552, 3);
             flowLayoutPanel1.Name = "flowLayoutPanel1";
-            flowLayoutPanel1.Size = new Size(448, 54);
+            flowLayoutPanel1.Size = new Size(378, 54);
             flowLayoutPanel1.TabIndex = 2;
             // 
             // btnPrev
@@ -69,7 +69,7 @@
             btnPrev.Font = new Font("Segoe UI", 10.125F);
             btnPrev.Location = new Point(3, 3);
             btnPrev.Name = "btnPrev";
-            btnPrev.Size = new Size(150, 46);
+            btnPrev.Size = new Size(100, 46);
             btnPrev.TabIndex = 1;
             btnPrev.Text = "<<";
             btnPrev.UseVisualStyleBackColor = true;
@@ -78,15 +78,15 @@
             // 
             labStatus.AutoSize = true;
             labStatus.Font = new Font("Segoe UI", 10.125F);
-            labStatus.Location = new Point(159, 0);
+            labStatus.Location = new Point(109, 0);
             labStatus.Name = "labStatus";
-            labStatus.Size = new Size(73, 37);
+            labStatus.Size = new Size(103, 37);
             labStatus.TabIndex = 2;
-            labStatus.Text = "3/12";
+            labStatus.Text = "03/112";
             // 
             // btnStop
             // 
-            btnStop.Location = new Point(238, 3);
+            btnStop.Location = new Point(218, 3);
             btnStop.Name = "btnStop";
             btnStop.Size = new Size(50, 46);
             btnStop.TabIndex = 1;
@@ -97,9 +97,9 @@
             // btnNext
             // 
             btnNext.Font = new Font("Segoe UI", 10.125F);
-            btnNext.Location = new Point(294, 3);
+            btnNext.Location = new Point(274, 3);
             btnNext.Name = "btnNext";
-            btnNext.Size = new Size(150, 46);
+            btnNext.Size = new Size(100, 46);
             btnNext.TabIndex = 0;
             btnNext.Text = ">>";
             btnNext.UseVisualStyleBackColor = true;

@@ -233,6 +233,7 @@ namespace BasViewer.GUI
                 td.line-number {{
                 color: {map["linenumber_fg"]};
                 background-color: {map["linenumber_bg"]};
+                width: 5ch;
                 padding-right: 4px;
                 text-align: right;
                 vertical-align: top;

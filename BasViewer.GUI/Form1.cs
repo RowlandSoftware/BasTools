@@ -436,6 +436,9 @@ namespace BasViewer.GUI
         {
             if (!_loaded)
                 return;
+            
+            if (panelSearchNav.Visible)
+                panelSearchNav.Visible = false;
 
             var scrollY = await webView2.ExecuteScriptAsync("document.scrollingElement.scrollTop");
             int.TryParse(scrollY, out int savedScroll);
@@ -572,7 +575,7 @@ namespace BasViewer.GUI
             if (string.IsNullOrWhiteSpace(term))
                 return;
 
-            term = term.Trim(); // ?
+            //term = term.Trim(); // ?
 
             if (matches == null)
                 matches = new List<SearchMatch>();
@@ -618,7 +621,7 @@ namespace BasViewer.GUI
             //var distinctLines = matches.Select(m => m.Line).Distinct().Count();
             //Log($"Search '{term}': matches.Count = {matches.Count}, distinct lines = {distinctLines}");
 
-            ApplySearchResults(term);
+            ApplySearchResults(term);            
         }
         private async void ApplySearchResults(string term)
         {
@@ -630,10 +633,18 @@ namespace BasViewer.GUI
             if (matches.Count == 0)
             {
                 panelSearchNav.Visible = false;
+                advancedSearch.SetVariableEnabled(_textFile);
+                advancedSearch.Show();
+                advancedSearch.SetMessage("No matches. Please try again");
+                advancedSearch.BringToFront();
                 return;
             }
             else
                 searchNav.UpdateStatus(currentMatchIndex, matches.Count);
+
+            // Array?
+            if (term.EndsWith("()"))
+                term = term.Substring(0, term.Length - 2);
 
             // Highlight all matches in WebView2
             string escaped = term.Replace("'", "\\'");
@@ -698,6 +709,52 @@ namespace BasViewer.GUI
                     return false;
             }
         }
+        public static IEnumerable<SearchMatch> GetMatchesForSymbol(
+            SymbolInfo sym,
+            IReadOnlyList<DisplayLine> displayLines)
+        {
+            string name = sym.Name;
+            int nameLength = name.Length;
+
+            foreach (var use in sym.Uses)
+            {
+                int targetLine = use.LineNumber;
+
+                // Find the DisplayLine with this BASIC line number
+                // (stop early because BASIC lines are sorted)
+                DisplayLine? dl = null;
+                foreach (var line in displayLines)
+                {
+                    if (line.Linenumber == targetLine)
+                    {
+                        dl = line;
+                        break;
+                    }
+                    if (line.Linenumber > targetLine)
+                        break;
+                }
+
+                if (dl == null)
+                    continue; // should not happen unless program is corrupt
+
+                string raw = dl.PlainLine;
+                if (string.IsNullOrEmpty(raw))
+                    continue;
+
+                // Find the symbol name inside the raw line
+                int idx = raw.IndexOf(name, StringComparison.Ordinal);
+                if (idx < 0)
+                    continue; // symbol not found in this line (rare but possible)
+
+                yield return new SearchMatch
+                {
+                    LineNumber = targetLine,
+                    ColumnStart = idx,
+                    Length = nameLength
+                };
+            }
+        }
+
         // ********* Zoom Control helper ********
         private void ApplyZoom()
         {
