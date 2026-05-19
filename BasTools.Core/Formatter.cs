@@ -495,7 +495,7 @@ namespace BasTools.Core
         {
             if (!switches.AssemblerColumns || progline.TaggedLine.StartsWith('['))
                 return false;
-            //DBG("Hello");
+
             var cols = progline.IsArm ? ArmColumns : M6502Columns;
 
             // Final output builders

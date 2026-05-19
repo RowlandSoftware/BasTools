@@ -144,7 +144,8 @@
         private static string parseTextLine(string textLine, ref bool IsDefLine)
         {
             StringBuilder output = new();
-            bool IsDef = false;
+            //bool IsDef = false;
+            bool suspendDetokenising = false;
 
             for (int i = 0; i < textLine.Length; i++)
             {
@@ -153,19 +154,38 @@
                 foreach (string keyword in keywords)
                 {
                     match = false;
+                    if (suspendDetokenising) // don't match PROC & Function names e.g. PROCNEWSEASON (NEW & ON are keywords)
+                    {
+                        if (textLine[i] is ':' or '(' or ' ')
+                        {
+                            suspendDetokenising = false;
+                            output.Append(SemanticTags.Reset);
+                        }                            
+                        else
+                        {
+                            output.Append(textLine[i]);
+
+                            if (i < textLine.Length)
+                                i++;
+                            break;
+                        }                            
+                    }
                     if (textLine.Substring(i).StartsWith(keyword))
                     {
                         output.Append(SemanticTags.Keyword + keyword + SemanticTags.Reset);
-                        if (IsDef)
+                        if (keyword == "PROC")
                         {
-                            if (keyword == "PROC")
-                                output.Append(SemanticTags.ProcName);
-                            else if (keyword == "FN")
-                                output.Append(SemanticTags.FunctionName);
+                            output.Append(SemanticTags.ProcName);
+                            suspendDetokenising = true;
+                        }
+                        if (keyword == "FN")
+                        {
+                            output.Append(SemanticTags.FunctionName);
+                            suspendDetokenising = true;
                         }
                         if (keyword == "DEF")
                         {
-                            IsDef = true;
+                            //IsDef = true;
                             IsDefLine = true;
                         }
                         if (keyword == "REM")
@@ -174,6 +194,7 @@
                             output.Append(SemanticTags.RemText + textLine.Substring(i) + SemanticTags.Reset);
                             return output.ToString();
                         }
+
                         i += keyword.Length;
                         match = true;
                         break;
@@ -181,7 +202,7 @@
                 }
                 if (i >= textLine.Length) // if the keyword took us to EOL...
                 {
-                    if (IsDef)
+                    if (suspendDetokenising)
                         output.Append(SemanticTags.Reset); // close the tag
 
                     return output.ToString();
@@ -197,10 +218,10 @@
                     }
                     output.Append('"' + SemanticTags.Reset);
                 }
-                else if (IsDef && (textLine[i] == ':' || textLine[i] == '('))
+                else if (suspendDetokenising && (textLine[i] is ':' or '(' or ' '))
                 {
                     output.Append(SemanticTags.Reset + textLine[i]); // close the tag
-                    IsDef = false;
+                    suspendDetokenising = false;
                 }
                 else
                 {
@@ -208,7 +229,7 @@
                 }
             }
             // EOL
-            if (IsDef) // still not been cancelled
+            if (suspendDetokenising) // still not been cancelled
                 output.Append(SemanticTags.Reset);
 
             return output.ToString();

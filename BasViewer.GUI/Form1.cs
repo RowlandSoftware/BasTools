@@ -567,6 +567,7 @@ namespace BasViewer.GUI
         {
             public int Line;
             public int Column;
+            public int Length;
             public string Text;
             public SymbolKind Type;
         }
@@ -748,9 +749,10 @@ namespace BasViewer.GUI
 
                 yield return new SearchMatch
                 {
-                    LineNumber = targetLine,
-                    ColumnStart = idx,
-                    Length = nameLength
+                    Line = targetLine,
+                    Column = idx,
+                    Length = nameLength,
+                    Text = name
                 };
             }
         }
