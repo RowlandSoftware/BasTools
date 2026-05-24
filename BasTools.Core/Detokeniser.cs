@@ -65,7 +65,7 @@ namespace BasTools.Core
             // *********** Load File **************
 
             bool result = LoadFile(fn, State);
-            Console.WriteLine($"Loadfile result {result}");
+            //Console.WriteLine($"Loadfile result {result}");
             if (!result) return false;
 
             // Update progInfo
@@ -82,13 +82,13 @@ namespace BasTools.Core
                     State.Z80 = true;
                 else
                 {
-                    Console.WriteLine($"Format not a BASIC program");
+                    Console.WriteLine($"File not a BASIC program");
                     return false;
                     //throw new BasToolsException("\'" + fn + "\' is not a BASIC program");
                 }
             }
             progInfo.Z80 = State.Z80;
-            Console.WriteLine($"Format {progInfo.BasicDialect} detected");
+            //Console.WriteLine($"Format {progInfo.BasicDialect} detected");
 
             // Split the file into lines
             foreach (LineRecord progline in ParseLines(State.Data, progInfo)) // LineRecord is a temporary structure to hold int linenumber, byte[] lineContent here only

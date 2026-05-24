@@ -92,11 +92,15 @@ namespace BasTools.Core
     }
     public class BasLister
     {
-        //****************** Display the Output ***********Empty.String
+        //****************** Display the Output ***********
         public static void DisplayProgramLines(Listing formattedListing, ListerOptions switches, ProgInfo progInfo)
         {
             if (formattedListing == null)
                 return;
+            if (Console.IsOutputRedirected)
+            {
+                switches.FlgPause = false;
+            }
 
             ListerState listerState = new(); // this sets initial conditions
 
@@ -415,6 +419,11 @@ namespace BasTools.Core
         }
         private static ConsoleKey SimplePauseCheck(ref int linesprinted)
         {
+            if (Console.IsOutputRedirected)
+            {
+                return ConsoleKey.D0;
+            }
+
             if (linesprinted == Console.WindowHeight - 4)
             {
                 Console.ForegroundColor = ConsoleColor.White;
@@ -610,6 +619,11 @@ namespace BasTools.Core
         //**** Utility functions ******
         private static ConsoleKey CheckForPause(ListerOptions switches, ref int linesprinted)
         {
+            if (Console.IsOutputRedirected)
+            {
+                return ConsoleKey.D0;
+            }
+
             if (linesprinted == Console.WindowHeight - 4)
             {
                 Console.ForegroundColor = switches.ForeColor;

@@ -179,7 +179,7 @@
                 if (engine.LoadAndFormatFile(filename, formatOptions, progInfo))
                 {
                     formattedListing = engine.CurrentListing;
-                    Console.WriteLine($"I got {formattedListing.Lines.Count} lines");
+                    //Console.WriteLine($"I got {formattedListing.Lines.Count} lines");
                     BasLister.DisplayProgramLines(formattedListing, listerOptions, progInfo);
                 }
             }

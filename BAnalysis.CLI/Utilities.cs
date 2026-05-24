@@ -292,6 +292,11 @@ namespace BasAnalysis.CLI
         }
         public static ConsoleKey CheckForPause(ref int linesprinted)
         {
+            if (Console.IsOutputRedirected)
+            {
+                return ConsoleKey.D0;
+            }
+
             if (linesprinted == Console.WindowHeight - 4)
             {
                 string prompt = " -- Enter - next line | Space - Continue | Esc - End --";
