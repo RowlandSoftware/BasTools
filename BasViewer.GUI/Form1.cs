@@ -26,6 +26,7 @@ namespace BasViewer.GUI
         public bool flgFns { get; set; } = false;
         public bool flgLiteralStrings { get; set; } = false;
         public bool flgRems { get; set; } = false;
+        public bool flgKeywords { get; set; } = false;
     }
     public partial class Form1 : Form
     {
@@ -35,6 +36,7 @@ namespace BasViewer.GUI
         BasToolsEngine? engine;
         private List<DisplayLine> _displayLines = new();
         private string _htmlClose;
+        private string _htmlDoc;
         private string _script;
         private bool _loaded;
         private bool _textFile;
@@ -236,6 +238,9 @@ namespace BasViewer.GUI
             {
                 MessageBox.Show($"{ex.Message}\n\n{ex.InnerException?.Message ?? ""}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+            panelSearchNav.Visible = false;
+            advancedSearch.Clear();
+
             return IsTextNotBasic;
         }
         private void TextToHtml(BasToolsEngine engine)
@@ -329,11 +334,11 @@ namespace BasViewer.GUI
             //MessageBox.Show($"Button status: {pretty} {splitLines}");
 
             ListerOptions listerOptions = new ListerOptions(true, false, splitLines, true); //bool indent, bool indentDefs, bool splitLines, bool pretty (ignored)
-            List<DisplayLine> lines = engine.prepLinesForDisplay(listerOptions);
+            List<DisplayLine> lines = engine.PrepLinesForDisplay(listerOptions);
 
             string htmlHeader = "<html><head>" + Themes.GetCss(comboBoxTheme.Text) + _script + "</head><body><table>";
 
-            StringBuilder htmlDoc = new StringBuilder(htmlHeader);
+            StringBuilder htmlDoc = new StringBuilder();
 
             bool IsDef = false;
             bool IsInDef = false;
@@ -401,18 +406,10 @@ namespace BasViewer.GUI
             statusRight.Text = $"{progInfo.BasicDialect}";
             if (combProcFnFinder.Items.Count > 0)
                 combProcFnFinder.SelectedIndex = 0;
-            webView2.NavigateToString(htmlDoc.ToString());
-        }
-        private string? GetFormattedLineNumber(int docLine)
-        {
-            int index = docLine - 1;
-            if (index < 0 || index >= _displayLines.Count)
-                return null;
 
-            var dl = _displayLines[index];
-            return string.IsNullOrEmpty(dl.sLineNumber)
-                ? null
-                : dl.sLineNumber;
+            _htmlDoc = htmlDoc.ToString();
+
+            webView2.NavigateToString(htmlHeader + _htmlDoc);
         }
         private void LoadFile(string filename)
         {
@@ -432,6 +429,24 @@ namespace BasViewer.GUI
             else
                 TextToHtml(engine);
         }
+        private async void Refresh(BasToolsEngine engine) // use when theme changes AFTER Reload has been used
+        {
+            if(!_loaded)
+                return;
+
+            if (panelSearchNav.Visible)
+                panelSearchNav.Visible = false;
+
+            var scrollY = await webView2.ExecuteScriptAsync("document.scrollingElement.scrollTop");
+            bool v = int.TryParse(scrollY, out int savedScroll);
+            if (!v) savedScroll = 0;
+
+            string htmlHeader = "<html><head>" + Themes.GetCss(comboBoxTheme.Text) + _script + "</head><body><table>";
+
+            webView2.NavigateToString(htmlHeader + _htmlDoc);
+
+            await webView2.ExecuteScriptAsync($"document.scrollingElement.scrollTop = {savedScroll};");
+        }
         private async void Reload(BasToolsEngine engine)
         {
             if (!_loaded)
@@ -441,7 +456,8 @@ namespace BasViewer.GUI
                 panelSearchNav.Visible = false;
 
             var scrollY = await webView2.ExecuteScriptAsync("document.scrollingElement.scrollTop");
-            int.TryParse(scrollY, out int savedScroll);
+            bool v = int.TryParse(scrollY, out int savedScroll);
+            if (!v) savedScroll = 0;
 
             if (!_textFile)
                 BasicToHtml(engine);
@@ -568,7 +584,7 @@ namespace BasViewer.GUI
             public int Line;
             public int Column;
             public int Length;
-            public string Text;
+            public string? Text;
             public SymbolKind Type;
         }
         public void DoSearch(string term, SearchOptions opts)
@@ -703,8 +719,14 @@ namespace BasViewer.GUI
                 // ───────────────────────────────
                 // REMs (if you classify them separately) TODO
                 // ───────────────────────────────
-                //case SymbolKind.RemText:
-                  //  return opts.flgRems;
+                case SymbolKind.RemText:
+                  return opts.flgRems;
+
+                // ───────────────────────────────
+                // KEYWORDS (if you classify them separately) TODO
+                // ───────────────────────────────
+                case SymbolKind.Keyword:
+                  return opts.flgKeywords;
 
                 default:
                     return false;
@@ -770,7 +792,8 @@ namespace BasViewer.GUI
         private void comboBoxTheme_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (_loaded)
-                Reload(engine);
+                //Reload(engine);
+                Refresh(engine);
         }
         private void toolStripButtonMenu_Click(object sender, EventArgs e)
         {

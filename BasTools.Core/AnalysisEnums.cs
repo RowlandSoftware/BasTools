@@ -13,6 +13,8 @@
         Fn,
         Proc,
         Label,
+        RemText,    // For Viewer only
+        Keyword,    //   "
         Unknown
     }
     public enum SymbolReadOrWrite

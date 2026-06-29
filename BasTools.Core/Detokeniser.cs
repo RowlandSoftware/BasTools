@@ -64,9 +64,15 @@ namespace BasTools.Core
 
             // *********** Load File **************
 
-            bool result = LoadFile(fn, State);
-            //Console.WriteLine($"Loadfile result {result}");
-            if (!result) return false;
+            try
+            {
+                LoadFile(fn, State);
+            }
+            catch (IOException ex)
+            {
+                Console.WriteLine($"Error opening file '{fn}'\n{ex.Message}");
+                return false;
+            }
 
             // Update progInfo
             progInfo.Filename = fn;
@@ -113,7 +119,7 @@ namespace BasTools.Core
 
         } // End ProcessRawProgram()
 
-        private static bool LoadFile(string fn, ParserState State)
+        private static void LoadFile(string fn, ParserState State)
         {
             using (FileStream stream = new(fn, FileMode.Open, FileAccess.Read))
             {
@@ -125,7 +131,6 @@ namespace BasTools.Core
                     throw new IOException("File read incomplete.");
                 }
             }
-            return true;
         }
         IEnumerable<LineRecord> ParseLines(byte[] data, ProgInfo progInfo)
         {
@@ -180,9 +185,9 @@ namespace BasTools.Core
         {
             firstPass(parserState, tokenisedLine, returnObject, progInfo);
 
-            secondPass(returnObject);
+            secondPass(returnObject); // for 'implied THEN'
 
-            thirdPass(returnObject);
+            thirdPass(returnObject);  // detect = as Comparison Operator for assignment/reference in BasAnalysis
         }
         private void firstPass(ParserState parserState, byte[] tokenisedLine, ProgramLine returnObject, ProgInfo progInfo)
         {
@@ -277,9 +282,9 @@ namespace BasTools.Core
                     if (curchar is ':' || (curchar == ' ' && parserState.InIfCondition && parserState.ExprComplete)) // implied THEN
                     {
                         //DBG($"Curchar: \"{curchar}\" ");
-                        taggedline += SemanticTags.StatementSep;
+                        taggedline += SemanticTags.StatementSep; //     INCORRECT INSERTIONS HERE
                         closeTag = true;
-                        parserState.InIfCondition = false;
+                        parserState.InIfCondition = false; 
                     }
                     else if (curchar == ',' || curchar == ';')
                     {
@@ -802,16 +807,16 @@ namespace BasTools.Core
 
                 // Expression is complete if this token is a terminal
                 bool exprComplete =
-                t.tag == SemanticTags.Variable ||
-                t.tag == SemanticTags.Number ||
-                t.tag == SemanticTags.StringLiteral ||
-                t.tag == SemanticTags.CloseBracket ||
-                (t.tag == SemanticTags.Keyword &&
-                t.value != "AND" &&
-                t.value != "OR" &&
-                t.value != "EOR" &&
-                t.value != "NOT" &&
-                t.value != "FN");
+                    t.tag == SemanticTags.Variable ||
+                    t.tag == SemanticTags.Number ||
+                    t.tag == SemanticTags.StringLiteral ||
+                    t.tag == SemanticTags.CloseBracket ||
+                    (t.tag == SemanticTags.Keyword &&
+                        t.value != "AND" &&
+                        t.value != "OR" &&
+                        t.value != "EOR" &&
+                        t.value != "NOT" &&
+                        t.value != "FN");
 
                 if (!exprComplete)
                     continue;
@@ -823,12 +828,12 @@ namespace BasTools.Core
 
                 // Continuation tokens
                 bool continuation =
-                next.tag == SemanticTags.Operator ||
-                next.tag == SemanticTags.OpenBracket ||
-                next.tag == SemanticTags.Variable ||
-                next.tag == SemanticTags.Number ||
-                next.tag == SemanticTags.StringLiteral ||
-                next.tag == SemanticTags.BuiltInFn;
+                    next.tag == SemanticTags.Operator ||
+                    next.tag == SemanticTags.OpenBracket ||
+                    next.tag == SemanticTags.Variable ||
+                    next.tag == SemanticTags.Number ||
+                    next.tag == SemanticTags.StringLiteral ||
+                    next.tag == SemanticTags.BuiltInFn;
 
                 if (next.tag == SemanticTags.Keyword && (next.value == "AND" || next.value == "OR" || next.value == "EOR"))
                 {
@@ -837,17 +842,17 @@ namespace BasTools.Core
 
                 // NEW RULE: A variable does NOT continue the expression if the current token is terminal
                 bool currentIsTerminal =
-                t.tag == SemanticTags.Variable ||
-                t.tag == SemanticTags.Number ||
-                t.tag == SemanticTags.StringLiteral ||
-                t.tag == SemanticTags.CloseBracket ||
-                t.tag == SemanticTags.FunctionName ||
-                (t.tag == SemanticTags.Keyword &&
-                t.value != "AND" &&
-                t.value != "OR" &&
-                t.value != "EOR" &&
-                t.value != "NOT" &&
-                t.value != "FN");
+                    t.tag == SemanticTags.Variable ||
+                    t.tag == SemanticTags.Number ||
+                    t.tag == SemanticTags.StringLiteral ||
+                    t.tag == SemanticTags.CloseBracket ||
+                    t.tag == SemanticTags.FunctionName ||
+                    (t.tag == SemanticTags.Keyword &&
+                        t.value != "AND" &&
+                        t.value != "OR" &&
+                        t.value != "EOR" &&
+                        t.value != "NOT" &&
+                        t.value != "FN");
 
                 if (currentIsTerminal && next.tag == SemanticTags.Variable)
                 {
@@ -855,7 +860,7 @@ namespace BasTools.Core
                 }
 
                 // Chained IF
-                if (next.tag == SemanticTags.Keyword && next.value == "IF")
+                if (next.tag == SemanticTags.Keyword && (next.value == "IF" || next.value == "TO"))
                     continuation = true;
 
                 if (continuation)

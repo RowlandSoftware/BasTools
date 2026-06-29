@@ -81,7 +81,7 @@
             webView2.Enabled = false;
             webView2.Location = new Point(0, 54);
             webView2.Name = "webView2";
-            webView2.Size = new Size(1381, 986);
+            webView2.Size = new Size(1381, 930);
             webView2.TabIndex = 3;
             webView2.Visible = false;
             webView2.ZoomFactor = 1D;
@@ -95,7 +95,7 @@
             label1.ForeColor = Color.White;
             label1.Location = new Point(0, 54);
             label1.Name = "label1";
-            label1.Size = new Size(1381, 986);
+            label1.Size = new Size(1381, 930);
             label1.TabIndex = 4;
             label1.Text = "Drag 'n' Drop a file here";
             label1.TextAlign = ContentAlignment.MiddleCenter;
@@ -220,7 +220,7 @@
             // 
             comboBoxTheme.DropDownStyle = ComboBoxStyle.DropDownList;
             comboBoxTheme.Font = new Font("Segoe UI", 10.125F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            comboBoxTheme.Items.AddRange(new object[] { "Dark", "Light", "Retro", "Mono", "Typewriter" });
+            comboBoxTheme.Items.AddRange(new object[] { "Dark", "Light", "Retro", "Mono", "VisualStudio", "Typewriter" });
             comboBoxTheme.Name = "comboBoxTheme";
             comboBoxTheme.Size = new Size(170, 54);
             comboBoxTheme.SelectedIndexChanged += comboBoxTheme_SelectedIndexChanged;
@@ -311,6 +311,7 @@
             Controls.Add(topPanel);
             Controls.Add(panelSearchNav);
             Controls.Add(statusStrip1);
+            Icon = (Icon)resources.GetObject("$this.Icon");
             Name = "Form1";
             Text = "Form1";
             DragDrop += MainForm_DragDrop;

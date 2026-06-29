@@ -162,7 +162,7 @@ namespace BasTools.Core
 
                         if (!switches.SplitLines)
                         {
-                            printLineOut(progline, switches, listerState, ref linesprinted);
+                            printLineOut(progline, switches, ref linesprinted);
                         }
                         else // SplitLines
                         {
@@ -189,37 +189,41 @@ namespace BasTools.Core
                             // Print normally if only one section - not necessary, just more efficient
                             if (sections.Lines.Count == 1)
                             {
-                                printLineOut(progline, switches, listerState, ref linesprinted);
+                                printLineOut(progline, switches, ref linesprinted);
                             }
                             else
                             {
-                                // Call the Formatter to format these 'lines'
-                                BasToolsEngine engine = new BasToolsEngine();
-
-                                engine.formatLines(sections, switches.copyToFormatOptions(), progline.fstate, progInfo, true);
-
-                                foreach (ProgramLine line in sections.Lines)
+                                if (!switches.FlgExportTagged)
                                 {
-                                    int printedLineLength = 0;
-                                    PrintLineNumber(line, switches, ref printedLineLength, first);
-                                    first = false;
-                                    PrintIndents(line, ref printedLineLength, switches);
 
-                                    PrintLineBody(line.FormattedTagged.TrimStart(), switches, ref printedLineLength, ref linesprinted);
+                                    // Call the Formatter to format these 'lines'
+                                    BasToolsEngine engine = new();
 
-                                    if (switches.FlgPause)
+                                    engine.formatLines(sections, switches.copyToFormatOptions(), progline.fstate, progInfo, true);
+
+                                    foreach (ProgramLine line in sections.Lines)
                                     {
-                                        switch (CheckForPause(switches, ref linesprinted))
+                                        int printedLineLength = 0;
+                                        PrintLineNumber(line, switches, ref printedLineLength, first);
+                                        first = false;
+                                        PrintIndents(line, ref printedLineLength, switches);
+
+                                        PrintLineBody(line.FormattedTagged.TrimStart(), switches, ref printedLineLength, ref linesprinted);
+
+                                        if (switches.FlgPause)
                                         {
-                                            case ConsoleKey.Spacebar: linesprinted = 0; break;
-                                            case ConsoleKey.Enter: linesprinted--; break;
-                                            case ConsoleKey.Escape: ResetAndExit(switches); break;
+                                            switch (CheckForPause(switches, ref linesprinted))
+                                            {
+                                                case ConsoleKey.Spacebar: linesprinted = 0; break;
+                                                case ConsoleKey.Enter: linesprinted--; break;
+                                                case ConsoleKey.Escape: ResetAndExit(switches); break;
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
-                        // After printing the line, turn off printing PROC (so don't suppress ENDPROC)
+                        // *After* printing the line, turn off printing PROC (so don't suppress ENDPROC)
                         if (switches.FlgList && listerState.Listme)
                         {
                             if (!progline.IsDef && !progline.IsInDef)
@@ -228,37 +232,44 @@ namespace BasTools.Core
                             }
                         }
                         #region debug
-                        if (switches.Debug || switches.FullDebug)
+                        if (switches.FlgExportTagged)
                         {
-                            Console.WriteLine($"{progline.LineNumber} -");
-
-                            Console.ForegroundColor = ConsoleColor.DarkYellow;
-                            Console.Write($"  Plain:     ");
-                            Console.ForegroundColor = listerState.CurrentForeground;
-                            Console.WriteLine($"{progline.PlainDetokenisedLine}");
-
-                            Console.ForegroundColor = ConsoleColor.DarkYellow;
-                            Console.Write($"  Formatted: ");
-                            Console.ForegroundColor = listerState.CurrentForeground;
-                            Console.WriteLine($"{progline.FormattedPlain}");
-
-                            Console.ForegroundColor = ConsoleColor.DarkYellow;
-                            Console.Write($"  Tagged:    ");
-                            Console.ForegroundColor = listerState.CurrentForeground;
-                            Console.WriteLine($"{progline.TaggedLine}");
-
-                            Console.ForegroundColor = ConsoleColor.DarkYellow;
-                            Console.Write($"  Formatted: ");
-                            Console.ForegroundColor = listerState.CurrentForeground;
-                            Console.WriteLine($"{progline.FormattedTagged}");
-
-                            Console.WriteLine();
+                            Console.WriteLine($"{progline.LineNumber} {progline.FormattedTagged}");
                         }
-                        if (switches.FullDebug)
+                        else
                         {
-                            Console.WriteLine("Indent: {0,-10}IsDef: {1,-10}IsInDef: {2,-10}", progline.IndentLevel, progline.IsDef, progline.IsInDef);
-                            Console.WriteLine("InAsm:  {0,-10}IsArm: {1,-10}IsZ80:   {2,-10}", progline.InAsm, progline.IsArm, progline.IsZ80);
-                            Console.WriteLine();
+                            if (switches.Debug || switches.FullDebug)
+                            {
+                                Console.WriteLine($"{progline.LineNumber} -");
+
+                                Console.ForegroundColor = ConsoleColor.DarkYellow;
+                                Console.Write($"  Plain:     ");
+                                Console.ForegroundColor = listerState.CurrentForeground;
+                                Console.WriteLine($"{progline.PlainDetokenisedLine}");
+
+                                Console.ForegroundColor = ConsoleColor.DarkYellow;
+                                Console.Write($"  Formatted: ");
+                                Console.ForegroundColor = listerState.CurrentForeground;
+                                Console.WriteLine($"{progline.FormattedPlain}");
+
+                                Console.ForegroundColor = ConsoleColor.DarkYellow;
+                                Console.Write($"  Tagged:    ");
+                                Console.ForegroundColor = listerState.CurrentForeground;
+                                Console.WriteLine($"{progline.TaggedLine}");
+
+                                Console.ForegroundColor = ConsoleColor.DarkYellow;
+                                Console.Write($"  Formatted: ");
+                                Console.ForegroundColor = listerState.CurrentForeground;
+                                Console.WriteLine($"{progline.FormattedTagged}");
+
+                                Console.WriteLine();
+                            }
+                            if (switches.FullDebug)
+                            {
+                                Console.WriteLine("Indent: {0,-10}IsDef: {1,-10}IsInDef: {2,-10}", progline.IndentLevel, progline.IsDef, progline.IsInDef);
+                                Console.WriteLine("InAsm:  {0,-10}IsArm: {1,-10}IsZ80:   {2,-10}", progline.InAsm, progline.IsArm, progline.IsZ80);
+                                Console.WriteLine();
+                            }
                         }
                         #endregion
                     } // end shouldprint
@@ -266,7 +277,7 @@ namespace BasTools.Core
             }
         }
         // ******** Make List of tagged program lines ********
-        public static List<DisplayLine> prepLinesForDisplay(Listing formattedListing, ListerOptions switches, ProgInfo progInfo)
+        public static List<DisplayLine> PrepLinesForDisplay(Listing formattedListing, ListerOptions switches, ProgInfo progInfo)
         {
             List<DisplayLine> output = new();
             ListerState listerState = new(); // this sets initial conditions
@@ -294,15 +305,16 @@ namespace BasTools.Core
                     {
                         if (!switches.SplitLines)
                         {
-                            DisplayLine displayLine = new(progline.LineNumber);
-
-                            displayLine.sLineNumber = progline.FormattedLineNumber.Trim();
-                            displayLine.Indent = progline.IndentLevel;
-                            displayLine.IsDef = progline.IsDef;
-                            displayLine.IsInDef = progline.IsInDef;
+                            DisplayLine displayLine = new(progline.LineNumber)
+                            {
+                                sLineNumber = progline.FormattedLineNumber.Trim(),
+                                Indent = progline.IndentLevel,
+                                IsDef = progline.IsDef,
+                                IsInDef = progline.IsInDef,
+                                LineBody = progline.FormattedTagged.TrimStart(),
+                                PlainLine = progline.FormattedPlain.Trim()
+                            };
                             displayLine.SetDefIndent(progline.DefIndent > 0);
-                            displayLine.LineBody = progline.FormattedTagged.TrimStart();
-                            displayLine.PlainLine = progline.FormattedPlain.Trim();
 
                             output.Add(displayLine);
                         }
@@ -312,7 +324,7 @@ namespace BasTools.Core
 
                             Listing sections = new(new List<ProgramLine>());
 
-                            // generate a 'min-program-listing' from the sections
+                            // generate a 'mini-program-listing' from the sections
                             foreach (string taggedSection in SplitStatements(progline.TaggedLine))
                             {
                                 ProgramLine line = new(progline);
@@ -382,6 +394,8 @@ namespace BasTools.Core
             // Indents
             Console.Write(new string(' ', progline.IndentLevel * 2));
             printedLineLength += progline.IndentLevel * 2;
+            goto label;
+            label:
 
             Console.Write(new string(' ', progline.DefIndent * 2));
             printedLineLength += progline.DefIndent * 2;
@@ -481,8 +495,11 @@ namespace BasTools.Core
 
             linesprinted += rows;
         }
-        static void printLineOut(ProgramLine progline, ListerOptions switches, ListerState listerState, ref int linesprinted)
+        static void printLineOut(ProgramLine progline, ListerOptions switches, ref int linesprinted)
         {
+            if (switches.FlgExportTagged)
+                return;
+
             int printedLineLength = 0;
 
             if (!switches.NoFormat)

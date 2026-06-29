@@ -21,26 +21,21 @@ namespace BasViewer.GUI
         public frmAdvancedSearch()
         {
             InitializeComponent();
-
+            /*chkBoxVars.Checked = false;
+            chkBoxProcFn.Checked = false;
+            chkBoxText.Checked = false;*/
+            chkWholeWords.Checked = true;
             tips = new string[] {
-                "Select category first, then choose the item",
+                "Search works better when you look for one term at a time",
                 "You cannot search for variables when a text file is loaded",
-                "For arrays, add empty brackets ()" };
+                "For arrays, add empty brackets () and deselect Whole Words" };
             tipsIndex = 0;
-
-            chkFn.Tag = SymbolKind.Fn;
-            chkProc.Tag = SymbolKind.Proc;
-            chkReal.Tag = SymbolKind.RealVar;
-            chkInt.Tag = SymbolKind.IntVar;
-            chkString.Tag = SymbolKind.StringVar;
-            chkLiteralString.Tag = SymbolKind.LiteralString;
-            chkRem.Tag = "REM";
-            chkKeywords.Tag = "KEYWORD";
         }
         private void DoSearch()
         {
             SearchOptions opts = new();
-
+            opts.whole_word = chkWholeWords.Checked;
+            opts.match_case = chkMatchCase.Checked;
             opts.flgRealVars = chkReal.Enabled && chkReal.Checked;
             opts.flgIntegers = chkInt.Enabled && chkInt.Checked;
             opts.flgStrings = chkString.Enabled && chkString.Checked;
@@ -48,10 +43,9 @@ namespace BasViewer.GUI
             opts.flgFns = chkFn.Enabled && chkFn.Checked;
             opts.flgLiteralStrings = chkLiteralString.Enabled && chkLiteralString.Checked;
             opts.flgRems = chkRem.Enabled && chkRem.Checked;
-            opts.flgKeywords = chkKeywords.Enabled && chkKeywords.Checked;
 
             // pass control to the callback in Form1
-            RunSearch?.Invoke(cmbBoxAdvSearch.SelectedItem.ToString(), opts);
+            RunSearch?.Invoke(txtBoxAdvSearch.Text, opts);
 
             // Hide the dialog (not close)
             this.Hide();
@@ -66,11 +60,11 @@ namespace BasViewer.GUI
         {
             labTip.Visible = false;
             labMessage.Text = msg;
-            //txtBoxAdvSearch.Focus();
+            txtBoxAdvSearch.Focus();
         }
         public void SetTextFocus()
         {
-            this.cmbBoxAdvSearch.Focus();
+            this.txtBoxAdvSearch.Focus();
             labMessage.Text = tips[(tipsIndex++) % 3];
             labTip.Visible = true;
         }
@@ -78,12 +72,10 @@ namespace BasViewer.GUI
         {
             if (!Engine.Analyzed)
             {
-                SetMessage("Select category and item");
+                bool analyzed = false; // dummy
+                Engine.Analyse(Engine, ref analyzed);
             }
-            else
-            {
-                DoSearch();
-            }
+            DoSearch();
         }
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
@@ -98,61 +90,25 @@ namespace BasViewer.GUI
         {
             this.Hide();
         }
-        private void Radio_CheckedChanged(object sender, EventArgs e)
+
+        private void btnSelAll_Click(object sender, EventArgs e)
         {
-            var rb = (RadioButton)sender;
-
-            // Ignore the "unchecked" event
-            if (!rb.Checked)
-                return;
-
-            // Lazy analysis
-            if (!Engine.Analyzed)
-            {
-                bool analyzed = false;
-                Engine.Analyse(Engine, ref analyzed);
-            }
-
-            cmbBoxAdvSearch.Items.Clear();
-
-            // What kind of item are we looking for?
-            if (rb.Tag == "REM" || rb.Tag == "KEYWORD")
-            {
-                // TODO
-            }
-            else
-            {
-                // Extract the SymbolKind from the Tag
-                var kind = (SymbolKind)rb.Tag;
-
-                FillCombobox(kind, Engine.Symbols);
-            }
-            SetTextFocus();
+            SelAll(true);
         }
-        private void FillCombobox(SymbolKind kind, Dictionary<string, SymbolInfo> Symbols)
+        private void btnDeselAll_Click(object sender, EventArgs e)
         {
-            var list = Symbols.Values.Where(s => s.Kind == kind || (kind == SymbolKind.IntVar && s.Kind == SymbolKind.StaticInt)).OrderBy(s => s.Name).ToList<SymbolInfo>();
-            if (list.Count == 0) return;
-
-            foreach (SymbolInfo symInfo in list)
-            {
-                cmbBoxAdvSearch.Items.Add(symInfo.Name);
-            }
-            if (cmbBoxAdvSearch.Items.Count > 0)
-                cmbBoxAdvSearch.SelectedIndex = 0;
+            SelAll(false);
         }
-        public void Clear()
+        private void SelAll(bool sel)
         {
-            cmbBoxAdvSearch.Items.Clear();
-
-            chkReal.Checked = false;
-            chkInt.Checked = false;
-            chkString.Checked = false;
-            chkFn.Checked = false;
-            chkProc.Checked = false;
-            chkRem.Checked = false;
-            chkLiteralString.Checked = false;
-            chkKeywords.Checked = false;
+            if (chkReal.Enabled == true) chkReal.Checked = sel;
+            if (chkInt.Enabled == true) chkInt.Checked = sel;
+            if (chkString.Enabled == true) chkString.Checked = sel;
+            if (chkFn.Enabled == true) chkFn.Checked = sel;
+            if (chkProc.Enabled == true) chkProc.Checked = sel;
+            if (chkLiteralString.Enabled == true) chkLiteralString.Checked = sel;
+            if (chkRem.Enabled == true) chkRem.Checked = sel;
+            if (chkKeywords.Enabled == true) chkKeywords.Checked = sel;
         }
     }
 }

@@ -44,6 +44,7 @@
                     //Console.WriteLine($"FormatProgram returned true");
                     CurrentListing = listing;
                     CurrentProgInfo = progInfo;
+                    Analyzed = false;
 
                     return true;
                 }
@@ -58,6 +59,7 @@
             Symbols.Clear();
             analyzed = false;
             Analyser.Analyse(engine, ref analyzed);
+            Analyzed = analyzed;
         }
         public Listing LoadAndFormatTextFile(string filename, FormattingOptions formatOptions, ProgInfo progInfo)
         {
@@ -132,6 +134,8 @@
                 }
                 CurrentListing = listing;
                 CurrentProgInfo = progInfo;
+                Analyzed = false;
+
                 return listing;
             }
             catch (Exception e)
@@ -234,9 +238,9 @@
 
             return output.ToString();
         } // parseTextLine
-        public List<DisplayLine> prepLinesForDisplay(ListerOptions listerOptions)
+        public List<DisplayLine> PrepLinesForDisplay(ListerOptions listerOptions)
         {
-            return BasLister.prepLinesForDisplay(CurrentListing, listerOptions, CurrentProgInfo);
+            return BasLister.PrepLinesForDisplay(CurrentListing, listerOptions, CurrentProgInfo);
         }
         public static bool PrintOneLine(ProgramLine progline, ref int linesprinted)
         {

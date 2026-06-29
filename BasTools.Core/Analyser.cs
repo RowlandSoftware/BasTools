@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 
 namespace BasTools.Core
@@ -74,7 +75,8 @@ namespace BasTools.Core
                                     localVars.Add(fullName);                    // build list of LOCAL vars
                                 else
                                 {
-                                    engine.DimLines.Add(fullName, line.LineNumber);
+                                    if (!engine.DimLines.ContainsKey(fullName))
+                                        engine.DimLines.Add(fullName, line.LineNumber);
                                 }
 
                                 RecordUse(engine,SemanticTags.Array, fullName, line.LineNumber,
@@ -249,7 +251,7 @@ namespace BasTools.Core
                     }
                     if (tok.tag is SemanticTags.Label)
                     {
-                        // look at LOCAL and parameters lists (W/0 .)
+                        // look at LOCAL and parameters lists (w/o .)
                         SymbolContext labcontext = SymbolContext.Assembler;
                         if (localVars.Contains(tok.value[1..]))
                             labcontext = SymbolContext.Local;

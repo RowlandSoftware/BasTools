@@ -292,6 +292,7 @@
         public bool SplitLines;
         public bool AssemblerColumns;
         public int ExtraColumnWidth;
+        public bool FlgExportTagged;
         public FormattingOptions()
         {
             FlgAddNums = false;
@@ -303,6 +304,7 @@
             SplitLines = false;
             AssemblerColumns = false;
             ExtraColumnWidth = 10;
+            FlgExportTagged = false;
         }
         public FormattingOptions(bool goodDefaults) : this()
         {
@@ -348,6 +350,7 @@
         // debug
         public bool Debug;
         public bool FullDebug;
+        public bool FlgExportTagged;
         public ListerOptions()
         {
             Clear = false;
@@ -371,6 +374,7 @@
             ColumnWidth = opt.ExtraColumnWidth;
             Pretty = true;
             FlgPause = false;
+            FlgExportTagged = opt.FlgExportTagged;
 
             // switches for filtering listings
             FromLine = 0;
@@ -406,6 +410,7 @@
             opts.FlgIndent = FlgIndent;
             opts.AssemblerColumns = AssemblerColumns;
             opts.ExtraColumnWidth = ColumnWidth;
+            opts.FlgExportTagged = FlgExportTagged;
 
             return opts;
         }

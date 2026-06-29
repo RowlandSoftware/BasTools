@@ -3,6 +3,9 @@
     using BasTools.Core;
     using System.Diagnostics;
     using System.Reflection;
+    using System.Text.Json;
+    using System.Text.Json.Serialization;
+    using static System.Runtime.InteropServices.JavaScript.JSType;
 
     //using System.Windows.Forms
 
@@ -27,18 +30,33 @@
         internal bool Pretty;
         private bool _flgPause;
         // switches for filtering listings
+        [JsonIgnore]
         internal int FromLine;
+        [JsonIgnore]
         internal int ToLine;
+        [JsonIgnore]
         internal bool FlgIf;
+        [JsonIgnore]
         internal bool FlgIfX;
+        [JsonIgnore]
         internal bool FlgList;
+        [JsonIgnore]
         internal List<string> DirectiveParams;
         // switches for appearance
         internal bool Clear;
         internal bool FlgDark;
+        // defaults
+        [JsonIgnore]
+        internal bool FlgSaveDefaults;
+        [JsonIgnore]
+        internal bool FlgResetDefaults;
         // debug
+        [JsonIgnore]
         internal bool Debug;
+        [JsonIgnore]
         internal bool FullDebug;
+        [JsonIgnore]
+        internal bool FlgExportTagged;
         public CommandSwitches()
         {
             _basicV = false;
@@ -62,6 +80,9 @@
             FlgList = false;
             FlgPause = false;
             FlgDark = true;
+            FlgSaveDefaults = false;
+            FlgResetDefaults = false;
+            FlgExportTagged = false;
             DirectiveParams = new();
             Debug = false;
             FullDebug = false;
@@ -142,6 +163,7 @@
             // debug
             opts.Debug = Debug;
             opts.FullDebug = FullDebug;
+            opts.FlgExportTagged = FlgExportTagged;
 
             return opts;
         }
@@ -160,9 +182,35 @@
             string filename = string.Empty;
             string format = string.Empty;
 
+            //******** read Defaults ********
+            string baseDir = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            string appDir = Path.Combine(baseDir, "RowlandSoftware");
+            string appDefaultsFile = Path.Combine(appDir, "BasListPrefs.json");
+
+            string json = File.ReadAllText(appDefaultsFile);
+            CommandSwitchesSerializer.Deserialize(switches, json);
+
             //******** readCommandSwitches ********
 
             readCommandSwitches(args, switches, ref filename, ref format);
+
+            // Defaults
+            
+            if (switches.FlgResetDefaults)
+            {
+                if (Directory.Exists(appDir))
+                    if (File.Exists(appDefaultsFile))
+                        File.Delete(appDefaultsFile);
+                Environment.Exit(0);
+            }
+            if (switches.FlgSaveDefaults)
+            {
+                if (!Directory.Exists(appDir))
+                    Directory.CreateDirectory(appDir);
+
+                json = CommandSwitchesSerializer.Serialize(switches);
+                File.WriteAllText(appDefaultsFile, json);
+            }
 
             // Show message
             Console.Error.WriteLine("Processing, please wait...");
@@ -195,9 +243,9 @@
             foreach (string arg in args)
             {
                 bool recognised = false;
-                if ((arg.StartsWith('/') || arg.StartsWith('-')) && arg.Length > 1)
+                if (arg.StartsWith('/') && arg.Length > 1)
                 {
-                    string arg2 = arg.Substring(1).ToUpperInvariant(); // remove the / or -
+                    string arg2 = arg.Substring(1).ToUpperInvariant(); // remove the /
                     string arg1 = string.Empty;
                     string arg3 = string.Empty;
                     int x = arg2.IndexOf('=');                // split at '=' or ':' if present
@@ -244,25 +292,32 @@
                             }
                         }
                     }
-                    if (arg2 == "V") { switches.BasicV = true; recognised = true; }
-                    if ("NOTBASICV".StartsWith(arg2)) { switches.NotBasicV = true; recognised = true; }
+                    bool flgNegative = arg2.StartsWith('-');
+                    if (flgNegative)
+                        arg2 = arg2.Substring(1);
+                    
+                    if (arg2 == "V") { switches.BasicV = !flgNegative; recognised = true; }
+                    if ("NOTBASICV".StartsWith(arg2)) { switches.NotBasicV = !flgNegative; recognised = true; }
                     if (arg2 == "?" || "HELP".StartsWith(arg2)) { help(); Environment.Exit(0); }
-                    if ("ADDNUMBERS".StartsWith(arg2)) { switches.FlgAddNums = true; recognised = true; }
-                    if ("BARE".StartsWith(arg2)) { switches.Bare = true; recognised = true; }
-                    if ("SPLITLINES".StartsWith(arg2)) { switches.SplitLines = true; recognised = true; }
-                    if ("PAUSE".StartsWith(arg2)) { switches.FlgPause = true; recognised = true; }
-                    if ("PRETTYPRINT".StartsWith(arg2)) { switches.Pretty = true; recognised = true; }
-                    if ("ALIGN".StartsWith(arg2)) { switches.Align = true; recognised = true; }
-                    if ("COLUMNS".StartsWith(arg2)) { switches.AssemblerColumns = true; recognised = true; }
-                    if ("CLS".StartsWith(arg2)) { switches.Clear = true; recognised = true; }
-                    if ("CLEAR".StartsWith(arg2)) { switches.Clear = true; recognised = true; }
-                    if ("INDENT".StartsWith(arg2)) { switches.FlgIndent = true; switches.FlgEmphDefs = true; recognised = true; }
-                    if ("NONUMBERS".StartsWith(arg2)) { switches.NoLineNumbers = true; recognised = true; }
-                    if ("NOFORMAT".StartsWith(arg2)) { switches.NoFormat = true; recognised = true; }
-                    if ("DARK".StartsWith(arg2)) { switches.FlgDark = true; recognised = true; }
-                    if ("LIGHT".StartsWith(arg2)) { switches.FlgDark = false; recognised = true; }
+                    if ("ADDNUMBERS".StartsWith(arg2)) { switches.FlgAddNums = !flgNegative; recognised = true; }
+                    if ("BARE".StartsWith(arg2)) { switches.Bare = !flgNegative; recognised = true; }
+                    if ("SPLITLINES".StartsWith(arg2)) { switches.SplitLines = !flgNegative; recognised = true; }
+                    if ("PAUSE".StartsWith(arg2)) { switches.FlgPause = !flgNegative; recognised = true; }
+                    if ("PRETTYPRINT".StartsWith(arg2)) { switches.Pretty = !flgNegative; recognised = true; }
+                    if ("ALIGN".StartsWith(arg2)) { switches.Align = !flgNegative; recognised = true; }
+                    if ("COLUMNS".StartsWith(arg2)) { switches.AssemblerColumns = !flgNegative; recognised = true; }
+                    if ("CLS".StartsWith(arg2)) { switches.Clear = !flgNegative; recognised = true; }
+                    if ("CLEAR".StartsWith(arg2)) { switches.Clear = !flgNegative; recognised = true; }
+                    if ("INDENT".StartsWith(arg2)) { switches.FlgIndent = !flgNegative; switches.FlgEmphDefs = !flgNegative; recognised = true; }
+                    if ("NONUMBERS".StartsWith(arg2)) { switches.NoLineNumbers = !flgNegative; recognised = true; }
+                    if ("NOFORMAT".StartsWith(arg2)) { switches.NoFormat = !flgNegative; recognised = true; }
+                    if ("DARK".StartsWith(arg2)) { switches.FlgDark = !flgNegative; recognised = true; }
+                    if ("LIGHT".StartsWith(arg2)) { switches.FlgDark = flgNegative; recognised = true; }
                     if ("DEBUG".StartsWith(arg2)) { switches.Debug = true; recognised = true; }
                     if ("FULLDEBUG".StartsWith(arg2)) { switches.FullDebug = true; recognised = true; }
+                    if ("SAVEDEFAULTS".StartsWith(arg2)) { switches.FlgSaveDefaults = true; recognised = true; }
+                    if ("RESETDEFAULTS".StartsWith(arg2)) { switches.FlgResetDefaults = true; recognised = true; }
+                    if ("EXPORTTAGGED".StartsWith(arg2)) { switches.FlgExportTagged = true; recognised = true; }
                     if (!recognised && !switches.Bare) Console.Error.WriteLine("Option " + arg.ToLowerInvariant() + " not recognised");
                 }
                 // not a switch ...
@@ -354,17 +409,59 @@
             for (int j = i; j < args.Length; j++)
                 s.DirectiveParams.Add(args[j]);
         }
+        public static class CommandSwitchesSerializer
+        {
+            public static string Serialize(CommandSwitches obj)
+            {
+                var dict = new Dictionary<string, object?>();
+
+                var fields = typeof(CommandSwitches)
+                    .GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+
+                foreach (var f in fields)
+                {
+                    if (f.GetCustomAttribute<JsonIgnoreAttribute>() != null)
+                        continue;
+
+                    dict[f.Name] = f.GetValue(obj);
+                }
+
+                return JsonSerializer.Serialize(dict, new JsonSerializerOptions { WriteIndented = true });
+            }
+
+            public static void Deserialize(CommandSwitches obj, string json)
+            {
+                var dict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
+                if (dict == null) return;
+
+                var fields = typeof(CommandSwitches)
+                    .GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+
+                foreach (var f in fields)
+                {
+                    if (f.GetCustomAttribute<JsonIgnoreAttribute>() != null)
+                        continue;
+
+                    if (!dict.TryGetValue(f.Name, out var elem))
+                        continue;
+
+                    object? value = elem.Deserialize(f.FieldType);
+                    f.SetValue(obj, value);
+                }
+            }
+        }
+
 
         static void help()
         {
             string vs = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion ?? "1.1.0"; // ?? = null coalescing operator. //requires ref to System.Windows.Forms
 
-            Console.WriteLine($"\nBasList vs {vs} (C) Andrew Rowland 2022-26");
+            Console.WriteLine($"\nBasList vs {vs} for BasTools (C) Andrew Rowland 2022-26");
             Console.WriteLine("\nLists a BBC BASIC program file\n");
             Console.WriteLine("BasList [/file=]filename ([[from line] [to line]) | [line,line]]) [Options] ([IF ...] | [IFX ...] | [LIST ...])");
             //Console.WriteLine("BasList [/file=]filename [/V] [/addnumbers] [/align] [/indent] [/nonumbers] [/noformat] [/bare] [/pause] [/prettyprint] [(cls | clear)]");
             //Console.WriteLine("BasList [/file=]filename [(/dark | /light)]");
-            Console.WriteLine("BasList [/? | -h]  Display help\n");
+            Console.WriteLine("BasList [/? | /h]  Display help\n");
             Console.WriteLine("  [/file=]filename");
             Console.WriteLine("                   Specifies filename of tokenised BASIC program.");
             Console.WriteLine("                   Filename to follow '=' without spaces. Quote if contains spaces.");
@@ -390,6 +487,11 @@
             Console.WriteLine("  /cls             Clear console (terminal) before listing");
             Console.WriteLine("  /dark            Dark mode – black background (default)");
             Console.WriteLine("  /light           Light mode – white background");
+            Console.WriteLine("  /savedefaults    Save current switches as defaults");
+            Console.WriteLine("  /resetdefaults   Clear saved defaults back to application defaults");
+            Console.WriteLine("  /debug           Display internal detokenised results for debug");
+            Console.WriteLine("  /fulldebug       Debug with additional information");
+            Console.WriteLine("  /exporttagged    Display with syntax tags only");
             Console.WriteLine("\nE.g.");
             Console.WriteLine("  BasList program ,200        - List up to line 200");
             Console.WriteLine("  BasList program 1000,       - List from line 1000");
@@ -398,7 +500,8 @@
             Console.WriteLine("  BasList program IF PRINTTAB - List only lines containing PRINTTAB or PRINT TAB, case insensitive");
             Console.WriteLine("  BasList program IFX printer - As IF, but respecting spaces and case");
             Console.WriteLine("  BasList program LIST FNinp  - List named function(s)/procedure(s)");
-            Console.WriteLine("\nOptions may be specified in any order, may start with / or - and can be abbreviated.");
+            Console.WriteLine("\nOptions may be specified in any order and can be abbreviated.");
+            Console.WriteLine("\nTo override a saved value, use a minus sign e.g. /-align.");
             Console.WriteLine("Parameters containing spaces must be enclosed by double quotes.");
             Console.WriteLine("IF, IFX or LIST clauses must be at the end, after options. Multiple matches may be \nentered and BasList will list any line containing at least one of them.");
             Console.WriteLine("\nFor further help, see ReadMe.");
