@@ -254,6 +254,7 @@
                     {
                         arg1 = arg2.Substring(0, x);
                         arg3 = arg2.Substring(x + 1);
+
                         if ("FILE".StartsWith(arg1)) { filename = arg3; recognised = true; }
                         if ("INDENT".StartsWith(arg1))
                         {

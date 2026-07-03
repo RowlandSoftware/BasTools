@@ -49,6 +49,7 @@ namespace BasTools.Core
             // special rule for null Statement separators
             if (token1.tag == SemanticTags.StatementSep && token1.value == "") return true;
 
+            // read spacing rules
             (bool dummy, bool spaceafter) = GetSpacingRule(token1.tag, token1.value);
             (bool spacebefore, dummy) = GetSpacingRule(token2.tag, token2.value);
 
@@ -57,6 +58,7 @@ namespace BasTools.Core
                 // they agree!
                 return spaceafter;
             }
+
             // and now the exception rules
             switch (token1.tag)
             {
