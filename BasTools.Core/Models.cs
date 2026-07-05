@@ -48,6 +48,7 @@
         OutdentingKeyword,
         InOutKeyword,
         BuiltInFn,
+        Then,
         StringLiteral,
         Number,
         HexNumber,
@@ -83,6 +84,7 @@
         public const string OutdentingKeyword = "{=outdentingkeyword}";
         public const string InOutKeyword = "{=inout_keyword}";
         public const string BuiltInFn = "{=builtinfn}";
+        public const string Then = "{=then}";
         public const string StringLiteral = "{=string}";
         public const string Number = "{=number}";
         public const string HexNumber = "{=hexnumber}";
@@ -146,6 +148,7 @@
         {
             get => IsInDef ? 1 : 0;
         }
+
         // Properties for Editor
         public string EditedLine { get; set; } = "";
         public bool Edited { get; set; } = false;
@@ -156,6 +159,7 @@
         public bool InAsm { get; set; } = false;
         public bool IsArm { get; set; } = false;
         public bool IsZ80 { get; set; } = false;
+
         // Properties needed for SplitLines
         public FormatterState fstate;
         public ProgramLine(ProgramLine other)

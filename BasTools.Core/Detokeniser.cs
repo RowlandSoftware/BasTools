@@ -665,6 +665,9 @@ namespace BasTools.Core
                         string tag = SemanticTags.Keyword;
                         switch (keyword)
                         {
+                            case "THEN":
+                                tag = SemanticTags.Then;
+                                break;
                             // No If ... Then ... Else - handled in code because depends on whether in multiLineIf or not (unless /splitlines)
                             case "FOR":
                             case "REPEAT":
@@ -752,12 +755,18 @@ namespace BasTools.Core
             {
                 var t = tokens[i];
 
+                // check for : that is implied then
+                if (inIf && t.value == ":")
+                {
+                    t.tag = SemanticTags.Then;
+                }
+
                 // Always emit the current token
-                sb.Append(t.tag);
+                sb.Append(t.tag); 
                 sb.Append(t.value);
                 if (t.tag != null)
                     sb.Append(SemanticTags.Reset);
-
+                
                 // Track IF/THEN/ELSE
                 if (t.tag == SemanticTags.Keyword && t.value == "IF")
                 {
@@ -766,7 +775,7 @@ namespace BasTools.Core
                     continue;
                 }
 
-                if (t.tag == SemanticTags.Keyword && (t.value == "THEN" || t.value == "ELSE"))
+                if ((t.tag == SemanticTags.Keyword && t.value == "ELSE") || t.tag == SemanticTags.Then)
                 {
                     inIf = false;
                     continue;
@@ -856,7 +865,7 @@ namespace BasTools.Core
                 if (
                 (next.tag == SemanticTags.StatementSep &&
                 (next.value == " " || next.value == ":")) ||
-                (next.tag == SemanticTags.Keyword && next.value == "THEN")
+                (next.tag == SemanticTags.Then)
                 )
                     continue;
 

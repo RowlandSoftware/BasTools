@@ -10,44 +10,48 @@ namespace BasTools.Core
             {
                 case SemanticTags.Keyword:
                     if (value == "PROC" || value == "FN")
-                        return (true, false);
-                    else return (true, true);
+                                                    return (true, false);
+                    else                            return (true, true);
                 case SemanticTags.IndentingKeyword:
                 case SemanticTags.OutdentingKeyword:
-                case SemanticTags.InOutKeyword: return (true, true);
-                case SemanticTags.BuiltInFn: return (true, false);
-                case SemanticTags.StringLiteral: return (true, true);
-                case SemanticTags.Number: return (true, true);
-                case SemanticTags.HexNumber: return (true, true);
-                case SemanticTags.BinaryNumber: return (true, false);
-                case SemanticTags.Variable: return (true, true);
-                case SemanticTags.Array: return (true, false);
-                case SemanticTags.StaticInteger: return (true, true);
-                case SemanticTags.RemText: return (false, false);
+                case SemanticTags.InOutKeyword:
+                case SemanticTags.Then:             return (true, true);
+                case SemanticTags.BuiltInFn:        return (true, false);
+                case SemanticTags.StringLiteral:    return (true, true);
+                case SemanticTags.Number:           return (true, true);
+                case SemanticTags.HexNumber:        return (true, true);
+                case SemanticTags.BinaryNumber:     return (true, false);
+                case SemanticTags.Variable:         return (true, true);
+                case SemanticTags.Array:            return (true, false);
+                case SemanticTags.StaticInteger:    return (true, true);
+                case SemanticTags.RemText:          return (false, false);
                 case SemanticTags.AssemblerComment: return (true, false);
-                case SemanticTags.StarCommand: return (false, false);
-                case SemanticTags.EmbeddedData: return (false, false);
-                case SemanticTags.ProcName: return (false, true);
-                case SemanticTags.FunctionName: return (false, true);
-                case SemanticTags.Label: return (false, true);
-                case SemanticTags.Register: return (false, true);
-                case SemanticTags.Mnemonic: return (true, true);
-                case SemanticTags.LineNumber: return (true, true);
-                case SemanticTags.Operator: return (true, true);
+                case SemanticTags.StarCommand:      return (false, false);
+                case SemanticTags.EmbeddedData:     return (false, false);
+                case SemanticTags.ProcName:         return (false, true);
+                case SemanticTags.FunctionName:     return (false, true);
+                case SemanticTags.Label:            return (false, true);
+                case SemanticTags.Register:         return (false, true);
+                case SemanticTags.Mnemonic:         return (true, true);
+                case SemanticTags.LineNumber:       return (true, true);
+                case SemanticTags.Operator:         return (true, true);
                 case SemanticTags.IndirectionOperator: return (false, false);
                 case SemanticTags.ImmediateOperator: return (true, false);
-                case SemanticTags.StatementSep: return (false, false);
-                case SemanticTags.ListSep: return (false, true);
-                case SemanticTags.OpenBracket: return (false, false);
-                case SemanticTags.CloseBracket: return (false, true);
-                case SemanticTags.Reset: return (false, false);
-                default: return (false, false);
+                case SemanticTags.StatementSep:     return (false, false);
+                case SemanticTags.ListSep:          return (false, true);
+                case SemanticTags.OpenBracket:      return (false, false);
+                case SemanticTags.CloseBracket:     return (false, true);
+                case SemanticTags.Reset:            return (false, false);
+                default:                            return (false, false);
             }
         }
         internal static bool IsSpaceBetween(Token token1, Token token2)
         {
             // special rule for null Statement separators
             if (token1.tag == SemanticTags.StatementSep && token1.value == "") return true;
+
+            // special rule for when : is implied THEN
+            if (token2.tag == SemanticTags.Then && token2.value == ":") return false;
 
             // read spacing rules
             (bool dummy, bool spaceafter) = GetSpacingRule(token1.tag, token1.value);
@@ -131,7 +135,7 @@ namespace BasTools.Core
 
                 // Capture formatter state at start of this line
                 progline.fstate = new(state);
-
+                //Console.WriteLine($"  Processing {progline.TaggedLine}\nin lvl = {progline.IndentLevel}, in={progline.fstate.Indent}, pend in={progline.fstate.PendingIndent}, mult lvl={progline.fstate.MultiLineIfDepth}");
                 formatLineNumber(progline, switches, state, progInfo);
 
                 var tokens = BasToolsEngine.WalkTagged(progline.TaggedLine).ToList();
@@ -158,6 +162,7 @@ namespace BasTools.Core
 
                     // Indenting
                     HandleIndents(token1, state, progInfo, IsSplitLines);
+                    //Console.WriteLine($"  - now: [{token1.tag}-{token1.value}] inIf={progline.fstate.InIf}, in lvl = {progline.IndentLevel}, in={progline.fstate.Indent}, pend in={progline.fstate.PendingIndent}, mult lvl={progline.fstate.MultiLineIfDepth}");
 
                     // Reached end of token list?
                     if (i == tokens.Count - 1)
@@ -258,9 +263,9 @@ namespace BasTools.Core
         }
         private void HandleIndents(Token token1, FormatterState state, ProgInfo progInfo, bool InSplitLines)
         {
-            if (token1.tag == SemanticTags.Keyword)
+            if (token1.tag == SemanticTags.Keyword || token1.tag == SemanticTags.Then)
             {
-                if (token1.value == "THEN" && ((progInfo.BasicV || progInfo.Z80) && token1.isLast)) // s.a. below
+                if (token1.tag == SemanticTags.Then && ((progInfo.BasicV || progInfo.Z80 || InSplitLines) && token1.isLast)) // s.a. below
                 {
                     state.MultiLineIfDepth++;
                     state.PendingIndent++;
@@ -280,11 +285,13 @@ namespace BasTools.Core
                     state.IsDef = true;
                 }
             }
-            else if (InSplitLines && (token1.tag == SemanticTags.StatementSep     // s.a. above
-                && token1.value == "") || (token1.tag == SemanticTags.Keyword && token1.value == "THEN"))
+            else if (InSplitLines && (token1.tag == SemanticTags.StatementSep))     // s.a. above
             {
-                state.MultiLineIfDepth++;
-                state.PendingIndent++;
+                if (token1.value == "") // || (token1.value == ":" && token1.isLast))
+                {
+                    state.MultiLineIfDepth++;
+                    state.PendingIndent++;
+                }
             }
             else
             {

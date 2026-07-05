@@ -45,6 +45,7 @@ namespace BasTools.Core
             [SemanticTags.IndentingKeyword] = ConsoleColor.Blue,
             [SemanticTags.OutdentingKeyword] = ConsoleColor.Blue,
             [SemanticTags.InOutKeyword] = ConsoleColor.Blue,
+            [SemanticTags.Then] = ConsoleColor.Blue,
             [SemanticTags.BuiltInFn] = ConsoleColor.Blue,
             [SemanticTags.StringLiteral] = ConsoleColor.Green,
             [SemanticTags.Number] = ConsoleColor.White,
@@ -616,7 +617,7 @@ namespace BasTools.Core
                 if (!string.IsNullOrEmpty(tok.tag))
                     sb.Append("{/}");
 
-                if (i < tokens.Count - 1 && tok.tag == SemanticTags.StatementSep && tokens[i + 1].value == "THEN")
+                if (i < tokens.Count - 1 && tok.tag == SemanticTags.StatementSep && tokens[i + 1].tag == SemanticTags.Then)
                     continue;
 
                 if (tok.tag != SemanticTags.StatementSep && i < tokens.Count - 1 && tokens[i + 1].value == "ELSE")
@@ -625,7 +626,7 @@ namespace BasTools.Core
                     sb.Clear();
                 }
 
-                if (tok.isLast || tok.tag == SemanticTags.StatementSep || tok.value == "ELSE" || tok.value == "THEN")
+                if (tok.isLast || tok.tag == SemanticTags.StatementSep || tok.value == "ELSE" || tok.tag == SemanticTags.Then)
                 {
                     result.Add(sb.ToString().TrimEnd());
                     sb.Clear();
