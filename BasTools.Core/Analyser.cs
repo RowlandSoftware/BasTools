@@ -48,7 +48,7 @@ namespace BasTools.Core
 
                     if (tok.tag == SemanticTags.Keyword && (tok.value is "LOCAL" or "DIM")) // variables in the LOCAL list count as assignments (initialised to 0 or "")
                     {
-                        if (tok.value == "DIM") // everything after READ is an assignment without =
+                        if (tok.value == "DIM") // everything after DIM is an assignment without =
                         {
                             expectingAssignmentTarget = true;
                             readOrDim = true;

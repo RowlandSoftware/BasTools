@@ -15,7 +15,7 @@ namespace BasAnalysis.CLI
             BasToolsEngine engine = new BasToolsEngine();
             ProgInfo BAprogInfo = new();
             FormattingOptions formatOptions = new();
-            analyzed = engine.Analyzed;
+            analyzed = false;
 
             Utilities.banner();
 
@@ -160,22 +160,27 @@ namespace BasAnalysis.CLI
                     FlgIndent = true
                 };
 
-                engine.LoadAndFormatFile(filename, formatOptions, BAprogInfo);
+                if (engine.LoadAndFormatFile(filename, formatOptions, BAprogInfo))
+                {
+                    prompt = "BasAnalysis " + Path.GetFileName(filename) + " >";
 
-                prompt = "BasAnalysis " + Path.GetFileName(filename) + " >";
+                    engine.Symbols.Clear();
+                    analyzed = false;
 
-                engine.Symbols.Clear();
-                analyzed = false;
+                    Console.Write($"\nProgram '{Path.GetFileName(filename)}' loaded. {BAprogInfo.NumberOfLines} lines, {BAprogInfo.LengthInBytes} bytes " +
+                    $"(&{BAprogInfo.LengthInBytes:X4}), {BAprogInfo.LengthInBytes / 1024.0:F2} KB" +
+                    $"\n\nEnter 'preview' to see first 20 lines");
+                    if (engine.Analyzed)
+                        Console.WriteLine("\n");
+                    else
+                        Console.WriteLine(", or enter 'analyse'\n");
 
-                Console.WriteLine($"Program loaded. {BAprogInfo.NumberOfLines} lines, {BAprogInfo.LengthInBytes} bytes " +
-                $"(&{BAprogInfo.LengthInBytes:X4}), {BAprogInfo.LengthInBytes / 1024.0:F2} KB" +
-                $"\n\nEnter 'preview' to see first 20 lines, or enter 'analyse'\n");
-
-                return true;
+                    return true;
+                }
             }
             catch (BasToolsException e)
             {
-                Console.WriteLine($"{e.Message}\n\n{e.InnerException?.Message ?? ""}");
+                Console.WriteLine($"\n{e.Message}:\n\n\n  {e.InnerException?.Message ?? ""}\n");
             }
             return false;
         }

@@ -70,7 +70,7 @@ namespace BasTools.Core
             }
             catch (IOException ex)
             {
-                Console.WriteLine($"Error opening file '{fn}'\n{ex.Message}");
+                Console.WriteLine($"\nError opening file '{fn}':\n\n  {ex.Message}\n");
                 return false;
             }
 
