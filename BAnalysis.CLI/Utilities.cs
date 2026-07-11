@@ -30,7 +30,7 @@ namespace BasAnalysis.CLI
 
                 if (kind == SymbolKind.LiteralString)
                 {
-                    Console.WriteLine("  {0,-35}{1,6}{2,10} ", symInfo.Name, symInfo.AssignedCount, symInfo.Name.Length - 2);
+                    Console.WriteLine("  {0,-45}{1,6}{2,10} ", symInfo.Name.Trim(), symInfo.AssignedCount, symInfo.Name.Length - 2);
                 }
                 else if (kind == SymbolKind.Label)
                 {
@@ -133,9 +133,12 @@ namespace BasAnalysis.CLI
                 if (showbanner) banner();
                 Console.WriteLine("    BasList [<filename>] [/analyse | /analyze] [/preview] [/help | /?]");
                 Console.WriteLine("\n    COMMANDS\n");
-                Console.WriteLine("    {0,-10}{1,-10}{2,-10}{3,-10}{4,-10}{5,-10}", "help", "load", "analyze", "preview", "list", "blist");
-                Console.WriteLine("    {0,-10}{1,-10}{2,-10}{3,-10}{4,-10}{5,-10}", "lvar", "lvars", "lfn", "lproc", "tree", "x");
-                Console.WriteLine("    {0,-10}{1,-10}{2,-10}{3,-10}{4,-10}{5,-10}", "cls", "clear", "cat", "dir", "exit", "quit");
+                Console.WriteLine("    {0,-13}{1,-13}{2,-13}{3,-13}{4,-13}", "load", "analyze", "preview", "list", "blist");
+                Console.WriteLine("    {0,-13}{1,-13}{2,-13}{3,-13}{4,-13}", "lvar", "lvars", "lfn", "lproc", "tree");
+                Console.WriteLine("    {0,-13}{1,-13}{2,-13}{3,-13}{4,-13}", "cls", "clear", "cat", "dir", "ls");
+                Console.WriteLine("    {0,-13}{1,-13}{2,-13}{3,-13}{4,-13}", "help", "exit", "end", "quit", "x");
+                //Console.WriteLine("    {0,-13}{1,-13}{2,-13}{3,-13}{4,-13}", "edit", "delete", "insert", "restore", "copy?");
+                //Console.WriteLine("    {0,-13}{1,-13}{2,-13}{3,-13}{4,-13}", "renumber", "smartnumber", "import", "save", "");
                 Console.WriteLine("All commands can be abbreviated with a dot, e.g. lo. (load)");
                 Console.WriteLine("\nEnter help <command> for further help\n");
             }
@@ -156,6 +159,8 @@ namespace BasAnalysis.CLI
                     case "list":
                         Console.WriteLine("list          - Display entire program");
                         Console.WriteLine("list nn       - Display program line");
+                        Console.WriteLine("list nn,      - Display program starting at line nn");
+                        Console.WriteLine("list ,nn      - Display program up to line nn");
                         Console.WriteLine("list nn nn    - Display program lines (from to)");
                         Console.WriteLine("list {<name>} - Display PROC or FN (list)");
                         Console.WriteLine("Minimum abbreviation: l.");

@@ -7,6 +7,7 @@ namespace BasAnalysis.CLI
     public class Program
     {
         static bool analyzed;
+
         static void Main(string[] args)
         {
             string cmd = string.Empty;
@@ -27,10 +28,16 @@ namespace BasAnalysis.CLI
             }
             else
             {
+                int start = 0;
                 Console.ForegroundColor = ConsoleColor.White;
+
                 if (!args[0].StartsWith('/') && !args[0].StartsWith('-'))
+                {
                     load(args[0], BAprogInfo, engine, ref prompt);
-                for (int i = 1; i < args.Length; i++)
+                    start++;
+                }
+
+                for (int i = start; i < args.Length; i++)
                 {
                     bool recognised = false;
                     string arg1 = args[i].ToUpper(CultureInfo.InvariantCulture);
@@ -191,7 +198,6 @@ namespace BasAnalysis.CLI
             engine.Analyse(engine, ref analyzed);
         }
         static void Listvar(BasToolsEngine engine, string[] arglist, bool analyzed)
-
         {
             if (!Utilities.checkLoaded("LVAR", engine)) return;
             if (!Utilities.checkAnalysed("LVAR", engine.CurrentProgInfo.ProgName, analyzed)) return;
@@ -227,40 +233,42 @@ namespace BasAnalysis.CLI
                 if (varUsage.Count == 0)
                 {
                     Console.WriteLine($"No such variable '{arg}'.");
-                    return;
+                    continue;
                 }
-                else
+
+                SymbolKind varKind = BasToolsEngine.InferKind(SemanticTags.Variable, arg); // InferKind only uses SemanticTags.Variable if no %, $ suffix or leading dot
+
+                if (!engine.Symbols.TryGetValue(varKind + ":" + arg, out SymbolInfo symInfo))
                 {
-                    SymbolKind varKind = BasToolsEngine.InferKind(SemanticTags.Variable, arg); // InferKind only uses SemanticTags.Variable if no %, $ suffix or leading dot
+                    Console.WriteLine($"No such variable '{arg}'.");
+                    continue;
+                }
 
-                    if (!engine.Symbols.TryGetValue(varKind + ":" + arg, out SymbolInfo symInfo))
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("\n  {0}: {1} - Assigned: {2} - Referenced :{3}", symInfo.Kind, symInfo.Name, symInfo.AssignedCount, symInfo.ReferencedCount);
+
+                // show additional information for arrays
+                if (symInfo.Name.EndsWith("()"))
+                {
+                    if (engine.DimLines.TryGetValue(symInfo.Name, out var lines))
                     {
-                        Console.WriteLine($"No such variable '{arg}'.");
-                        return;
-                    }
-                    else
-                    {
-                        /*/ DebugConsole.WriteLine($">>> {symInfo.Name}");
-                        foreach (string key in engine.DimLines.Keys)
+                        bool first = true;
+                        foreach (DimInfo dimInfo in lines)
                         {
-                            Console.WriteLine($">> {key}");
-                        }*/
-
-                        Console.ForegroundColor = ConsoleColor.Green;
-                        Console.WriteLine("\n  {0}: {1} - Assigned: {2} - Referenced :{3}", symInfo.Kind, symInfo.Name, symInfo.AssignedCount, symInfo.ReferencedCount);
-
-                        // show additional information for arrays
-                        if (symInfo.Name.EndsWith("()"))
-                        {
-                            if (engine.DimLines.TryGetValue(symInfo.Name, out int lineNumber))
+                            Console.ForegroundColor = ConsoleColor.Green;   // LOCAL DIM
+                            if (!dimInfo.IsLocal)
                             {
-                                Console.Write("  {0}:  ", "DIM at");
-                                ListProg(engine, new string[] { lineNumber.ToString() }, false);
+                                if (!first)
+                                    Console.ForegroundColor = ConsoleColor.Red;      // duplicate global DIM
+                                first = false;
                             }
+
+                            Console.Write("  {0} {1}:  ", dimInfo.IsLocal ? " Local": "Global", "DIM at");
+                            ListProg(engine, new string[] { dimInfo.LineNumber.ToString() }, false);
                         }
-                        Console.ForegroundColor = ConsoleColor.White;
-                        Console.WriteLine("");
                     }
+                    Console.ForegroundColor = ConsoleColor.White;
+                    Console.WriteLine("");
 
                     foreach (var u in varUsage)
                     {
@@ -278,9 +286,10 @@ namespace BasAnalysis.CLI
                     }
                     if (symInfo.Kind == SymbolKind.Label)
                         Listvar(engine, new string[] { symInfo.Name[1..] }, true); // also information for the variable w/o dot
+
                 }
             }
-        }// engine.Symbols - accident?
+        }
         static void Listvars(BasToolsEngine engine, string[] arglist, bool analyzed)
         {
             if (!Utilities.checkLoaded("LVARS", engine)) return;
@@ -310,6 +319,10 @@ namespace BasAnalysis.CLI
             Utilities.PrintByKind(SymbolKind.StringVar, engine.Symbols, "\n  String Variables",
                 string.Format("\n  {0,-20}{1,10}{2,11}\n", "Variable", "Assigned", "Referenced"));
 
+            // Arrays
+            Utilities.PrintByKind(SymbolKind.StringArray, engine.Symbols, "\n  Arrays (All types)",
+                string.Format("\n  {0,-20}{1,10}{2,11}\n", "Array", "Global", "Local"));
+            
             // PROCs
             Utilities.PrintByKind(SymbolKind.Proc, engine.Symbols, "\n  Sub-procedures (PROCs)",
                 string.Format("\n  {0,-20}{1,10}{2,11}\n", "PROC name", "Declared", "Referenced"));
@@ -324,7 +337,7 @@ namespace BasAnalysis.CLI
 
             // Strings
             Utilities.PrintByKind(SymbolKind.LiteralString, engine.Symbols, "\n  Literal strings",
-                string.Format("\n  {0,-35}{1,6}{2,10}\n", "String", "Count", "Length"));
+                string.Format("\n  {0,-45}{1,6}{2,10}\n", "String", "Count", "Length"));
         }
         static void ListProc(BasToolsEngine engine, string[] arglist, bool analysed)
         {
@@ -344,7 +357,7 @@ namespace BasAnalysis.CLI
                 return;
             }
 
-            // Normalise argument - PROCwrite or write -> write
+            // Normalise argument - e.g. PROCwrite or write -> write
             string name = arglist[0];
             if (name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
             {
@@ -402,7 +415,8 @@ namespace BasAnalysis.CLI
 
                 foreach (var u in usedBy)
                 {
-                    Console.WriteLine($"   in {(u.CallerName == "" ? "Root" : u.CallerType.ToString().ToUpper() + u.CallerName)} at {string.Join(", ", u.LineNumbers)}");
+                    string CallerType = u.CallerType.ToString().ToUpper() == "ROOT" ? "" : u.CallerType.ToString().ToUpper();
+                    Console.WriteLine($"   in {(u.CallerName == "" ? "$" : CallerType + u.CallerName)} at {string.Join(", ", u.LineNumbers)}");
                 }
             }
             else
@@ -496,23 +510,43 @@ namespace BasAnalysis.CLI
             if (!Utilities.checkLoaded("LIST", engine)) return;
             int fromline = 0;
             int toline = 0xFEFF;
+            bool endsWithComma = false;
 
             if (arglist.Length > 0)
             {
+                endsWithComma = arglist[0].TrimEnd().EndsWith(',');
+                if (endsWithComma)
+                {
+                    arglist[0] = arglist[0].TrimEnd()[..^1];
+                }
+                bool startsWithComma = arglist[0].TrimStart().StartsWith(',');
+                if (startsWithComma)
+                {
+                    arglist[0] = arglist[0].TrimStart()[1..];
+                }
+
                 if (!int.TryParse(arglist[0], out fromline)) // If first argument not a number, list DEF
                 {
                     ListDef(engine, arglist, pretty);
                     return;
                 }
-                else
+                else if (endsWithComma)
+                    toline = 0xFEFF;
+                else if (startsWithComma)
                 {
-                    toline = fromline; // so LIST nn displays just one line
+                    toline = fromline;
+                    fromline = 0;
                 }
+                else
+                    toline = fromline; // so LIST nn displays just one line                
             }
             if (arglist.Length > 1)
             {
-                if (!int.TryParse(arglist[1], out toline)) // If second argument not a number
-                    toline = 0xFEFF;                       // default to end
+                if (!int.TryParse(arglist[1], out toline)) // If second argument not a number, ignore
+                {
+                    toline = fromline;
+                    if (endsWithComma) toline = 0xFEFF;
+                }
             }
             List(engine, fromline, toline, 0, pretty);
         }
@@ -586,9 +620,9 @@ namespace BasAnalysis.CLI
 
                 else
                 {
-                    if (!arglist[i].StartsWith("FN", StringComparison.OrdinalIgnoreCase))
+                    if (arglist[i].StartsWith("FN", StringComparison.OrdinalIgnoreCase))
                         arglist[i] = "FN" + arglist[i][2..];
-                    if (!arglist[i].StartsWith("PROC", StringComparison.OrdinalIgnoreCase))
+                    else if (arglist[i].StartsWith("PROC", StringComparison.OrdinalIgnoreCase))
                         arglist[i] = "PROC" + arglist[i][4..];
                 }
             }
@@ -747,7 +781,7 @@ namespace BasAnalysis.CLI
                 else
                 {
                     // Non-leaf: show reference
-                    string suffix = "";// (childcount > 1) ? " (x " + childcount.ToString() + ")" : "";
+                    string suffix = "";     // (childcount > 1) ? " (x " + childcount.ToString() + ")" : "";
                     Console.WriteLine(" " + indent + prefix + node.Name + suffix + "  (see above)");
                 }
                 return;
@@ -865,6 +899,5 @@ namespace BasAnalysis.CLI
                           printed);//, 0
             }
         }
-        
     }
 }

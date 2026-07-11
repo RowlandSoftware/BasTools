@@ -4,6 +4,7 @@
     using System.Collections.Generic;
     using System.Diagnostics.CodeAnalysis;
     using System.Reflection;
+    using System.Runtime;
     using System.Text;
     using System.Text.RegularExpressions;
 
@@ -25,8 +26,9 @@
     {
         public Listing CurrentListing { get; private set; } = null;
         public ProgInfo CurrentProgInfo { get; private set; } = null;
+        public Dictionary<string, List<DimInfo>> DimLines = new();
 
-        public Dictionary<string, int> DimLines = new();
+
         // for the benefit of BasAnalysis
         public Dictionary<string, SymbolInfo> Symbols { get; private set; } = new();
         public bool Analyzed { get; private set; } = false;
@@ -322,10 +324,15 @@
         }
         public static SymbolKind InferKind(string tag, string name)
         {
-            if (name.EndsWith("()"))
-                name = name[..^2];
+            bool array = false;
 
-            if (name.EndsWith('%') && name.Length == 2 && (char.IsAsciiLetterUpper(name[0]) || name[0] == '@'))
+            if (name.EndsWith("()"))
+            {
+                name = name[..^2];
+                array = true;
+            }
+
+            if (!array && name.EndsWith('%') && name.Length == 2 && (char.IsAsciiLetterUpper(name[0]) || name[0] == '@'))
                 return SymbolKind.StaticInt;
             if (name.EndsWith('%'))
                 return SymbolKind.IntVar;

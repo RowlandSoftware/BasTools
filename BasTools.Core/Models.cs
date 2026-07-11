@@ -214,11 +214,7 @@
         public bool Z80;
         public int LineCount;
         public bool InAsm;
-        public bool InIfCondition;  // Evaluating the IF <condition>
-        public bool InIf;           // All of line following IF (but before ELSE)
-        public int IfParenDepth;
-        public bool ExprComplete;
-
+        
         public List<string> DirectiveParams = new();
         public ParserState()
         {
@@ -227,10 +223,6 @@
             Ptr = 0;
             LineCount = 0;
             InAsm = false;
-            InIfCondition = false;
-            InIf = false;
-            IfParenDepth = 0;
-            ExprComplete = false;
         }
     }
 
@@ -423,4 +415,5 @@
             if (!FlgDark) (ForeColor, BackColor) = (BackColor, ForeColor);
         }
     }
+    public record DimInfo(int LineNumber, bool IsLocal);
 }

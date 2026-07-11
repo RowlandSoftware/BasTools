@@ -87,7 +87,6 @@ namespace BasTools.Core
             }
 
             taggedline += SemanticTags.Reset;
-            NoteExprTokenInIf(SemanticTags.Operator, op, parserState);
 
             return true;
         }
@@ -99,8 +98,7 @@ namespace BasTools.Core
             string tag,
             ref string plainline,
             ref string linenospaces,
-            ref string taggedline,
-            ParserState parserState)
+            ref string taggedline)
         {
             char c = (char)line[i];
 
@@ -134,7 +132,6 @@ namespace BasTools.Core
 
             // End tag
             taggedline += SemanticTags.Reset;
-            if (tag != "") NoteExprTokenInIf(tag, keyword, parserState);
 
             return true;
         }

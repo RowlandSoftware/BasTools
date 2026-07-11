@@ -438,7 +438,7 @@ namespace BasTools.Core
             // Otherwise binary
             return false;
         }
-        bool IsEndOfIfExpression(List<Token> tokens, int start, int current)
+        /*bool IsEndOfIfExpression(List<Token> tokens, int start, int current)
         {
             int depth = 0;
             bool complete = false;
@@ -498,7 +498,7 @@ namespace BasTools.Core
             if (t.value == "AND" || t.value == "OR" || t.value == "NOT") return true;
 
             return false;
-        }
+        }*/
         // True if line has been formatted for assembler
         private static bool FormatAssemblerColumnsForLine(List<Token> tokens, ProgramLine progline, FormattingOptions switches)
         {

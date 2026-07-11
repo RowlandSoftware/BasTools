@@ -48,40 +48,65 @@ namespace BasTools.Core
 
                     if (tok.tag == SemanticTags.Keyword && (tok.value is "LOCAL" or "DIM")) // variables in the LOCAL list count as assignments (initialised to 0 or "")
                     {
+                        bool flgLocal = (tok.value == "LOCAL"); // if false, is DIM
+
                         if (tok.value == "DIM") // everything after DIM is an assignment without =
                         {
                             expectingAssignmentTarget = true;
                             readOrDim = true;
                         }
 
+                        // read the list following DIM or LOCAL
                         int j = i + 1;
                         while (j < tokens.Count && tokens[j].tag != SemanticTags.StatementSep)
                         {
-                            if (tokens[j].tag is SemanticTags.Variable)
+                            if (tokens[j].tag is SemanticTags.Variable) // we handle arrays below
                             {
-                                if (tok.value == "LOCAL")
-                                    localVars.Add(tokens[j].value);                 // build list of LOCAL vars
+                                if (flgLocal)
+                                {
+                                    localVars.Add(tokens[j].value);                    // build list of LOCAL vars
+                                    RecordUse(engine, SemanticTags.Variable, tokens[j].value, line.LineNumber,
+                                        SymbolReadOrWrite.Assigned, SymbolContext.Local,
+                                        procedureName, procedureType);                  // and record an assignment
+                                }
                                 else
-                                    engine.DimLines.Add(tokens[j].value, line.LineNumber);
+                                {
+                                    // add to DIM list
+                                    if (!engine.DimLines.TryGetValue(tokens[j].value, out var list))
+                                    {
+                                        list = new List<DimInfo>();
+                                        engine.DimLines[tokens[j].value] = list;
+                                    }
+                                    list.Add(new DimInfo(line.LineNumber, IsLocal(tokens[j].value, localVars) == SymbolContext.Local));
 
-                                RecordUse(engine,SemanticTags.Variable, tokens[j].value, line.LineNumber,
-                                    SymbolReadOrWrite.Assigned, SymbolContext.Local,
-                                    procedureName, procedureType);              // and record an assignment
+                                    RecordUse(engine, SemanticTags.Variable, tokens[j].value, line.LineNumber,
+                                        SymbolReadOrWrite.Assigned, IsLocal(tokens[j].value, localVars),
+                                        procedureName, procedureType);                  // and record an assignment
+                                }
                             }
                             else if (tokens[j].tag == SemanticTags.Array)
                             {
                                 string fullName = tokens[j].value + "()";
-                                if (tok.value == "LOCAL")
-                                    localVars.Add(fullName);                    // build list of LOCAL vars
+                                if (flgLocal)
+                                {
+                                    localVars.Add(fullName);                            // add array to list of LOCAL vars
+                                    RecordUse(engine, SemanticTags.Array, fullName, line.LineNumber,
+                                        SymbolReadOrWrite.Assigned, SymbolContext.Local,
+                                        procedureName, procedureType);                  // and record an assignment
+                                }
                                 else
                                 {
-                                    if (!engine.DimLines.ContainsKey(fullName))
-                                        engine.DimLines.Add(fullName, line.LineNumber);
-                                }
+                                    if (!engine.DimLines.TryGetValue(fullName, out var list))
+                                    {
+                                        list = new List<DimInfo>();
+                                        engine.DimLines[fullName] = list;
+                                    }
+                                    list.Add(new DimInfo(line.LineNumber, IsLocal(fullName, localVars) == SymbolContext.Local));
 
-                                RecordUse(engine,SemanticTags.Array, fullName, line.LineNumber,
-                                    SymbolReadOrWrite.Assigned, SymbolContext.Local,
-                                    procedureName, procedureType);              // and record an assignment
+                                    RecordUse(engine, SemanticTags.Array, fullName, line.LineNumber,
+                                        SymbolReadOrWrite.Assigned, IsLocal(fullName, localVars),
+                                        procedureName, procedureType);                  // and record an assignment
+                                }
                             }
                             j++;
                         }
@@ -89,11 +114,11 @@ namespace BasTools.Core
                         continue;
                     }
 
-                    if (tok.tag == SemanticTags.IndentingKeyword && tok.value == "FOR") // without this, FOR i=0 TO 4:NEXT would be an assignment without 'use'
+                    if (tok.tag == SemanticTags.IndentingKeyword && tok.value == "FOR") // without this, FOR i=0 TO 4:NEXT would be an assignment without reference
                     {
                         Token? nextVar = PeekNextNonSpaceToken(tokens, i);
                         if (nextVar != null && (nextVar.tag == SemanticTags.Variable ||
-                            nextVar.tag == SemanticTags.Array)) // anything other than variable is illegal as control variable
+                            nextVar.tag == SemanticTags.Array)) // anything else is illegal as control variable
                         {
                             string suffix = (nextVar.tag == SemanticTags.Array ? "()" : "");
                             RecordUse(engine,nextVar.tag,
@@ -107,16 +132,19 @@ namespace BasTools.Core
 
                     if (tok.tag == SemanticTags.Variable || tok.tag == SemanticTags.Array)
                     {
+                        string suffix = (tok.tag == SemanticTags.Array ? "()" : "");
+                        string fullname = tok.value + suffix;
+
                         // Derive Context for variable
                         if (procedureType == ProcedureType.Root)
                         {
                             context = SymbolContext.Global;
                         }
-                        else if (parameters.Contains(tok.value))
+                        else if (parameters.Contains(fullname))
                         {
                             context = SymbolContext.Parameter;
                         }
-                        else if (localVars.Contains(tok.value))
+                        else if (localVars.Contains(fullname))
                         {
                             context = SymbolContext.Local;
                         }
@@ -128,7 +156,7 @@ namespace BasTools.Core
 
                         // Look ahead to see if this is an assignment
                         Token? next = PeekNextNonSpaceToken(tokens, i);
-                        // ... and if array skip over (..)
+                        // ... and if array skip over the brackets (..)
                         if (tok.tag == SemanticTags.Array && next.tag == SemanticTags.OpenBracket)
                         {
                             int k = i;
@@ -144,8 +172,7 @@ namespace BasTools.Core
                                             next?.value == "=";
                         if (readOrDim) isAssignment = true;
 
-                        string suffix = (tok.tag == SemanticTags.Array ? "()" : "");
-                        RecordUse(engine,tok.tag, tok.value + suffix, line.LineNumber,
+                        RecordUse(engine,tok.tag, fullname, line.LineNumber,
                             isAssignment ? SymbolReadOrWrite.Assigned : SymbolReadOrWrite.Referenced,
                            context, procedureName, procedureType);
 
@@ -315,6 +342,10 @@ namespace BasTools.Core
                 ParentProcedureType = procedureType
             };
             sym.Uses.Add(symbolUse);
+        }
+        public static SymbolContext IsLocal(string tokenValue, HashSet<string> localVars)
+        {
+            return localVars.Contains(tokenValue) ? SymbolContext.Local : SymbolContext.Global;
         }
         public static Token? PeekNextNonSpaceToken(List<Token> tokens, int index)
         {
