@@ -250,7 +250,7 @@ namespace BasViewer.GUI
             _loaded = true;
             combProcFnFinder.Items.Clear();
 
-            bool pretty = toolStripButton2.Checked;
+            bool pretty = toolStripBtnPrettyprint.Checked;
 
             string htmlHeader = "<html><head>" + Themes.GetCss(comboBoxTheme.Text) + _script + "</head>" + Environment.NewLine + "<body><table>" + Environment.NewLine;
 
@@ -329,8 +329,8 @@ namespace BasViewer.GUI
             _loaded = true;
             combProcFnFinder.Items.Clear();
 
-            bool splitLines = toolStripButton4.Checked;
-            bool pretty = toolStripButton2.Checked;
+            bool splitLines = toolStripBtnSplitlines.Checked;
+            bool pretty = toolStripBtnPrettyprint.Checked;
             //MessageBox.Show($"Button status: {pretty} {splitLines}");
 
             ListerOptions listerOptions = new ListerOptions(true, false, splitLines, true); //bool indent, bool indentDefs, bool splitLines, bool pretty (ignored)
@@ -684,21 +684,21 @@ namespace BasViewer.GUI
                 // ───────────────────────────────
                 case SymbolKind.StaticInt:
                 case SymbolKind.IntVar:
-                case SymbolKind.IntArray:
+                //case SymbolKind.IntArray:
                     return opts.flgIntegers;
 
                 // ───────────────────────────────
                 // Reals
                 // ───────────────────────────────
                 case SymbolKind.RealVar:
-                case SymbolKind.RealArray:
+                //case SymbolKind.RealArray:
                     return opts.flgRealVars;
 
                 // ───────────────────────────────
                 // Strings
                 // ───────────────────────────────
                 case SymbolKind.StringVar:
-                case SymbolKind.StringArray:
+                //case SymbolKind.StringArray:
                     return opts.flgStrings;
 
                 // ───────────────────────────────
@@ -874,12 +874,12 @@ namespace BasViewer.GUI
         {
             QuickSearch(false);
         }
-        private void toolStripButton2_CheckedChanged(object sender, EventArgs e)
+        private void toolStripBtnPrettyprint_CheckedChanged(object sender, EventArgs e)
         {
             if (_loaded)
                 Reload(engine);
         }
-        private void toolStripButton4_CheckedChanged(object sender, EventArgs e)
+        private void toolStripBtnSplitlines_CheckedChanged(object sender, EventArgs e) // split lines setting changed
         {
             if (_loaded)
                 Reload(engine);

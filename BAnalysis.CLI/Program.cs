@@ -1,6 +1,6 @@
 ﻿using BasTools.Core;
 using System.Globalization;
-#pragma warning disable CA1861, CA1305, CA1304
+#pragma warning disable CA1861, CA1305, CA1304, CA1310
 
 namespace BasAnalysis.CLI
 {
@@ -253,6 +253,7 @@ namespace BasAnalysis.CLI
                     if (engine.DimLines.TryGetValue(symInfo.Name, out var lines))
                     {
                         bool first = true;
+                        Console.WriteLine();
                         foreach (DimInfo dimInfo in lines)
                         {
                             Console.ForegroundColor = ConsoleColor.Green;   // LOCAL DIM
@@ -263,31 +264,30 @@ namespace BasAnalysis.CLI
                                 first = false;
                             }
 
-                            Console.Write("  {0} {1}:  ", dimInfo.IsLocal ? " Local": "Global", "DIM at");
+                            Console.Write("  {0} {1}:  ", dimInfo.IsLocal ? " Local" : "Global", "DIM at");
                             ListProg(engine, new string[] { dimInfo.LineNumber.ToString() }, false);
                         }
                     }
-                    Console.ForegroundColor = ConsoleColor.White;
-                    Console.WriteLine("");
-
-                    foreach (var u in varUsage)
-                    {
-                        string prefix =
-                            u.ProcType == ProcedureType.Proc ? "PROC" :
-                            u.ProcType == ProcedureType.Fn ? "FN" :
-                            "";
-
-                        Console.WriteLine($"  in {prefix}{u.ProcName}:");
-
-                        if (u.Context == SymbolContext.Local && (u.Assigned > 0 && u.Referenced == 0) && symInfo.Kind != SymbolKind.Label)
-                            Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine("     {0,9}, Assigned: {1,3}  Referenced: {2,3}  at {3}", u.Context, u.Assigned, u.Referenced, string.Join(", ", u.LineNumbers));
-                        Console.ForegroundColor = ConsoleColor.White;
-                    }
-                    if (symInfo.Kind == SymbolKind.Label)
-                        Listvar(engine, new string[] { symInfo.Name[1..] }, true); // also information for the variable w/o dot
-
                 }
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.WriteLine("");
+
+                foreach (var u in varUsage)
+                {
+                    string prefix =
+                        u.ProcType == ProcedureType.Proc ? "PROC" :
+                        u.ProcType == ProcedureType.Fn ? "FN" :
+                        "";
+
+                    Console.WriteLine($"  in {prefix}{u.ProcName}:");
+
+                    if (u.Context == SymbolContext.Local && (u.Assigned > 0 && u.Referenced == 0) && symInfo.Kind != SymbolKind.Label)
+                        Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("     {0,9}, Assigned: {1,3}  Referenced: {2,3}  at {3}", u.Context, u.Assigned, u.Referenced, string.Join(", ", u.LineNumbers));
+                    Console.ForegroundColor = ConsoleColor.White;
+                }
+                if (symInfo.Kind == SymbolKind.Label)
+                    Listvar(engine, new string[] { symInfo.Name[1..] }, true); // also information for the variable w/o dot
             }
         }
         static void Listvars(BasToolsEngine engine, string[] arglist, bool analyzed)
@@ -302,41 +302,41 @@ namespace BasAnalysis.CLI
             }*/
 
             // Static Integers
-            Utilities.PrintByKind(SymbolKind.StaticInt, engine.Symbols, "\n  Static Integer Variables",
+            Utilities.PrintByKind(SymbolKind.StaticInt, engine.Symbols, engine, "\n  Static Integer Variables",
                 string.Format("\n  {0,-20}{1,10}{2,11}\n", "Variable", "Assigned", "Referenced"));
 
             Console.WriteLine("\nDynamic Variables (may include labels)");
 
             // Integers
-            Utilities.PrintByKind(SymbolKind.IntVar, engine.Symbols, "\n  Integer Variables",
+            Utilities.PrintByKind(SymbolKind.IntVar, engine.Symbols, engine, "\n  Integer Variables",
                 string.Format("\n  {0,-20}{1,10}{2,11}\n", "Variable", "Assigned", "Referenced"));
 
             // Real variables
-            Utilities.PrintByKind(SymbolKind.RealVar, engine.Symbols, "\n  Real Number Variables",
+            Utilities.PrintByKind(SymbolKind.RealVar, engine.Symbols, engine, "\n  Real Number Variables",
                 string.Format("\n  {0,-20}{1,10}{2,11}\n", "Variable", "Assigned", "Referenced"));
 
             // String variables
-            Utilities.PrintByKind(SymbolKind.StringVar, engine.Symbols, "\n  String Variables",
+            Utilities.PrintByKind(SymbolKind.StringVar, engine.Symbols, engine, "\n  String Variables",
                 string.Format("\n  {0,-20}{1,10}{2,11}\n", "Variable", "Assigned", "Referenced"));
 
             // Arrays
-            Utilities.PrintByKind(SymbolKind.StringArray, engine.Symbols, "\n  Arrays (All types)",
+            Utilities.PrintByKind(SymbolKind.Unknown, engine.Symbols, engine, "\n  Arrays (All types)",
                 string.Format("\n  {0,-20}{1,10}{2,11}\n", "Array", "Global", "Local"));
             
             // PROCs
-            Utilities.PrintByKind(SymbolKind.Proc, engine.Symbols, "\n  Sub-procedures (PROCs)",
+            Utilities.PrintByKind(SymbolKind.Proc, engine.Symbols, engine, "\n  Sub-procedures (PROCs)",
                 string.Format("\n  {0,-20}{1,10}{2,11}\n", "PROC name", "Declared", "Referenced"));
 
             // FNs
-            Utilities.PrintByKind(SymbolKind.Fn, engine.Symbols, "\n  Functions (FNs)",
+            Utilities.PrintByKind(SymbolKind.Fn, engine.Symbols, engine, "\n  Functions (FNs)",
                 string.Format("\n  {0,-20}{1,10}{2,11}\n", "FN name", "Declared", "Referenced"));
 
             // Assembler label
-            Utilities.PrintByKind(SymbolKind.Label, engine.Symbols, "\n  Assembler labels",
+            Utilities.PrintByKind(SymbolKind.Label, engine.Symbols, engine, "\n  Assembler labels",
                 string.Format("\n  {0,-20}{1,10}{2,11}\n", "Label", "Assigned", "Referenced"));
 
             // Strings
-            Utilities.PrintByKind(SymbolKind.LiteralString, engine.Symbols, "\n  Literal strings",
+            Utilities.PrintByKind(SymbolKind.LiteralString, engine.Symbols, engine, "\n  Literal strings",
                 string.Format("\n  {0,-45}{1,6}{2,10}\n", "String", "Count", "Length"));
         }
         static void ListProc(BasToolsEngine engine, string[] arglist, bool analysed)

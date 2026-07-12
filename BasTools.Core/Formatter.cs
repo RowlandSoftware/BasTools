@@ -124,6 +124,7 @@ namespace BasTools.Core
 
             return true;
         }
+        // Called from FormatProgram AND to format individual lines when split
         public void formatLines(Listing lines, FormattingOptions switches, FormatterState state, ProgInfo progInfo, bool IsSplitLines)
         {
             state.InIf = false; // for the benefit of SplitLines

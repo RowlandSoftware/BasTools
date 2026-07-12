@@ -3,16 +3,24 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Reflection;
 using System.Text;
-#pragma warning disable CA1861, CA1305
+#pragma warning disable CA1861, CA1305, CA1310
 
 namespace BasAnalysis.CLI
 {
     internal static class Utilities
     {
-        public static void PrintByKind(SymbolKind kind, Dictionary<string, SymbolInfo> Symbols,
+        public static void PrintByKind(SymbolKind kind, Dictionary<string, SymbolInfo> Symbols, BasToolsEngine engine,
             string heading1, string heading2)
         {
+            // get list of 'kind' symbols
             var list = Symbols.Values.Where(s => s.Kind == kind).OrderBy(s => s.Name).ToList<SymbolInfo>();
+
+            if (kind == SymbolKind.Unknown)     // signal for arrays
+            {
+                list = Symbols.Values.Where(s => s.Name.EndsWith("()") && s.Kind != SymbolKind.Fn && s.Kind != SymbolKind.Proc)
+                            .OrderBy(s => s.Name)
+                            .ToList();
+            }
             if (list.Count == 0) return;
 
             Console.ForegroundColor = ConsoleColor.Green;
@@ -28,11 +36,11 @@ namespace BasAnalysis.CLI
                 Console.ForegroundColor = alternate ? ConsoleColor.White : ConsoleColor.Gray;       // mild stripes
                 alternate = !alternate;
 
-                if (kind == SymbolKind.LiteralString)
+                if (kind == SymbolKind.LiteralString) // special code for strings
                 {
                     Console.WriteLine("  {0,-45}{1,6}{2,10} ", symInfo.Name.Trim(), symInfo.AssignedCount, symInfo.Name.Length - 2);
                 }
-                else if (kind == SymbolKind.Label)
+                else if (kind == SymbolKind.Label)      // labels: get corresponding variable (which will be of a different SymbolKind)
                 {
                     if (symInfo.AssignedCount > 1) Console.ForegroundColor = ConsoleColor.Red;       // assigned > once
 
@@ -45,13 +53,28 @@ namespace BasAnalysis.CLI
                     if (refKind != SymbolKind.Unknown)
                     {
                         refVar = Symbols[refKind + ":" + name];
-                        //Console.WriteLine($"{refVar.Name} - {refVar.ReferencedCount} - ");
                         refCount = refVar.ReferencedCount;
                     }
 
                     Console.WriteLine("  {0,-20}{1,10}{2,11} ", symInfo.Name, symInfo.AssignedCount, refCount);
                 }
-                else
+                else if (kind == SymbolKind.Unknown) // signal for arrays
+                {
+                    if (engine.DimLines.TryGetValue(symInfo.Name, out var lines))
+                    {
+                        int globalCount = 0;
+                        int localCount = 0;
+                        foreach (DimInfo dimInfo in lines)
+                        {
+                            if (dimInfo.IsLocal)
+                                localCount++;
+                            else
+                                globalCount++;
+                        }
+                        Console.WriteLine("  {0,-20}{1,10}{2,11} ", symInfo.Name, globalCount, localCount); // TODO
+                    }
+                }
+                else // everything else
                 {
                     if (symInfo.ReferencedCount == 0) Console.ForegroundColor = ConsoleColor.Red;       // assigned but unused
                     if ((kind == SymbolKind.Fn || kind == SymbolKind.Proc) && symInfo.AssignedCount > 1)
@@ -205,6 +228,7 @@ namespace BasAnalysis.CLI
                         break;
                     case "cat":
                     case "dir":
+                    case "ls":
                     case ".":
                         Console.WriteLine("cat | dir | ls - Catalogue current directory");
                         Console.WriteLine("Minimum abbreviation: .");

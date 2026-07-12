@@ -51,7 +51,7 @@
     public class SymbolInfo
     {
         public string Name { get; init; } = "";
-        public SymbolKind Kind { get; init; }   // IntVar, RealVar, StringVar, Array, PROC, FN, LocalVar, etc.
+        public SymbolKind Kind { get; init; }   // IntVar, RealVar, StringVar, PROC, FN, etc.
 
         public int AssignedCount { get; set; }
         public int ReferencedCount { get; set; }
