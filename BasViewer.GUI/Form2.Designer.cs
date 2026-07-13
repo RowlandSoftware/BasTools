@@ -176,7 +176,7 @@
             labMessage.AutoSize = true;
             labMessage.Font = new Font("Segoe UI", 10.125F);
             labMessage.ForeColor = SystemColors.HotTrack;
-            labMessage.Location = new Point(151, 433);
+            labMessage.Location = new Point(124, 433);
             labMessage.Name = "labMessage";
             labMessage.Size = new Size(67, 37);
             labMessage.TabIndex = 22;

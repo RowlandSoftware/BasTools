@@ -222,17 +222,7 @@ namespace BasViewer.GUI
                 {
                     IsTextNotBasic = true;
                     engine.LoadAndFormatTextFile(filename, formatOptions, progInfo);
-
-                    // DEBUG
-                    /*string whatever = "";
-                    foreach (var pl in engine.CurrentListing.Lines)
-                    {
-                        whatever += $"{pl.FormattedLineNumber} {pl.TaggedLine}</br>" + Environment.NewLine;
-                    }
-                    label1.Visible = false;
-                    webView2.NavigateToString (whatever);*/
                 }
-                //return IsTextNotBasic;
             }
             catch (BasToolsException ex)
             {
@@ -280,6 +270,7 @@ namespace BasViewer.GUI
 
                             combProcFnFinder.Items.Add(line.FormattedPlain);
                         }
+                        // convert tags to HTML spans
                         string tag = tok.tag.Substring(2, tok.tag.Length - 3); // peel off {= ... }
                         lineBody.Append($"<span class=\"{tag}\">");
                         lineBody.Append(tok.value);
@@ -429,24 +420,6 @@ namespace BasViewer.GUI
             else
                 TextToHtml(engine);
         }
-        private async void Refresh(BasToolsEngine engine) // use when theme changes AFTER Reload has been used
-        {
-            if(!_loaded)
-                return;
-
-            if (panelSearchNav.Visible)
-                panelSearchNav.Visible = false;
-
-            var scrollY = await webView2.ExecuteScriptAsync("document.scrollingElement.scrollTop");
-            bool v = int.TryParse(scrollY, out int savedScroll);
-            if (!v) savedScroll = 0;
-
-            string htmlHeader = "<html><head>" + Themes.GetCss(comboBoxTheme.Text) + _script + "</head><body><table>";
-
-            webView2.NavigateToString(htmlHeader + _htmlDoc);
-
-            await webView2.ExecuteScriptAsync($"document.scrollingElement.scrollTop = {savedScroll};");
-        }
         private async void Reload(BasToolsEngine engine)
         {
             if (!_loaded)
@@ -559,7 +532,7 @@ namespace BasViewer.GUI
 
             // 2. Tell JS which highlighted span is the "current" one
             await webView2.CoreWebView2.ExecuteScriptAsync(
-                $"window.search.scrollTo({index});");
+                $"window.search.scrollTo({m.Column});"); // was {index}
         }
         private void ClearSearchHighlights()
         {
@@ -581,11 +554,11 @@ namespace BasViewer.GUI
         //******* Advanced Search *********
         public class SearchMatch
         {
-            public int Line;
-            public int Column;
-            public int Length;
-            public string? Text;
-            public SymbolKind Type;
+            public int Line { get; set; }
+            public int Column { get; set; }
+            public int Length { get; set; }
+            public string? Text { get; set; }
+            public SymbolKind Type { get; set; }
         }
         public void DoSearch(string term, SearchOptions opts)
         {
@@ -792,8 +765,7 @@ namespace BasViewer.GUI
         private void comboBoxTheme_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (_loaded)
-                //Reload(engine);
-                Refresh(engine);
+                Reload(engine);
         }
         private void toolStripButtonMenu_Click(object sender, EventArgs e)
         {

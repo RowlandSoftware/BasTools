@@ -242,6 +242,17 @@
         } // parseTextLine
         public List<DisplayLine> PrepLinesForDisplay(ListerOptions listerOptions)
         {
+            if (CurrentListing.Lines.Count > 0)
+            {
+                // Clear indents set by previous runs
+                foreach(ProgramLine line in CurrentListing.Lines)
+                {
+                    line.IndentLevel = 0;
+                    line.fstate.Indent = 0;
+                    line.fstate.MultiLineIfDepth = 0;
+                    line.fstate.PendingIndent = 0;
+                }
+            }
             return BasLister.PrepLinesForDisplay(CurrentListing, listerOptions, CurrentProgInfo);
         }
         public static bool PrintOneLine(ProgramLine progline, ref int linesprinted)

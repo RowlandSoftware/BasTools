@@ -24,8 +24,8 @@ namespace BasViewer.GUI
 
             tips = new string[] {
                 "Select category first, then choose the item",
-                "You cannot search for variables when a text file is loaded",
-                "For arrays, add empty brackets ()" };
+                "When a text file is loaded, search for variables with Quick Search"
+            };
             tipsIndex = 0;
 
             chkFn.Tag = SymbolKind.Fn;
@@ -71,7 +71,11 @@ namespace BasViewer.GUI
         public void SetTextFocus()
         {
             this.cmbBoxAdvSearch.Focus();
-            labMessage.Text = tips[(tipsIndex++) % 3];
+            if (tipsIndex == 1)
+            {
+                if (chkReal.Enabled) tipsIndex = 0;
+            }
+            labMessage.Text = tips[(tipsIndex++) % 2];
             labTip.Visible = true;
         }
         private void btnOK_Click(object sender, EventArgs e)
