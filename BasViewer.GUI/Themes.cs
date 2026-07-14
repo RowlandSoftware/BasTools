@@ -346,36 +346,40 @@ namespace BasViewer.GUI
             ";
 
             string script2 = Environment.NewLine + @"
-window.search = {
-    clear: function () {
-        document.querySelectorAll('.search-hit, .search-current').forEach(el => {
-            const parent = el.parentNode;
+            window.search = window.search || {};
 
-            const text = document.createTextNode(el.textContent);
-            el.replaceWith(text);
+window.search.clear = function () {
+    // Remove current-match class
+    document.querySelectorAll("".search-current"").forEach(span => {
+        span.classList.remove(""search-current"");
+    });
 
-            if (parent) {
-                for (let i = 0; i < parent.childNodes.length - 1; i++) {
-                    const a = parent.childNodes[i];
-                    const b = parent.childNodes[i + 1];
+    // Remove search-hit spans safely
+    document.querySelectorAll("".search-hit"").forEach(span => {
+        const parent = span.parentNode;
+        if (!parent) return;
 
-                    if (a.nodeType === 3 && b.nodeType === 3) {
-                        a.textContent += b.textContent;
-                        parent.removeChild(b);
-                        i--;
-                    }
-                }
-            }
-        });
-    },
+        const text = document.createTextNode(span.textContent);
 
-    highlightAll: function (term) {
-        if (!term) return;
+        // Insert the text node before the span
+        parent.insertBefore(text, span);
 
-    // Escape regex metacharacters
-    const regex = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+        // Remove the span
+        parent.removeChild(span);
 
-    // ⭐ First pass: collect all text nodes
+        // Merge adjacent text nodes
+        if (text.previousSibling && text.previousSibling.nodeType === Node.TEXT_NODE) {
+            text.previousSibling.textContent += text.textContent;
+            parent.removeChild(text);
+        }
+    });
+};
+
+window.search.highlightAll = function (term){
+    if (!term) return;
+
+    const regex = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, ""\\$&""), ""gi"");
+
     const walker = document.createTreeWalker(
         document.body,
         NodeFilter.SHOW_TEXT,
@@ -388,17 +392,16 @@ window.search = {
     while (node = walker.nextNode()) {
         if (node.parentNode &&
             node.parentNode.classList &&
-            node.parentNode.classList.contains('search-hit'))
+            node.parentNode.classList.contains(""search-hit""))
             continue;
 
         textNodes.push(node);
     }
 
-    // ⭐ Second pass: process each text node safely
     for (const node of textNodes) {
         const text = node.nodeValue;
 
-        regex.lastIndex = 0; // reset for each node
+        regex.lastIndex = 0;
 
         let match;
         let lastIndex = 0;
@@ -409,8 +412,8 @@ window.search = {
             if (before)
                 frag.appendChild(document.createTextNode(before));
 
-            const span = document.createElement('span');
-            span.className = 'search-hit';
+            const span = document.createElement(""span"");
+            span.className = ""search-hit"";
             span.textContent = match[0];
             frag.appendChild(span);
 
@@ -426,22 +429,94 @@ window.search = {
 
         node.parentNode.replaceChild(frag, node);
     }
-},
+};
 
-                scrollTo: function (index) {
-                    const hits = document.querySelectorAll('.search-hit');
-                    if (hits.length === 0) return;
+window.search.applyMatches = function (matches, currentIndex) {
+    window.search.clear();
 
-                    hits.forEach(h => h.classList.remove('search-current'));
+    matches.forEach((m, i) => {
+        const lineTd = document.getElementById(""line_"" + m.Line);
+        if (!lineTd) return;
 
-                    const target = hits[index];
-                    target.classList.add('search-current');
-                    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const line = lineTd.parentElement;
+        if (!line) return;
+
+        const codeCell = line.querySelector(""td.code"");
+        if (!codeCell) return;
+
+        const walker = document.createTreeWalker(codeCell, NodeFilter.SHOW_ALL);
+        let offset = 0;
+
+        while (walker.nextNode()) {
+            const node = walker.currentNode;
+            if (node.nodeType !== Node.TEXT_NODE) continue;
+
+            const text = node.textContent;
+            const start = offset;
+            const end = offset + text.length;
+
+            // match must start within this node
+            if (m.Column >= start && m.Column + m.Length <= end) {
+                const localStart = m.Column - start;
+                const localEnd = localStart + m.Length;
+
+                const before = text.slice(0, localStart);
+                const hit = text.slice(localStart, localEnd);
+                const after = text.slice(localEnd);
+
+                // enforce exact match to avoid 'lo' in 'loop1'
+                if (hit !== m.Text) {
+                    offset += text.length;
+                    continue;
                 }
-                };
-            </script>" + Environment.NewLine;
 
-            return script1 + script2;
+                const span = document.createElement(""span"");
+                span.className = ""search-hit"";
+                span.dataset.matchIndex = i;
+                span.textContent = hit;
+
+                const frag = document.createDocumentFragment();
+                if (before) frag.appendChild(document.createTextNode(before));
+                frag.appendChild(span);
+                if (after) frag.appendChild(document.createTextNode(after));
+
+                node.replaceWith(frag);
+                break;
+            }
+
+            offset += text.length;
+        }
+    });
+
+    window.search.scrollTo(currentIndex);
+};
+
+window.search.scrollTo = function (index) {
+    const hits = document.querySelectorAll("".search-hit"");
+    if (hits.length === 0) return;
+
+    hits.forEach(h => h.classList.remove(""search-current""));
+
+    // Prefer the span whose data-match-index matches
+    let target = null;
+    hits.forEach(h => {
+        if (h.dataset.matchIndex == index) {
+            target = h;
+        }
+    });
+
+    // Fallback: treat index as position in hits
+    if (!target) {
+        target = hits[index];
+    }
+    if (!target) return;
+
+    target.classList.add(""search-current"");
+    target.scrollIntoView({ behavior: ""smooth"", block: ""center"" });
+};
+" + Environment.NewLine;
+            
+            return script1 + script2 + "</script>";
         }
     }
 }

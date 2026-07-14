@@ -253,6 +253,7 @@
             toolStripButton10.Size = new Size(52, 48);
             toolStripButton10.Text = "toolStripButton5";
             toolStripButton10.ToolTipText = "Quick Search";
+            toolStripButton10.MouseDown += toolStripButton10_MouseDown;
             // 
             // toolStripTextBoxSearch
             // 

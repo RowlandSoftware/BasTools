@@ -1,12 +1,14 @@
 using BasTools.Core;
 using Microsoft.VisualBasic;
 using Microsoft.VisualBasic.FileIO;
+using Microsoft.VisualBasic.Logging;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 using System.Diagnostics;
 using System.Runtime.Intrinsics.Arm;
 using System.Security.Policy;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using static BasViewer.GUI.Form1;
 using static System.Net.Mime.MediaTypeNames;
@@ -34,7 +36,6 @@ namespace BasViewer.GUI
         ProgInfo? progInfo;
         FormattingOptions? formatOptions;
         BasToolsEngine? engine;
-        private List<DisplayLine> _displayLines = new();
         private string _htmlClose;
         private string _htmlDoc;
         private string _script;
@@ -281,20 +282,20 @@ namespace BasViewer.GUI
                 if (pretty)
                 {
                     if (IsDef)
-                        htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td id = \"line_{line.FormattedLineNumber}\" class = \"line-number\">{line.FormattedLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
+                        htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td id = \"line_{line.FormattedLineNumber}\" class = \"line-number\">{line.FormattedLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
                     else if (IsInDef)
-                        htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td id = \"line_{line.FormattedLineNumber}\" class = \"line-number\">{line.FormattedLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
+                        htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td id = \"line_{line.FormattedLineNumber}\" class = \"line-number\">{line.FormattedLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
                     else
-                        htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td id = \"line_{line.FormattedLineNumber}\" class = \"line-number\">{line.FormattedLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
+                        htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td id = \"line_{line.FormattedLineNumber}\" class = \"line-number\">{line.FormattedLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
                 }
                 else
                 {
                     if (IsDef)
-                        htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td id = \"line_{line.FormattedLineNumber}\" class = \"line-number\">{line.FormattedLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{line.FormattedPlain}</td></tr>" + Environment.NewLine);
+                        htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td id = \"line_{line.FormattedLineNumber}\" class = \"line-number\">{line.FormattedLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{line.FormattedPlain}</td></tr>" + Environment.NewLine);
                     else if (IsInDef)
-                        htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td id = \"line_{line.FormattedLineNumber}\" class = \"line-number\">{line.FormattedLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{line.FormattedPlain}</td></tr>" + Environment.NewLine);
+                        htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td id = \"line_{line.FormattedLineNumber}\" class = \"line-number\">{line.FormattedLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{line.FormattedPlain}</td></tr>" + Environment.NewLine);
                     else
-                        htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td id = \"line_{line.FormattedLineNumber}\" class = \"line-number\">{line.FormattedLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{line.FormattedPlain}</td></tr>" + Environment.NewLine);
+                        htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td id = \"line_{line.FormattedLineNumber}\" class = \"line-number\">{line.FormattedLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{line.FormattedPlain}</td></tr>" + Environment.NewLine);
                 }
                 if (IsInDef && !line.IsInDef)
                     IsInDef = false;
@@ -366,20 +367,20 @@ namespace BasViewer.GUI
                 if (pretty)
                 {
                     if (IsDef)
-                        htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td id = \"line_{line.sLineNumber}\" class = \"line-number\">{line.sLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
+                        htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td id = \"line_{line.sLineNumber}\" class = \"line-number\">{line.sLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
                     else if (IsInDef)
-                        htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td id = \"line_{line.sLineNumber}\" class = \"line-number\">{line.sLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
+                        htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td id = \"line_{line.sLineNumber}\" class = \"line-number\">{line.sLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
                     else
-                        htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td id = \"line_{line.sLineNumber}\" class = \"line-number\">{line.sLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
+                        htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td id = \"line_{line.sLineNumber}\" class = \"line-number\">{line.sLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
                 }
                 else
                 {
                     if (IsDef)
-                        htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td id = \"line_{line.sLineNumber}\" class = \"line-number\">{line.sLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{line.PlainLine}</td></tr>" + Environment.NewLine);
+                        htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td id = \"line_{line.sLineNumber}\" class = \"line-number\">{line.sLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{line.PlainLine}</td></tr>" + Environment.NewLine);
                     else if (IsInDef)
-                        htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td id = \"line_{line.sLineNumber}\" class = \"line-number\">{line.sLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{line.PlainLine}</td></tr>" + Environment.NewLine);
+                        htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td id = \"line_{line.sLineNumber}\" class = \"line-number\">{line.sLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{line.PlainLine}</td></tr>" + Environment.NewLine);
                     else
-                        htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td id = \"line_{line.sLineNumber}\" class = \"line-number\">{line.sLineNumber}</td><td style=\"padding-left:{totindent.ToString()}ch\">{line.PlainLine}</td></tr>" + Environment.NewLine);
+                        htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td id = \"line_{line.sLineNumber}\" class = \"line-number\">{line.sLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{line.PlainLine}</td></tr>" + Environment.NewLine);
                 }
 
                 if (IsInDef && !line.IsInDef)
@@ -424,7 +425,7 @@ namespace BasViewer.GUI
         {
             if (!_loaded)
                 return;
-            
+
             if (panelSearchNav.Visible)
                 panelSearchNav.Visible = false;
 
@@ -532,7 +533,7 @@ namespace BasViewer.GUI
 
             // 2. Tell JS which highlighted span is the "current" one
             await webView2.CoreWebView2.ExecuteScriptAsync(
-                $"window.search.scrollTo({m.Column});"); // was {index}
+                $"window.search.scrollTo({index});");
         }
         private void ClearSearchHighlights()
         {
@@ -558,7 +559,7 @@ namespace BasViewer.GUI
             public int Column { get; set; }
             public int Length { get; set; }
             public string? Text { get; set; }
-            public SymbolKind Type { get; set; }
+            public SymbolKind Kind { get; set; }
         }
         public void DoSearch(string term, SearchOptions opts)
         {
@@ -582,36 +583,82 @@ namespace BasViewer.GUI
 
                 // Match the symbol name itself
                 StringComparison matchCase;
-                if (opts.match_case)
-                    matchCase = StringComparison.Ordinal;
-                else
-                    matchCase = StringComparison.OrdinalIgnoreCase;
+                //if (opts.match_case)
+                matchCase = StringComparison.Ordinal;
+                /*else
+                    matchCase = StringComparison.OrdinalIgnoreCase;*/
 
                 bool found;
-                if (opts.whole_word)
-                    found = sym.Name.Equals(term, matchCase);
-                else
-                    found = sym.Name.Contains(term, matchCase);
+                //if (opts.whole_word)
+                found = sym.Name.Equals(term, matchCase);
+                /*else
+                    found = sym.Name.Contains(term, matchCase);*/
                 if (found)
                 {
-                    // Match all usages
-                    foreach (var use in sym.Uses)
-                    {
-                        // We only care about the line number
-                        matches.Add(new SearchMatch
-                        {
-                            Line = use.LineNumber,
-                            Column = 1,
-                            Text = sym.Name, //term, ?
-                            Type = sym.Kind
-                        });
-                    }
+                    getMatches(sym, matches, engine.DisplayLines);
                 }
             }
-            //var distinctLines = matches.Select(m => m.Line).Distinct().Count();
-            //Log($"Search '{term}': matches.Count = {matches.Count}, distinct lines = {distinctLines}");
+            var distinctLines = matches.Select(m => m.Line).Distinct().Count();
+            Log($"Search '{term}': matches.Count = {matches.Count}, distinct lines = {distinctLines}");
 
-            ApplySearchResults(term);            
+            ApplySearchResults(term);
+        }
+        public static void getMatches(SymbolInfo sym, List<SearchMatch> matches, IReadOnlyList<DisplayLine> displayLines)
+        {
+            string name = sym.Name;
+            int nameLength = name.Length; // TODO adjust for arrays
+
+            int PrevMatchOnLine = 0;
+            int PrevLineNumber = 0;
+
+            foreach (var use in sym.Uses)
+            {
+                int targetLine = use.LineNumber;
+                Log($"{name} - Searching for line {targetLine}");
+
+                // Find the DisplayLine with this BASIC line number
+                // (stop early because BASIC lines are sorted)
+                DisplayLine? dl = null;
+                foreach (var line in displayLines)
+                {
+                    //Log($"Trying {line.Linenumber}");
+                    if (line.Linenumber == targetLine)
+                    {
+                        dl = line;
+                        Log($"Matched line {targetLine}");
+                        break;
+                    }
+                    if (line.Linenumber > targetLine)
+                        break;
+                }
+
+                if (dl == null)
+                    continue; // should not happen unless program is corrupt
+
+                string raw = dl.PlainLine;
+                if (string.IsNullOrEmpty(raw))
+                    continue;
+
+                // Find the symbol name inside the raw line
+                if (PrevLineNumber != targetLine)
+                    PrevMatchOnLine = 0;
+
+                int idx = raw.IndexOf(name, PrevMatchOnLine, StringComparison.Ordinal);
+                Log($"Indx {idx}");
+                if (idx < 0)
+                    continue; // symbol not found in this line (rare but possible)
+                PrevMatchOnLine = idx + 1;
+                PrevLineNumber = targetLine;
+
+                matches.Add(new SearchMatch
+                {
+                    Line = targetLine,
+                    Column = idx,
+                    Length = nameLength,
+                    Text = name,
+                    Kind = sym.Kind
+                });
+            }
         }
         private async void ApplySearchResults(string term)
         {
@@ -629,10 +676,14 @@ namespace BasViewer.GUI
                 advancedSearch.BringToFront();
                 return;
             }
-            else
-                searchNav.UpdateStatus(currentMatchIndex, matches.Count);
 
-            // Array?
+            var json = JsonSerializer.Serialize(matches);
+            await webView2.CoreWebView2.ExecuteScriptAsync(
+                $"window.search.applyMatches({json}, {currentMatchIndex});");
+
+            searchNav.UpdateStatus(currentMatchIndex, matches.Count);
+
+            /*/ Array?
             if (term.EndsWith("()"))
                 term = term.Substring(0, term.Length - 2);
 
@@ -643,7 +694,7 @@ namespace BasViewer.GUI
 
             // Scroll to first match
             await webView2.CoreWebView2.ExecuteScriptAsync(
-                $"window.search.scrollTo({currentMatchIndex});");
+                $"window.search.scrollTo({currentMatchIndex});");*/
 
             // Show navigator            
             panelSearchNav.Visible = true;
@@ -652,106 +703,35 @@ namespace BasViewer.GUI
         {
             switch (sym.Kind)
             {
-                // ───────────────────────────────
-                // Integers
-                // ───────────────────────────────
                 case SymbolKind.StaticInt:
                 case SymbolKind.IntVar:
-                //case SymbolKind.IntArray:
                     return opts.flgIntegers;
 
-                // ───────────────────────────────
-                // Reals
-                // ───────────────────────────────
                 case SymbolKind.RealVar:
-                //case SymbolKind.RealArray:
                     return opts.flgRealVars;
 
-                // ───────────────────────────────
-                // Strings
-                // ───────────────────────────────
                 case SymbolKind.StringVar:
-                //case SymbolKind.StringArray:
                     return opts.flgStrings;
 
-                // ───────────────────────────────
-                // Literal strings
-                // ───────────────────────────────
                 case SymbolKind.LiteralString:
                     return opts.flgLiteralStrings;
 
-                // ───────────────────────────────
-                // Procedures / Functions
-                // ───────────────────────────────
                 case SymbolKind.Proc:
                     return opts.flgProcs;
 
                 case SymbolKind.Fn:
                     return opts.flgFns;
 
-                // ───────────────────────────────
-                // REMs (if you classify them separately) TODO
-                // ───────────────────────────────
                 case SymbolKind.RemText:
-                  return opts.flgRems;
+                    return opts.flgRems;
 
-                // ───────────────────────────────
-                // KEYWORDS (if you classify them separately) TODO
-                // ───────────────────────────────
                 case SymbolKind.Keyword:
-                  return opts.flgKeywords;
+                    return opts.flgKeywords;
 
                 default:
                     return false;
             }
         }
-        public static IEnumerable<SearchMatch> GetMatchesForSymbol(
-            SymbolInfo sym,
-            IReadOnlyList<DisplayLine> displayLines)
-        {
-            string name = sym.Name;
-            int nameLength = name.Length;
-
-            foreach (var use in sym.Uses)
-            {
-                int targetLine = use.LineNumber;
-
-                // Find the DisplayLine with this BASIC line number
-                // (stop early because BASIC lines are sorted)
-                DisplayLine? dl = null;
-                foreach (var line in displayLines)
-                {
-                    if (line.Linenumber == targetLine)
-                    {
-                        dl = line;
-                        break;
-                    }
-                    if (line.Linenumber > targetLine)
-                        break;
-                }
-
-                if (dl == null)
-                    continue; // should not happen unless program is corrupt
-
-                string raw = dl.PlainLine;
-                if (string.IsNullOrEmpty(raw))
-                    continue;
-
-                // Find the symbol name inside the raw line
-                int idx = raw.IndexOf(name, StringComparison.Ordinal);
-                if (idx < 0)
-                    continue; // symbol not found in this line (rare but possible)
-
-                yield return new SearchMatch
-                {
-                    Line = targetLine,
-                    Column = idx,
-                    Length = nameLength,
-                    Text = name
-                };
-            }
-        }
-
         // ********* Zoom Control helper ********
         private void ApplyZoom()
         {
@@ -905,9 +885,15 @@ namespace BasViewer.GUI
             else
                 return 100;
         }
-        private void Log(string message)
+        private static void Log(string message)
         {
             File.AppendAllText("search-debug.log", message + Environment.NewLine);
+        }
+
+        private void toolStripButton10_MouseDown(object sender, MouseEventArgs e)
+        {
+            bool backwards = e.Button == MouseButtons.Right;
+            QuickSearch(backwards);
         }
     }
 }

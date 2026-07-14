@@ -27,6 +27,7 @@
         public Listing CurrentListing { get; private set; } = null;
         public ProgInfo CurrentProgInfo { get; private set; } = null;
         public Dictionary<string, List<DimInfo>> DimLines = new();
+        public List<DisplayLine> DisplayLines = null;
 
 
         // for the benefit of BasAnalysis
@@ -253,7 +254,8 @@
                     line.fstate.PendingIndent = 0;
                 }
             }
-            return BasLister.PrepLinesForDisplay(CurrentListing, listerOptions, CurrentProgInfo);
+            DisplayLines = BasLister.PrepLinesForDisplay(CurrentListing, listerOptions, CurrentProgInfo);
+            return DisplayLines;
         }
         public static bool PrintOneLine(ProgramLine progline, ref int linesprinted)
         {
