@@ -220,7 +220,7 @@
             // 
             comboBoxTheme.DropDownStyle = ComboBoxStyle.DropDownList;
             comboBoxTheme.Font = new Font("Segoe UI", 10.125F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            comboBoxTheme.Items.AddRange(new object[] { "Dark", "Light", "Retro", "Mono", "VisualStudio", "Typewriter" });
+            comboBoxTheme.Items.AddRange(new object[] { "Dark", "Light", "Retro", "Mono", "GreenScreen", "Pastel", "Neon", "VisualStudio", "Typewriter" });
             comboBoxTheme.Name = "comboBoxTheme";
             comboBoxTheme.Size = new Size(170, 54);
             comboBoxTheme.SelectedIndexChanged += comboBoxTheme_SelectedIndexChanged;

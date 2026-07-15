@@ -576,7 +576,8 @@ namespace BasViewer.GUI
             foreach (var kvp in engine.Symbols)
             {
                 var sym = kvp.Value;
-
+                if (sym.Name == "lo" || sym.Name == ".lo")
+                    MessageBox.Show($"Checking {term} against symbol {sym.Name}\n- type {sym.Kind}");
                 // Filter by kind
                 if (!MatchesKind(sym, opts))
                     continue;
@@ -595,6 +596,7 @@ namespace BasViewer.GUI
                     found = sym.Name.Contains(term, matchCase);*/
                 if (found)
                 {
+                    MessageBox.Show("Matched!");
                     getMatches(sym, matches, engine.DisplayLines);
                 }
             }

@@ -155,7 +155,7 @@ namespace BasViewer.GUI
                 ["array"] = "color:LightSlateGray;",
                 ["staticint"] = "color:DimGray;",
                 ["remtext"] = "color:Silver; font-style:italic;",
-                ["assemcomment"] = "colorSilver; font-style:italic;",
+                ["assemcomment"] = "color:Silver; font-style:italic;",
                 ["starcommand"] = "color:white;",
                 ["embeddeddata"] = "color:white;",
                 ["proc"] = "color:Gray;",
@@ -172,6 +172,129 @@ namespace BasViewer.GUI
                 ["listsep"] = "color:white;",
                 ["openbracket"] = "color:white;",
                 ["closebracket"] = "color:white;",
+            },
+
+            ["GreenScreen"] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["font"] = "Consolas,Cascadia Code,Menlo,Monospace",
+                ["background"] = "#001800",
+                ["foreground"] = "PaleGreen",
+                ["linenumber_bg"] = "#124012",
+                ["linenumber_fg"] = "PaleGreen",
+
+                ["keyword"] = "color:ForestGreen; font-weight: bold;",
+                ["indentingkeyword"] = "color:ForestGreen; font-weight: bold;",
+                ["outdentingkeyword"] = "color:ForestGreen; font-weight: bold;",
+                ["inout_keyword"] = "color:ForestGreen; font-weight: bold;",
+                ["then"] = "color:ForestGreen; font-weight: bold;",
+                ["builtinfn"] = "color:ForestGreen; font-weight: bold;",
+                ["string"] = "color:SpringGreen; font-style:italic;",
+                ["number"] = "color:#DBFCCF;",
+                ["hexnumber"] = "color:DBFCCF;",
+                ["binarynumber"] = "color:DBFCCF;",
+                ["var"] = "color:GreenYellow;",
+                ["array"] = "color:YellowGreen;",
+                ["staticint"] = "color:DimGray;",
+                ["remtext"] = "color:GreenYellow; font-style:italic;",
+                ["assemcomment"] = "color:GreenYellow; font-style:italic;",
+                ["starcommand"] = "color:PaleGreen;",
+                ["embeddeddata"] = "color:PaleGreen;",
+                ["proc"] = "color:LimeGreen;",
+                ["fn"] = "color:LimeGreen;",
+                ["label"] = "color:GreenYellow;",
+                ["register"] = "color:DarkSeaGreen;",
+                ["mnemonic"] = "color:ForestGreen;",
+                ["linenumber"] = "color:DarkGreen",
+                ["operator"] = "color:DBFCCF;",
+                ["="] = "color:ForestGreen",
+                ["indirectionoperator"] = "color:DBFCCF;",
+                ["immediateoperator"] = "color:ForestGreen;",
+                ["statementsep"] = "color:ForestGreen;",
+                ["listsep"] = "color:ForestGreen;",
+                ["openbracket"] = "color:PaleGreen;",
+                ["closebracket"] = "color:PaleGreen;",
+            },
+
+            ["Pastel"] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["font"] = "Consolas,Cascadia Code,Menlo,Monospace",
+                ["background"] = "#390099",
+                ["foreground"] = "RoyalBlue",
+                ["linenumber_bg"] = "#EaEaFF",
+                ["linenumber_fg"] = "#98f5e1",
+
+                ["keyword"] = "font-weight: bold;",
+                ["indentingkeyword"] = "font-weight: bold;",
+                ["outdentingkeyword"] = "font-weight: bold;",
+                ["inout_keyword"] = "font-weight: bold;",
+                ["then"] = "font-weight: bold;",
+                ["builtinfn"] = "font-weight: bold;",
+                ["string"] = "color:LimeGreen;",
+                ["number"] = "color:SlateGray;",
+                ["hexnumber"] = "color:#fbf8cc;",
+                ["binarynumber"] = "color:#fbf8cc;",
+                ["var"] = "color:#FF1ED6;",
+                ["array"] = "color:Violet;",
+                ["staticint"] = "color:MediumPurple;",
+                ["remtext"] = "color:#ffff3f; font-style:italic; font-weight: bold;",
+                ["assemcomment"] = "color:#ffff3f; font-style:italic; font-weight: bold;",
+                ["starcommand"] = "color:Gold;",
+                ["embeddeddata"] = "color:Orange;",
+                ["proc"] = "color:#00bbf9;",
+                ["fn"] = "color:#00bbf9;",
+                ["label"] = "color:MediumOrchid;",
+                ["register"] = "color:SeaGreen;",
+                ["mnemonic"] = "color:DodgerBlue;",
+                ["linenumber"] = "color:Crimson",
+                ["operator"] = "color:Red;",
+                ["="] = "color:red",
+                ["indirectionoperator"] = "color:#fbf8cc;",
+                ["immediateoperator"] = "color:#fbf8cc;",
+                ["statementsep"] = "color:Orange;",
+                ["listsep"] = "color:Blue;",
+                ["openbracket"] = "color:#ffff3f;",
+                ["closebracket"] = "color:#ffff3f;",
+            },
+
+            ["Neon"] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["font"] = "Consolas,Cascadia Code,Menlo,Monospace",
+                ["background"] = "Black",
+                ["foreground"] = "DodgerBlue",
+                ["linenumber_bg"] = "DarkSlateGray",
+                ["linenumber_fg"] = "Red",
+
+                ["keyword"] = "font-weight: bold;",
+                ["indentingkeyword"] = "font-weight: bold;",
+                ["outdentingkeyword"] = "font-weight: bold;",
+                ["inout_keyword"] = "font-weight: bold;",
+                ["then"] = "font-weight: bold;",
+                ["builtinfn"] = "font-weight: bold;",
+                ["string"] = "color:LimeGreen; font-weight: bold;",
+                ["number"] = "color:white;",
+                ["hexnumber"] = "color:white;",
+                ["binarynumber"] = "color:white;",
+                ["var"] = "color:#FF1ED6;",
+                ["array"] = "color:Violet;",
+                ["staticint"] = "color:MediumPurple;",
+                ["remtext"] = "color:Yellow; font-style:italic;",
+                ["assemcomment"] = "color:Yellow; font-style:italic;",
+                ["starcommand"] = "color:Gold;",
+                ["embeddeddata"] = "color:Orange;",
+                ["proc"] = "color:Turquoise;",
+                ["fn"] = "color:Turquoise;",
+                ["label"] = "color:MediumOrchid;",
+                ["register"] = "color:GreenYellow;",
+                ["mnemonic"] = "color:DodgerBlue;",
+                ["linenumber"] = "color:Crimson",
+                ["operator"] = "color:Red;",
+                ["="] = "color:red",
+                ["indirectionoperator"] = "color:white;",
+                ["immediateoperator"] = "color:White;",
+                ["statementsep"] = "color:Orange;",
+                ["listsep"] = "color:Blue;",
+                ["openbracket"] = "color:Yellow;",
+                ["closebracket"] = "color:Yellow;",
             },
 
             ["VisualStudio"] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -464,10 +587,17 @@ window.search.applyMatches = function (matches, currentIndex) {
                 const hit = text.slice(localStart, localEnd);
                 const after = text.slice(localEnd);
 
-                // enforce exact match to avoid 'lo' in 'loop1'
-                if (hit !== m.Text) {
-                    offset += text.length;
-                    continue;
+                // exact match?
+                if (hit === m.Text) {
+                    // good
+                } else {
+                    // label match?
+                    if (localStart > 0 && text[localStart - 1] === ""."" && hit === m.Text) {
+                        // good
+                    } else {
+                        offset += text.length;
+                        continue;
+                    }
                 }
 
                 const span = document.createElement(""span"");
