@@ -236,6 +236,7 @@
             cmbBoxAdvSearch.Size = new Size(825, 40);
             cmbBoxAdvSearch.Sorted = true;
             cmbBoxAdvSearch.TabIndex = 2;
+            cmbBoxAdvSearch.Click += cmbBoxAdvSearch_Click;
             // 
             // frmAdvancedSearch
             // 

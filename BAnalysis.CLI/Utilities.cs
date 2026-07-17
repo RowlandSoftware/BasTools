@@ -145,7 +145,7 @@ namespace BasAnalysis.CLI
             string vs = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion ?? "1.1.0"; // ?? = null coalescing operator. //requires ref to System.Windows.Forms
 
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine($"\nBasAnalysis vs {vs} (C) Andrew Rowland 2022-26");
+            Console.WriteLine($"\nBasAnalysis vs {vs} for BasTools (C) Andrew Rowland 2022-26");
             Console.WriteLine("Detailed analysis of a BBC BASIC program\n");
             Console.ForegroundColor = ConsoleColor.White;
         }

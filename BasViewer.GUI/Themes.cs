@@ -7,6 +7,17 @@ namespace BasViewer.GUI
 {
     internal class Themes
     {
+        const string LemonChiffon = "#fbf8cc";
+        const string PowderPetal = "#fde4fc";
+        const string CottonRose = "#ffcfd2";
+        const string PinkOrchid = "#f1c0e8";
+        const string Periwinkle = "#cfbaf0";
+        const string BabyBlueIce = "#a3c4f3";
+        const string LightSkyBlue = "#90dbf4";
+        const string ElectricAqua = "#8eecf5";
+        const string SoftCyan = "#98f5e1";
+        const string Celadon = "#b9fbc0";
+
         private static readonly Dictionary<string, Dictionary<string, string>> _themes =
         new(StringComparer.OrdinalIgnoreCase)
         {
@@ -174,7 +185,7 @@ namespace BasViewer.GUI
                 ["closebracket"] = "color:white;",
             },
 
-            ["GreenScreen"] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            ["Green Screen"] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 ["font"] = "Consolas,Cascadia Code,Menlo,Monospace",
                 ["background"] = "#001800",
@@ -218,10 +229,10 @@ namespace BasViewer.GUI
             ["Pastel"] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 ["font"] = "Consolas,Cascadia Code,Menlo,Monospace",
-                ["background"] = "#390099",
-                ["foreground"] = "RoyalBlue",
-                ["linenumber_bg"] = "#EaEaFF",
-                ["linenumber_fg"] = "#98f5e1",
+                ["background"] = "Indigo", //"#390099",
+                ["foreground"] = PinkOrchid,
+                ["linenumber_bg"] = PowderPetal,
+                ["linenumber_fg"] = "Indigo",
 
                 ["keyword"] = "font-weight: bold;",
                 ["indentingkeyword"] = "font-weight: bold;",
@@ -230,22 +241,22 @@ namespace BasViewer.GUI
                 ["then"] = "font-weight: bold;",
                 ["builtinfn"] = "font-weight: bold;",
                 ["string"] = "color:LimeGreen;",
-                ["number"] = "color:SlateGray;",
-                ["hexnumber"] = "color:#fbf8cc;",
-                ["binarynumber"] = "color:#fbf8cc;",
-                ["var"] = "color:#FF1ED6;",
-                ["array"] = "color:Violet;",
-                ["staticint"] = "color:MediumPurple;",
-                ["remtext"] = "color:#ffff3f; font-style:italic; font-weight: bold;",
-                ["assemcomment"] = "color:#ffff3f; font-style:italic; font-weight: bold;",
+                ["number"] = "color:b9fbc0;",
+                ["hexnumber"] = "color:#b9fbc0;",
+                ["binarynumber"] = "color:#b9fbc0;",
+                ["var"] = "color:#a3c4f3;",
+                ["array"] = "color:98f5e1;",
+                ["staticint"] = "color:98f5e1;",
+                ["remtext"] = "color:#fbf8cc; font-style:italic; font-weight: bold;",
+                ["assemcomment"] = "color:#fbf8cc; font-style:italic; font-weight: bold;",
                 ["starcommand"] = "color:Gold;",
                 ["embeddeddata"] = "color:Orange;",
-                ["proc"] = "color:#00bbf9;",
-                ["fn"] = "color:#00bbf9;",
+                ["proc"] = "color:#8eecf5;",
+                ["fn"] = "color:#8eecf5;",
                 ["label"] = "color:MediumOrchid;",
                 ["register"] = "color:SeaGreen;",
                 ["mnemonic"] = "color:DodgerBlue;",
-                ["linenumber"] = "color:Crimson",
+                ["linenumber"] = "color:b9fbc0",
                 ["operator"] = "color:Red;",
                 ["="] = "color:red",
                 ["indirectionoperator"] = "color:#fbf8cc;",
@@ -297,7 +308,7 @@ namespace BasViewer.GUI
                 ["closebracket"] = "color:Yellow;",
             },
 
-            ["VisualStudio"] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            ["Visual Studio"] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 ["font"] = "Cascadia Mono,Cascadia Code,Consolas,Menlo,Monospace",
                 ["background"] = "#111",
@@ -554,11 +565,13 @@ window.search.highlightAll = function (term){
     }
 };
 
-window.search.applyMatches = function (matches, currentIndex) {
+window.search.applyMatches = function (matches, currentIndex)
+{
     window.search.clear();
 
-    matches.forEach((m, i) => {
-        const lineTd = document.getElementById(""line_"" + m.Line);
+    matches.forEach((m, i) =>
+    {
+        const lineTd = document.getElementById(""line_"" + m.LineId);
         if (!lineTd) return;
 
         const line = lineTd.parentElement;
@@ -567,55 +580,16 @@ window.search.applyMatches = function (matches, currentIndex) {
         const codeCell = line.querySelector(""td.code"");
         if (!codeCell) return;
 
-        const walker = document.createTreeWalker(codeCell, NodeFilter.SHOW_ALL);
-        let offset = 0;
+        const spans = Array.from(codeCell.querySelectorAll(""span""));
+        const targetSpan = spans[m.TokenIndex];
+        if (!targetSpan) return;
 
-        while (walker.nextNode()) {
-            const node = walker.currentNode;
-            if (node.nodeType !== Node.TEXT_NODE) continue;
+        const hit = document.createElement(""span"");
+        hit.className = ""search-hit"";
+        hit.dataset.matchIndex = i;
+        hit.textContent = targetSpan.textContent;
 
-            const text = node.textContent;
-            const start = offset;
-            const end = offset + text.length;
-
-            // match must start within this node
-            if (m.Column >= start && m.Column + m.Length <= end) {
-                const localStart = m.Column - start;
-                const localEnd = localStart + m.Length;
-
-                const before = text.slice(0, localStart);
-                const hit = text.slice(localStart, localEnd);
-                const after = text.slice(localEnd);
-
-                // exact match?
-                if (hit === m.Text) {
-                    // good
-                } else {
-                    // label match?
-                    if (localStart > 0 && text[localStart - 1] === ""."" && hit === m.Text) {
-                        // good
-                    } else {
-                        offset += text.length;
-                        continue;
-                    }
-                }
-
-                const span = document.createElement(""span"");
-                span.className = ""search-hit"";
-                span.dataset.matchIndex = i;
-                span.textContent = hit;
-
-                const frag = document.createDocumentFragment();
-                if (before) frag.appendChild(document.createTextNode(before));
-                frag.appendChild(span);
-                if (after) frag.appendChild(document.createTextNode(after));
-
-                node.replaceWith(frag);
-                break;
-            }
-
-            offset += text.length;
-        }
+        targetSpan.replaceWith(hit);
     });
 
     window.search.scrollTo(currentIndex);

@@ -158,5 +158,11 @@ namespace BasViewer.GUI
             chkLiteralString.Checked = false;
             chkKeywords.Checked = false;
         }
+
+        private void cmbBoxAdvSearch_Click(object sender, EventArgs e)
+        {
+            if (cmbBoxAdvSearch.Items.Count == 0)
+                SetMessage("Select target type first");
+        }
     }
 }

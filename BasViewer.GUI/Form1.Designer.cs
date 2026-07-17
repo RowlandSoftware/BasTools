@@ -49,7 +49,7 @@
             toolStripSeparator2 = new ToolStripSeparator();
             combProcFnFinder = new ToolStripComboBox();
             toolStripSeparator1 = new ToolStripSeparator();
-            toolStripButton10 = new ToolStripButton();
+            toolStripBtnQSearch = new ToolStripButton();
             toolStripTextBoxSearch = new ToolStripTextBox();
             menuStripRight = new ToolStrip();
             toolStripButtonMenu = new ToolStripButton();
@@ -161,7 +161,7 @@
             toolStripLeft.BackColor = Color.LightSkyBlue;
             toolStripLeft.GripStyle = ToolStripGripStyle.Hidden;
             toolStripLeft.ImageScalingSize = new Size(48, 48);
-            toolStripLeft.Items.AddRange(new ToolStripItem[] { toolStripButton7, toolStripBtnPrettyprint, toolStripBtnSplitlines, toolStripLabel2, comboBoxTheme, toolStripSeparator2, combProcFnFinder, toolStripSeparator1, toolStripButton10, toolStripTextBoxSearch });
+            toolStripLeft.Items.AddRange(new ToolStripItem[] { toolStripButton7, toolStripBtnPrettyprint, toolStripBtnSplitlines, toolStripLabel2, comboBoxTheme, toolStripSeparator2, combProcFnFinder, toolStripSeparator1, toolStripBtnQSearch, toolStripTextBoxSearch });
             toolStripLeft.Location = new Point(0, 0);
             toolStripLeft.MinimumSize = new Size(0, 54);
             toolStripLeft.Name = "toolStripLeft";
@@ -220,7 +220,7 @@
             // 
             comboBoxTheme.DropDownStyle = ComboBoxStyle.DropDownList;
             comboBoxTheme.Font = new Font("Segoe UI", 10.125F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            comboBoxTheme.Items.AddRange(new object[] { "Dark", "Light", "Retro", "Mono", "GreenScreen", "Pastel", "Neon", "VisualStudio", "Typewriter" });
+            comboBoxTheme.Items.AddRange(new object[] { "Dark", "Light", "Retro", "Mono", "Green Screen", "Pastel", "Neon", "Visual Studio", "Typewriter" });
             comboBoxTheme.Name = "comboBoxTheme";
             comboBoxTheme.Size = new Size(170, 54);
             comboBoxTheme.SelectedIndexChanged += comboBoxTheme_SelectedIndexChanged;
@@ -244,16 +244,16 @@
             toolStripSeparator1.Name = "toolStripSeparator1";
             toolStripSeparator1.Size = new Size(6, 54);
             // 
-            // toolStripButton10
+            // toolStripBtnQSearch
             // 
-            toolStripButton10.DisplayStyle = ToolStripItemDisplayStyle.Image;
-            toolStripButton10.Image = (Image)resources.GetObject("toolStripButton10.Image");
-            toolStripButton10.ImageTransparentColor = Color.Magenta;
-            toolStripButton10.Name = "toolStripButton10";
-            toolStripButton10.Size = new Size(52, 48);
-            toolStripButton10.Text = "toolStripButton5";
-            toolStripButton10.ToolTipText = "Quick Search";
-            toolStripButton10.MouseDown += toolStripButton10_MouseDown;
+            toolStripBtnQSearch.DisplayStyle = ToolStripItemDisplayStyle.Image;
+            toolStripBtnQSearch.Image = (Image)resources.GetObject("toolStripBtnQSearch.Image");
+            toolStripBtnQSearch.ImageTransparentColor = Color.Magenta;
+            toolStripBtnQSearch.Name = "toolStripBtnQSearch";
+            toolStripBtnQSearch.Size = new Size(52, 48);
+            toolStripBtnQSearch.Text = "toolStripButton5";
+            toolStripBtnQSearch.ToolTipText = "Quick Search";
+            toolStripBtnQSearch.MouseDown += toolStripBtnQSearch_MouseDown;
             // 
             // toolStripTextBoxSearch
             // 
@@ -363,7 +363,7 @@
         private ToolStripSeparator toolStripSeparator2;
         private ToolStripSeparator toolStripSeparator1;
         private ToolStripComboBox combProcFnFinder;
-        private ToolStripButton toolStripButton10;
+        private ToolStripButton toolStripBtnQSearch;
         private ToolStripTextBox toolStripTextBoxSearch;
         private Panel panelSearchNav;
     }

@@ -313,7 +313,8 @@ namespace BasTools.Core
                                 IsDef = progline.IsDef,
                                 IsInDef = progline.IsInDef,
                                 LineBody = progline.FormattedTagged.TrimStart(),
-                                PlainLine = progline.FormattedPlain.Trim()
+                                PlainLine = progline.FormattedPlain.Trim(),
+                                Id = progline.LineNumber.ToString() + "_0"
                             };
                             displayLine.SetDefIndent(progline.DefIndent > 0);
 
@@ -322,6 +323,7 @@ namespace BasTools.Core
                         else // SplitLines
                         {
                             bool first = true;
+                            int displayIndex = 0;
 
                             Listing sections = new(new List<ProgramLine>());
 
@@ -351,10 +353,13 @@ namespace BasTools.Core
                                 // copy bits from original progline
                                 DisplayLine displayLine = new(progline.LineNumber);
                                 displayLine.sLineNumber = first ? progline.FormattedLineNumber.Trim() : "..";
+                                displayLine.Id = progline.LineNumber.ToString() + "_" + displayIndex.ToString();
+                                first = false;
+                                displayIndex++;
+                                // copy bits from sections
                                 displayLine.LineBody = line.FormattedTagged;
                                 displayLine.PlainLine = line.FormattedPlain.Trim();
-                                first = false;
-                                // copy bits from sections ???
+                               
                                 displayLine.IsDef = line.IsDef;
                                 displayLine.IsInDef = line.IsInDef;
                                 displayLine.Indent = line.IndentLevel;

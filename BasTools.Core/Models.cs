@@ -179,7 +179,7 @@
     );
     public class DisplayLine
     {
-        public int Linenumber { get; set; } = 0;
+        public int LineNumber { get; set; } = 0;
         public int Indent { get; set; } = 0;
         private bool _defIndent = false;
         public bool IsDef {  get; set; } = false;
@@ -187,9 +187,11 @@
         public string sLineNumber { get; set; } = "";
         public string LineBody { get; set; } = "";
         public string PlainLine { get; set; } = "";
+        public string Id { get; set; }
+
         public DisplayLine(int lineno)
         {
-            Linenumber = lineno;
+            LineNumber = lineno;
         }
         public int DefIndent
         {
