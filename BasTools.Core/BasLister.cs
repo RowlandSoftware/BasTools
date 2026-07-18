@@ -282,7 +282,7 @@ namespace BasTools.Core
         {
             List<DisplayLine> output = new();
             ListerState listerState = new(); // this sets initial conditions
-
+            Log($"PrepLinesForDisplay {formattedListing.Lines.Count}");
             string sIndent = string.Empty;
 
             foreach (ProgramLine progline in formattedListing.Lines)
@@ -306,6 +306,7 @@ namespace BasTools.Core
                     {
                         if (!switches.SplitLines)
                         {
+                            Log(progline.FormattedTagged);
                             DisplayLine displayLine = new(progline.LineNumber)
                             {
                                 sLineNumber = progline.FormattedLineNumber.Trim(),
@@ -691,6 +692,10 @@ namespace BasTools.Core
             Console.ForegroundColor = s.ForeColor;
             Console.BackgroundColor = s.BackColor;
             Environment.Exit(0);
+        }
+        private static void Log(string message)
+        {
+            File.AppendAllText("search-debug.log", message + Environment.NewLine);
         }
     }
 }

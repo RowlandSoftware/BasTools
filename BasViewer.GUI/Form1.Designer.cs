@@ -49,11 +49,14 @@
             toolStripSeparator2 = new ToolStripSeparator();
             combProcFnFinder = new ToolStripComboBox();
             toolStripSeparator1 = new ToolStripSeparator();
-            toolStripBtnQSearch = new ToolStripButton();
+            toolStripBtnPrevMatch = new ToolStripButton();
             toolStripTextBoxSearch = new ToolStripTextBox();
             menuStripRight = new ToolStrip();
+            toolStripBtnNextMatch = new ToolStripButton();
+            toolStripSeparator3 = new ToolStripSeparator();
             toolStripButtonMenu = new ToolStripButton();
             panelSearchNav = new Panel();
+            hiddenFocusCatcher = new Button();
             ((System.ComponentModel.ISupportInitialize)webView2).BeginInit();
             contextMenuStrip1.SuspendLayout();
             topPanel.SuspendLayout();
@@ -79,9 +82,9 @@
             webView2.DefaultBackgroundColor = Color.White;
             webView2.Dock = DockStyle.Fill;
             webView2.Enabled = false;
-            webView2.Location = new Point(0, 54);
+            webView2.Location = new Point(0, 0);
             webView2.Name = "webView2";
-            webView2.Size = new Size(1381, 930);
+            webView2.Size = new Size(1381, 1062);
             webView2.TabIndex = 3;
             webView2.Visible = false;
             webView2.ZoomFactor = 1D;
@@ -93,9 +96,9 @@
             label1.Dock = DockStyle.Fill;
             label1.Font = new Font("Segoe UI", 18F, FontStyle.Regular, GraphicsUnit.Point, 0);
             label1.ForeColor = Color.White;
-            label1.Location = new Point(0, 54);
+            label1.Location = new Point(0, 0);
             label1.Name = "label1";
-            label1.Size = new Size(1381, 930);
+            label1.Size = new Size(1381, 1062);
             label1.TabIndex = 4;
             label1.Text = "Drag 'n' Drop a file here";
             label1.TextAlign = ContentAlignment.MiddleCenter;
@@ -108,12 +111,13 @@
             contextMenuStrip1.ImageScalingSize = new Size(32, 32);
             contextMenuStrip1.Items.AddRange(new ToolStripItem[] { dragFileToLoadToolStripMenuItem, gotoLineToolStripMenuItem, advancedSearchToolStripMenuItem, aboutToolStripMenuItem });
             contextMenuStrip1.Name = "contextMenuStrip1";
-            contextMenuStrip1.Size = new Size(313, 188);
+            contextMenuStrip1.Size = new Size(398, 232);
             // 
             // dragFileToLoadToolStripMenuItem
             // 
             dragFileToLoadToolStripMenuItem.Name = "dragFileToLoadToolStripMenuItem";
-            dragFileToLoadToolStripMenuItem.Size = new Size(312, 46);
+            dragFileToLoadToolStripMenuItem.ShortcutKeyDisplayString = "Ctrl+L";
+            dragFileToLoadToolStripMenuItem.Size = new Size(397, 46);
             dragFileToLoadToolStripMenuItem.Text = "Drag file to load";
             dragFileToLoadToolStripMenuItem.Click += dragFileToLoadToolStripMenuItem_Click;
             // 
@@ -121,8 +125,9 @@
             // 
             gotoLineToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { toolStripTextBoxGoto });
             gotoLineToolStripMenuItem.Name = "gotoLineToolStripMenuItem";
-            gotoLineToolStripMenuItem.Size = new Size(312, 46);
-            gotoLineToolStripMenuItem.Text = "Goto Line...";
+            gotoLineToolStripMenuItem.ShortcutKeyDisplayString = "";
+            gotoLineToolStripMenuItem.Size = new Size(397, 46);
+            gotoLineToolStripMenuItem.Text = "Goto Line...   (Ctrl+G)";
             gotoLineToolStripMenuItem.Click += gotoLineToolStripMenuItem_Click;
             // 
             // toolStripTextBoxGoto
@@ -134,14 +139,15 @@
             // advancedSearchToolStripMenuItem
             // 
             advancedSearchToolStripMenuItem.Name = "advancedSearchToolStripMenuItem";
-            advancedSearchToolStripMenuItem.Size = new Size(312, 46);
+            advancedSearchToolStripMenuItem.ShortcutKeyDisplayString = "F2";
+            advancedSearchToolStripMenuItem.Size = new Size(397, 46);
             advancedSearchToolStripMenuItem.Text = "Advanced Search";
             advancedSearchToolStripMenuItem.Click += advancedSearchToolStripMenuItem_Click;
             // 
             // aboutToolStripMenuItem
             // 
             aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
-            aboutToolStripMenuItem.Size = new Size(312, 46);
+            aboutToolStripMenuItem.Size = new Size(397, 46);
             aboutToolStripMenuItem.Text = "About ...";
             aboutToolStripMenuItem.Click += aboutToolStripMenuItem_Click;
             // 
@@ -161,11 +167,11 @@
             toolStripLeft.BackColor = Color.LightSkyBlue;
             toolStripLeft.GripStyle = ToolStripGripStyle.Hidden;
             toolStripLeft.ImageScalingSize = new Size(48, 48);
-            toolStripLeft.Items.AddRange(new ToolStripItem[] { toolStripButton7, toolStripBtnPrettyprint, toolStripBtnSplitlines, toolStripLabel2, comboBoxTheme, toolStripSeparator2, combProcFnFinder, toolStripSeparator1, toolStripBtnQSearch, toolStripTextBoxSearch });
+            toolStripLeft.Items.AddRange(new ToolStripItem[] { toolStripButton7, toolStripBtnPrettyprint, toolStripBtnSplitlines, toolStripLabel2, comboBoxTheme, toolStripSeparator2, combProcFnFinder, toolStripSeparator1, toolStripBtnPrevMatch, toolStripTextBoxSearch });
             toolStripLeft.Location = new Point(0, 0);
             toolStripLeft.MinimumSize = new Size(0, 54);
             toolStripLeft.Name = "toolStripLeft";
-            toolStripLeft.Size = new Size(1327, 54);
+            toolStripLeft.Size = new Size(1273, 54);
             toolStripLeft.Stretch = true;
             toolStripLeft.TabIndex = 3;
             toolStripLeft.Text = "toolStripLeft";
@@ -235,7 +241,7 @@
             combProcFnFinder.DropDownStyle = ComboBoxStyle.DropDownList;
             combProcFnFinder.Font = new Font("Segoe UI", 10.125F, FontStyle.Regular, GraphicsUnit.Point, 0);
             combProcFnFinder.Name = "combProcFnFinder";
-            combProcFnFinder.Size = new Size(500, 54);
+            combProcFnFinder.Size = new Size(400, 54);
             combProcFnFinder.ToolTipText = "PROC and FN finder";
             combProcFnFinder.SelectedIndexChanged += combProcFnFinder_SelectedIndexChanged;
             // 
@@ -244,21 +250,22 @@
             toolStripSeparator1.Name = "toolStripSeparator1";
             toolStripSeparator1.Size = new Size(6, 54);
             // 
-            // toolStripBtnQSearch
+            // toolStripBtnPrevMatch
             // 
-            toolStripBtnQSearch.DisplayStyle = ToolStripItemDisplayStyle.Image;
-            toolStripBtnQSearch.Image = (Image)resources.GetObject("toolStripBtnQSearch.Image");
-            toolStripBtnQSearch.ImageTransparentColor = Color.Magenta;
-            toolStripBtnQSearch.Name = "toolStripBtnQSearch";
-            toolStripBtnQSearch.Size = new Size(52, 48);
-            toolStripBtnQSearch.Text = "toolStripButton5";
-            toolStripBtnQSearch.ToolTipText = "Quick Search";
-            toolStripBtnQSearch.MouseDown += toolStripBtnQSearch_MouseDown;
+            toolStripBtnPrevMatch.DisplayStyle = ToolStripItemDisplayStyle.Text;
+            toolStripBtnPrevMatch.Font = new Font("Segoe UI Semibold", 12F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            toolStripBtnPrevMatch.ImageTransparentColor = Color.Magenta;
+            toolStripBtnPrevMatch.Name = "toolStripBtnPrevMatch";
+            toolStripBtnPrevMatch.Size = new Size(46, 48);
+            toolStripBtnPrevMatch.Text = "<";
+            toolStripBtnPrevMatch.ToolTipText = "Quick Search Previous Match";
+            toolStripBtnPrevMatch.MouseDown += toolStripBtnPrevMatch_MouseDown;
             // 
             // toolStripTextBoxSearch
             // 
             toolStripTextBoxSearch.AutoSize = false;
             toolStripTextBoxSearch.Name = "toolStripTextBoxSearch";
+            toolStripTextBoxSearch.Overflow = ToolStripItemOverflow.Never;
             toolStripTextBoxSearch.Size = new Size(100, 54);
             toolStripTextBoxSearch.ToolTipText = "Quick Search";
             toolStripTextBoxSearch.KeyDown += toolStripTextBoxSearch_KeyDown;
@@ -270,14 +277,32 @@
             menuStripRight.Dock = DockStyle.Right;
             menuStripRight.GripStyle = ToolStripGripStyle.Hidden;
             menuStripRight.ImageScalingSize = new Size(32, 32);
-            menuStripRight.Items.AddRange(new ToolStripItem[] { toolStripButtonMenu });
+            menuStripRight.Items.AddRange(new ToolStripItem[] { toolStripBtnNextMatch, toolStripSeparator3, toolStripButtonMenu });
             menuStripRight.LayoutStyle = ToolStripLayoutStyle.Flow;
-            menuStripRight.Location = new Point(1327, 0);
+            menuStripRight.Location = new Point(1273, 0);
             menuStripRight.Name = "menuStripRight";
             menuStripRight.RenderMode = ToolStripRenderMode.Professional;
-            menuStripRight.Size = new Size(54, 54);
+            menuStripRight.Size = new Size(108, 54);
             menuStripRight.TabIndex = 0;
             menuStripRight.Text = "menuStripRight";
+            // 
+            // toolStripBtnNextMatch
+            // 
+            toolStripBtnNextMatch.DisplayStyle = ToolStripItemDisplayStyle.Text;
+            toolStripBtnNextMatch.Font = new Font("Segoe UI Semibold", 12F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            toolStripBtnNextMatch.Image = (Image)resources.GetObject("toolStripBtnNextMatch.Image");
+            toolStripBtnNextMatch.ImageTransparentColor = Color.Magenta;
+            toolStripBtnNextMatch.Name = "toolStripBtnNextMatch";
+            toolStripBtnNextMatch.Size = new Size(46, 49);
+            toolStripBtnNextMatch.Text = ">";
+            toolStripBtnNextMatch.ToolTipText = "Quick Search Next Match";
+            toolStripBtnNextMatch.MouseDown += toolStripBtnNextMatch_MouseDown;
+            // 
+            // toolStripSeparator3
+            // 
+            toolStripSeparator3.AutoSize = false;
+            toolStripSeparator3.Name = "toolStripSeparator3";
+            toolStripSeparator3.Size = new Size(6, 54);
             // 
             // toolStripButtonMenu
             // 
@@ -301,18 +326,31 @@
             panelSearchNav.Size = new Size(1381, 56);
             panelSearchNav.TabIndex = 6;
             // 
+            // hiddenFocusCatcher
+            // 
+            hiddenFocusCatcher.BackColor = SystemColors.Control;
+            hiddenFocusCatcher.FlatStyle = FlatStyle.Flat;
+            hiddenFocusCatcher.Location = new Point(1123, 304);
+            hiddenFocusCatcher.Name = "hiddenFocusCatcher";
+            hiddenFocusCatcher.Size = new Size(150, 46);
+            hiddenFocusCatcher.TabIndex = 4;
+            hiddenFocusCatcher.TabStop = false;
+            hiddenFocusCatcher.UseVisualStyleBackColor = false;
+            // 
             // Form1
             // 
             AllowDrop = true;
             AutoScaleDimensions = new SizeF(13F, 32F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1381, 1062);
-            Controls.Add(label1);
-            Controls.Add(webView2);
             Controls.Add(topPanel);
             Controls.Add(panelSearchNav);
             Controls.Add(statusStrip1);
+            Controls.Add(label1);
+            Controls.Add(webView2);
+            Controls.Add(hiddenFocusCatcher);
             Icon = (Icon)resources.GetObject("$this.Icon");
+            MinimumSize = new Size(1130, 0);
             Name = "Form1";
             Text = "Form1";
             DragDrop += MainForm_DragDrop;
@@ -363,8 +401,11 @@
         private ToolStripSeparator toolStripSeparator2;
         private ToolStripSeparator toolStripSeparator1;
         private ToolStripComboBox combProcFnFinder;
-        private ToolStripButton toolStripBtnQSearch;
+        private ToolStripButton toolStripBtnPrevMatch;
         private ToolStripTextBox toolStripTextBoxSearch;
         private Panel panelSearchNav;
+        private ToolStripButton toolStripBtnNextMatch;
+        private ToolStripSeparator toolStripSeparator3;
+        private Button hiddenFocusCatcher;
     }
 }

@@ -46,19 +46,23 @@ namespace BasViewer.GUI
         private SearchNavControl searchNav;
         private int currentMatchIndex;
         private List<SearchMatch> matches;
+        private GoToLine gotoLineForm;
 
         public Form1(string[] args)
         {
             InitializeComponent();
 
+            gotoLineForm = new GoToLine(this);   // pass Form1 to the popup
+
             menuStripRight.BackColor = Color.LightSkyBlue;
             toolStripLeft.Renderer = new NoBorderRenderer();
             menuStripRight.Renderer = new NoBorderRenderer();
 
+            // Overrides
             toolStripTextBoxSearch.LostFocus += (s, e) =>
             {
                 // Force WinForms to reset keyboard routing
-                combProcFnFinder.Focus();  // or any other focusable control
+                hiddenFocusCatcher.Focus();
             };
 
             // Goto Line clicks
@@ -260,6 +264,10 @@ namespace BasViewer.GUI
             combProcFnFinder.Items.Clear();
 
             bool pretty = toolStripBtnPrettyprint.Checked;
+            //MessageBox.Show(engine.CurrentListing.Lines.Count.ToString());
+
+            ListerOptions listerOptions = new ListerOptions(true, false, false, true); //bool indent, bool indentDefs, bool splitLines, bool pretty (ignored)
+            List<DisplayLine> lines = engine.PrepLinesForDisplay(listerOptions);
 
             string htmlHeader = "<html><head>" + Themes.GetCss(comboBoxTheme.Text) + _script + "</head>" + Environment.NewLine + "<body><table>" + Environment.NewLine;
 
@@ -269,12 +277,13 @@ namespace BasViewer.GUI
             bool IsDef = false;
             bool IsInDef = false;
             string id = string.Empty;
-            foreach (var line in engine.CurrentListing.Lines)
+
+            foreach (DisplayLine line in lines)
             {
                 IsDef = line.IsDef;
 
                 lineBody.Clear();
-                foreach (Token tok in BasToolsEngine.WalkTagged(line.TaggedLine))
+                foreach (Token tok in BasToolsEngine.WalkTagged(line.LineBody))
                 {
                     if (tok.tag == null)
                         lineBody.Append(tok.value);
@@ -287,7 +296,7 @@ namespace BasViewer.GUI
                             else
                                 id = "fn_" + tok.value;
 
-                            combProcFnFinder.Items.Add(line.FormattedPlain);
+                            combProcFnFinder.Items.Add(line.PlainLine);
                         }
                         // convert tags to HTML spans
                         string tag = tok.tag.Substring(2, tok.tag.Length - 3); // peel off {= ... }
@@ -300,20 +309,20 @@ namespace BasViewer.GUI
                 if (pretty)
                 {
                     if (IsDef)
-                        htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td id = \"line_{line.LineNumber}\" class = \"line-number\">{line.FormattedLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
+                        htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td id = \"line_{line.LineNumber}_0\" class = \"line-number\">{line.sLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
                     else if (IsInDef)
-                        htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td id = \"line_{line.LineNumber}\" class = \"line-number\">{line.FormattedLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
+                        htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td id = \"line_{line.LineNumber}_0\" class = \"line-number\">{line.sLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
                     else
-                        htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td id = \"line_{line.LineNumber}\" class = \"line-number\">{line.FormattedLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
+                        htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td id = \"line_{line.LineNumber}_0\" class = \"line-number\">{line.sLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
                 }
                 else
                 {
                     if (IsDef)
-                        htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td id = \"line_{line.LineNumber}\" class = \"line-number\">{line.FormattedLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{line.FormattedPlain}</td></tr>" + Environment.NewLine);
+                        htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td id = \"line_{line.LineNumber}_0\" class = \"line-number\">{line.sLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{line.PlainLine}</td></tr>" + Environment.NewLine);
                     else if (IsInDef)
-                        htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td id = \"line_{line.LineNumber}\" class = \"line-number\">{line.FormattedLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{line.FormattedPlain}</td></tr>" + Environment.NewLine);
+                        htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td id = \"line_{line.LineNumber}_0\" class = \"line-number\">{line.sLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{line.PlainLine}</td></tr>" + Environment.NewLine);
                     else
-                        htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td id = \"line_{line.LineNumber}\" class = \"line-number\">{line.FormattedLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{line.FormattedPlain}</td></tr>" + Environment.NewLine);
+                        htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td id = \"line_{line.LineNumber}_0\" class = \"line-number\">{line.sLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{line.PlainLine}</td></tr>" + Environment.NewLine);
                 }
                 if (IsInDef && !line.IsInDef)
                     IsInDef = false;
@@ -417,7 +426,7 @@ namespace BasViewer.GUI
             if (combProcFnFinder.Items.Count > 0)
                 combProcFnFinder.SelectedIndex = 0;
 
-           webView2.NavigateToString(htmlHeader + htmlDoc.ToString());
+            webView2.NavigateToString(htmlHeader + htmlDoc.ToString());
         }
         private void LoadFile(string filename)
         {
@@ -481,7 +490,7 @@ namespace BasViewer.GUI
 
             // Now it's safe to navigate or inject HTML
             something();
-        }       
+        }
         /**************** Search and Navigation ****************/
         private async void combProcFnFinder_SelectedIndexChanged(object sender, EventArgs e)
         {
@@ -555,7 +564,7 @@ namespace BasViewer.GUI
         {
             webView2.CoreWebView2.ExecuteScriptAsync("window.search.clear();");
         }
-        private async void DoGotoLine(string text)
+        public async void DoGotoLine(string text)
         {
             text = text.Trim();
             if (!int.TryParse(text, out int dummy))
@@ -596,11 +605,11 @@ namespace BasViewer.GUI
 
                 /*if (sym.Name.StartsWith("lookup"))
                     MessageBox.Show($"Checking {term} against symbol {sym.Name}\n- type {sym.Kind}");*/
-                
+
                 // Filter by kind
                 if (!MatchesKind(sym, opts))
                     continue;
-                
+
                 /*/ Match the symbol name itself
                 StringComparison matchCase;
                 //if (opts.match_case)
@@ -845,6 +854,19 @@ namespace BasViewer.GUI
                         toolStripTextBoxSearch.SelectAll();
                     }
                     break;
+                case Keys.G:
+                    if (ctrlPressed)
+                    {
+                        gotoLineForm.Show();
+                        gotoLineForm.FocusTextbox();
+                    }
+                    break;
+                case Keys.L:
+                    if (ctrlPressed)
+                    {
+                        label1.Visible = true;
+                    }
+                    break;
                 case Keys.F2:
                     ShowAdvancedSearch();
                     break;
@@ -857,7 +879,7 @@ namespace BasViewer.GUI
                 case Keys.Add:
                 case Keys.Oemplus:
                     if (!toolStripTextBoxSearch.Focused)
-                    {                    
+                    {
                         zoomSlider.Value = Math.Min(zoomSlider.Maximum, zoomSlider.Value + 10);
                         ApplyZoom();
                     }
@@ -951,11 +973,14 @@ namespace BasViewer.GUI
         {
             File.AppendAllText("search-debug.log", message + Environment.NewLine);
         }
-
-        private void toolStripBtnQSearch_MouseDown(object sender, MouseEventArgs e)
+        private void toolStripBtnPrevMatch_MouseDown(object sender, MouseEventArgs e)
         {
-            bool backwards = e.Button == MouseButtons.Right;
-            QuickSearch(backwards);
+            //bool backwards = e.Button == MouseButtons.Right;
+            QuickSearch(true);
+        }
+        private void toolStripBtnNextMatch_MouseDown(object sender, MouseEventArgs e)
+        {
+            QuickSearch(false);
         }
     }
 }

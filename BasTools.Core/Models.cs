@@ -161,7 +161,7 @@
         public bool IsZ80 { get; set; } = false;
 
         // Properties needed for SplitLines
-        public FormatterState fstate;
+        public FormatterState fstate = new();
         public ProgramLine(ProgramLine other)
         {
             LineNumber = other.LineNumber;
