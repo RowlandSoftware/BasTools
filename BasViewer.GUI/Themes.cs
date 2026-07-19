@@ -584,12 +584,50 @@ window.search.applyMatches = function (matches, currentIndex)
         const targetSpan = spans[m.TokenIndex];
         if (!targetSpan) return;
 
-        const hit = document.createElement(""span"");
-        hit.className = ""search-hit"";
-        hit.dataset.matchIndex = i;
-        hit.textContent = targetSpan.textContent;
+        const fullText = targetSpan.textContent;
+        const start = m.Offset;
+        const end = m.Offset + m.Length;
 
-        targetSpan.replaceWith(hit);
+        // Whole-span match? (your old behaviour)
+        if (start === 0 && end === fullText.length)
+        {
+            const hit = document.createElement(""span"");
+            hit.className = ""search-hit"";
+            hit.dataset.matchIndex = i;
+            hit.textContent = fullText;
+
+            targetSpan.replaceWith(hit);
+            return;
+        }
+
+        // Substring match inside the span
+        const beforeText = fullText.slice(0, start);
+        const hitText    = fullText.slice(start, end);
+        const afterText  = fullText.slice(end);
+
+        const frag = document.createDocumentFragment();
+
+        if (beforeText.length > 0)
+        {
+            const beforeSpan = document.createElement(""span"");
+            beforeSpan.textContent = beforeText;
+            frag.appendChild(beforeSpan);
+        }
+
+        const hitSpan = document.createElement(""span"");
+        hitSpan.className = ""search-hit"";
+        hitSpan.dataset.matchIndex = i;
+        hitSpan.textContent = hitText;
+        frag.appendChild(hitSpan);
+
+        if (afterText.length > 0)
+        {
+            const afterSpan = document.createElement(""span"");
+            afterSpan.textContent = afterText;
+            frag.appendChild(afterSpan);
+        }
+
+        targetSpan.replaceWith(frag);
     });
 
     window.search.scrollTo(currentIndex);

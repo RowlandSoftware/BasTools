@@ -12,15 +12,18 @@ using System.Security.Policy;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 using static BasViewer.GUI.Form1;
 using static System.Net.Mime.MediaTypeNames;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using static System.Windows.Forms.LinkLabel;
+//using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace BasViewer.GUI
 {
     public record SearchOptions
     {
+        public bool flgTextSearch { get; set; } = false;
         public bool whole_word { get; set; } = false;
         public bool match_case { get; set; } = false;
         public bool flgRealVars { get; set; } = false;
@@ -29,8 +32,8 @@ namespace BasViewer.GUI
         public bool flgProcs { get; set; } = false;
         public bool flgFns { get; set; } = false;
         public bool flgLiteralStrings { get; set; } = false;
-        public bool flgRems { get; set; } = false;
-        public bool flgKeywords { get; set; } = false;
+        public bool flgRemContains { get; set; } = false;
+        public bool flgStringContains { get; set; } = false;
     }
     public partial class Form1 : Form
     {
@@ -165,6 +168,18 @@ namespace BasViewer.GUI
                 ClearSearchHighlights();
             };
 
+            // Z-order
+            Controls.SetChildIndex(webView2, 0);
+            Controls.SetChildIndex(topPanel, 1);
+            Controls.SetChildIndex(panelSearchNav, 2);
+            Controls.SetChildIndex(statusStrip1, 3);
+            Controls.SetChildIndex(label1, 4);
+            Controls.SetChildIndex(hiddenFocusCatcher, 5);
+
+            // Force a full layout recalculation
+            /*this.PerformLayout();
+            this.ResumeLayout(true);*/
+
             _args = args;
             bool flgZ80 = false;
             engine = new BasToolsEngine();
@@ -264,10 +279,6 @@ namespace BasViewer.GUI
             combProcFnFinder.Items.Clear();
 
             bool pretty = toolStripBtnPrettyprint.Checked;
-            //MessageBox.Show(engine.CurrentListing.Lines.Count.ToString());
-
-            ListerOptions listerOptions = new ListerOptions(true, false, false, true); //bool indent, bool indentDefs, bool splitLines, bool pretty (ignored)
-            List<DisplayLine> lines = engine.PrepLinesForDisplay(listerOptions);
 
             string htmlHeader = "<html><head>" + Themes.GetCss(comboBoxTheme.Text) + _script + "</head>" + Environment.NewLine + "<body><table>" + Environment.NewLine;
 
@@ -277,13 +288,12 @@ namespace BasViewer.GUI
             bool IsDef = false;
             bool IsInDef = false;
             string id = string.Empty;
-
-            foreach (DisplayLine line in lines)
+            foreach (var line in engine.CurrentListing.Lines)
             {
                 IsDef = line.IsDef;
 
                 lineBody.Clear();
-                foreach (Token tok in BasToolsEngine.WalkTagged(line.LineBody))
+                foreach (Token tok in BasToolsEngine.WalkTagged(line.TaggedLine))
                 {
                     if (tok.tag == null)
                         lineBody.Append(tok.value);
@@ -296,7 +306,7 @@ namespace BasViewer.GUI
                             else
                                 id = "fn_" + tok.value;
 
-                            combProcFnFinder.Items.Add(line.PlainLine);
+                            combProcFnFinder.Items.Add(line.FormattedPlain);
                         }
                         // convert tags to HTML spans
                         string tag = tok.tag.Substring(2, tok.tag.Length - 3); // peel off {= ... }
@@ -309,20 +319,20 @@ namespace BasViewer.GUI
                 if (pretty)
                 {
                     if (IsDef)
-                        htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td id = \"line_{line.LineNumber}_0\" class = \"line-number\">{line.sLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
+                        htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td id = \"line_{line.LineNumber}_0\" class = \"line-number\">{line.FormattedLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
                     else if (IsInDef)
-                        htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td id = \"line_{line.LineNumber}_0\" class = \"line-number\">{line.sLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
+                        htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td id = \"line_{line.LineNumber}_0\" class = \"line-number\">{line.FormattedLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
                     else
-                        htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td id = \"line_{line.LineNumber}_0\" class = \"line-number\">{line.sLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
+                        htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td id = \"line_{line.LineNumber}_0\" class = \"line-number\">{line.FormattedLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
                 }
                 else
                 {
                     if (IsDef)
-                        htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td id = \"line_{line.LineNumber}_0\" class = \"line-number\">{line.sLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{line.PlainLine}</td></tr>" + Environment.NewLine);
+                        htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td id = \"line_{line.LineNumber}_0\" class = \"line-number\">{line.FormattedLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{line.FormattedPlain}</td></tr>" + Environment.NewLine);
                     else if (IsInDef)
-                        htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td id = \"line_{line.LineNumber}_0\" class = \"line-number\">{line.sLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{line.PlainLine}</td></tr>" + Environment.NewLine);
+                        htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td id = \"line_{line.LineNumber}_0\" class = \"line-number\">{line.FormattedLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{line.FormattedPlain}</td></tr>" + Environment.NewLine);
                     else
-                        htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td id = \"line_{line.LineNumber}_0\" class = \"line-number\">{line.sLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{line.PlainLine}</td></tr>" + Environment.NewLine);
+                        htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td id = \"line_{line.LineNumber}_0\" class = \"line-number\">{line.FormattedLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{line.FormattedPlain}</td></tr>" + Environment.NewLine);
                 }
                 if (IsInDef && !line.IsInDef)
                     IsInDef = false;
@@ -601,7 +611,6 @@ namespace BasViewer.GUI
             foreach (var kvp in engine.Symbols)
             {
                 var sym = kvp.Value;
-                bool found = false;
 
                 /*if (sym.Name.StartsWith("lookup"))
                     MessageBox.Show($"Checking {term} against symbol {sym.Name}\n- type {sym.Kind}");*/
@@ -610,21 +619,28 @@ namespace BasViewer.GUI
                 if (!MatchesKind(sym, opts))
                     continue;
 
-                /*/ Match the symbol name itself
+                // For 'contains' text search
                 StringComparison matchCase;
-                //if (opts.match_case)
-                matchCase = StringComparison.Ordinal;
-                /*else
+                if (opts.match_case)
+                    matchCase = StringComparison.Ordinal;
+                else
                     matchCase = StringComparison.OrdinalIgnoreCase;
-                //if (opts.whole_word)*/
 
-                found = sym.Name.Equals(term, StringComparison.Ordinal)
+                if (opts.flgTextSearch)
+                {
+                    if (sym.Name.Contains(term, matchCase))
+                        getTextMatches(sym, term, opts, matches, engine.DisplayLines);
+                }
+                else
+                {
+                    bool found = sym.Name.Equals(term, StringComparison.Ordinal)
                     || sym.Name.Equals("." + term, StringComparison.Ordinal);
 
-                if (found)
-                {
-                    //MessageBox.Show("Matched!");
-                    getMatches(sym, matches, engine.DisplayLines);
+                    if (found)
+                    {
+                        //MessageBox.Show("Matched!");
+                        getMatches(sym, matches, engine.DisplayLines);
+                    }
                 }
             }
             var distinctLines = matches.Select(m => m.Line).Distinct().Count();
@@ -678,14 +694,13 @@ namespace BasViewer.GUI
                         if (tok.tag != null)
                         {
                             idx++;
-                            if (targetLine == 270) MessageBox.Show($"{targetLine} {tok.value} - {idx}");
                             if (tok.value == name)
                             {
                                 // skip if previously found
                                 if (seen.Contains((line.Id, idx)))
                                     continue;
 
-                                Log($"Adding {name} at Indx {idx} in {line.Id}");
+                                //Log($"Adding {name} at Indx {idx} in {line.Id}");
                                 matches.Add(new SearchMatch
                                 {
                                     Line = targetLine,
@@ -704,6 +719,96 @@ namespace BasViewer.GUI
                 }
             }
         }
+        public static void getTextMatches(SymbolInfo sym, string term, SearchOptions opts, List<SearchMatch> matches, IReadOnlyList<DisplayLine> displayLines)
+        {
+            // We know the term is contained (with case match), but have not checked if whole words
+
+            var seen = new HashSet<(string lineId, int tokenIndex, int offset)>();
+
+            foreach (SymbolUse use in sym.Uses)
+            {
+                Log($"Text search for {term} - found {sym.Name}");
+                // Find the matching DisplayLine - so can figure out the index of the LiteralString or RemText token on that line (or lines if splitlines)
+                int targetLine = use.LineNumber;
+                DisplayLine? dl = null;
+                foreach (var line in displayLines)
+                {
+                    //Log($"Trying {line.Linenumber}");
+                    if (line.LineNumber == targetLine)
+                    {
+                        dl = line;
+                        //Log($"Matched line {targetLine}");
+                        //break;
+                    }
+                    if (line.LineNumber > targetLine)
+                        break;
+
+                    if (dl == null)
+                        continue; // might happen if program is corrupt
+
+                    string raw = dl.LineBody;
+                    if (string.IsNullOrEmpty(raw))
+                        continue;
+
+                    // Find the symbol name inside the raw line
+                    int idx = -1;
+                    foreach (Token tok in BasToolsEngine.WalkTagged(raw))
+                    {
+                        if (tok.tag != null)
+                        {
+                            idx++;
+                            //if (tok.value == "\"")
+                            Log($"! Walking tags - ({sym.Kind}) {tok.tag} = {tok.value}");
+                            if (sym.Kind == BasToolsEngine.InferKind(tok.tag, tok.value))
+                            {
+                                //foreach (int offset in FindAllMatches(sym.Name, term, opts.match_case))
+                                    foreach (int offset in FindAllMatches(tok.value, term, opts.whole_word, opts.match_case))
+                                    {
+                                        // skip if previously found TODO
+                                        if (seen.Contains((line.Id, idx, offset)))
+                                        continue;
+
+                                    Log($"Adding {term} at Indx {idx}, offset {offset}, length {term.Length} in {line.Id}");
+                                    matches.Add(new SearchMatch
+                                    {
+                                        Line = targetLine,
+                                        LineId = line.Id,
+                                        TokenIndex = idx,
+                                        Offset = offset,
+                                        Length = term.Length,
+                                        Text = term,
+                                        Kind = sym.Kind
+                                    });
+                                    seen.Add((line.Id, idx, offset));
+                                    //break;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+            }
+        }
+        public static IEnumerable<int> FindAllMatches(string text, string term, bool wholeWord, bool matchCase)
+        {
+            if (string.IsNullOrEmpty(text) || string.IsNullOrEmpty(term))
+                yield break;
+
+            // Escape the term so special regex chars are treated literally
+            string escaped = Regex.Escape(term);
+
+            // Whole-word or substring pattern
+            string pattern = wholeWord ? $@"\b{escaped}\b" : escaped;
+            RegexOptions options = RegexOptions.Compiled;
+            if (!matchCase) options = options | RegexOptions.IgnoreCase;
+
+            var regex = new Regex(pattern, options);
+
+            foreach (Match m in regex.Matches(text))
+            {
+                yield return m.Index;   // same as IndexOf
+            }
+        }
         private async void ApplySearchResults(string term)
         {
             currentMatchIndex = 0;
@@ -714,7 +819,8 @@ namespace BasViewer.GUI
             if (matches.Count == 0)
             {
                 panelSearchNav.Visible = false;
-                advancedSearch.SetVariableEnabled(_textFile);
+                ClearSearchHighlights();
+                //advancedSearch.SetVariableEnabled(_textFile);
                 advancedSearch.Show();
                 advancedSearch.SetMessage("No matches. Please try again");
                 advancedSearch.BringToFront();
@@ -726,19 +832,6 @@ namespace BasViewer.GUI
                 $"window.search.applyMatches({json}, {currentMatchIndex});");
 
             searchNav.UpdateStatus(currentMatchIndex, matches.Count);
-
-            /*/ Array?
-            if (term.EndsWith("()"))
-                term = term.Substring(0, term.Length - 2);
-
-            // Highlight all matches in WebView2
-            string escaped = term.Replace("'", "\\'");
-            await webView2.CoreWebView2.ExecuteScriptAsync(
-                $"window.search.highlightAll('{escaped}');");
-
-            // Scroll to first match
-            await webView2.CoreWebView2.ExecuteScriptAsync(
-                $"window.search.scrollTo({currentMatchIndex});");*/
 
             // Show navigator            
             panelSearchNav.Visible = true;
@@ -762,7 +855,7 @@ namespace BasViewer.GUI
                     return opts.flgStrings;
 
                 case SymbolKind.LiteralString:
-                    return opts.flgLiteralStrings;
+                    return opts.flgLiteralStrings || opts.flgStringContains;
 
                 case SymbolKind.Proc:
                     return opts.flgProcs;
@@ -771,10 +864,7 @@ namespace BasViewer.GUI
                     return opts.flgFns;
 
                 case SymbolKind.RemText:
-                    return opts.flgRems;
-
-                case SymbolKind.Keyword:
-                    return opts.flgKeywords;
+                    return opts.flgRemContains;
 
                 default:
                     return false;
@@ -825,7 +915,9 @@ namespace BasViewer.GUI
         }
         private void dragFileToLoadToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            label1.BringToFront();
             label1.Visible = true;
+            label1.Focus();
         }
 
         private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
@@ -864,7 +956,9 @@ namespace BasViewer.GUI
                 case Keys.L:
                     if (ctrlPressed)
                     {
+                        label1.BringToFront();
                         label1.Visible = true;
+                        label1.Focus();
                     }
                     break;
                 case Keys.F2:
@@ -922,7 +1016,12 @@ namespace BasViewer.GUI
         }
         private void ShowAdvancedSearch()
         {
-            advancedSearch.SetVariableEnabled(_textFile);
+            if (_textFile)
+            {
+                MessageBox.Show("Advanced Search is not currently compatible\nwith text files in this version.", "Sorry", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            //advancedSearch.SetVariableEnabled(_textFile);
             advancedSearch.Show();
             advancedSearch.BringToFront();
             advancedSearch.SetTextFocus();

@@ -34,11 +34,14 @@ namespace BasViewer.GUI
             chkInt.Tag = SymbolKind.IntVar;
             chkString.Tag = SymbolKind.StringVar;
             chkLiteralString.Tag = SymbolKind.LiteralString;
-            chkRem.Tag = "REM";
-            chkKeywords.Tag = "KEYWORD";
+            chkRemContains.Tag = SymbolKind.RemText;
+            chkStringContains.Tag = "STRING";
         }
         private void DoSearch()
         {
+            bool textsearch = txtSearchString.Visible;
+            string searchTerm = textsearch ? txtSearchString.Text : cmbBoxAdvSearch.SelectedItem.ToString();
+
             SearchOptions opts = new();
 
             opts.flgRealVars = chkReal.Enabled && chkReal.Checked;
@@ -47,12 +50,17 @@ namespace BasViewer.GUI
             opts.flgProcs = chkProc.Enabled && chkProc.Checked;
             opts.flgFns = chkFn.Enabled && chkFn.Checked;
             opts.flgLiteralStrings = chkLiteralString.Enabled && chkLiteralString.Checked;
-            opts.flgRems = chkRem.Enabled && chkRem.Checked;
-            opts.flgKeywords = chkKeywords.Enabled && chkKeywords.Checked;
+            opts.flgRemContains = chkRemContains.Enabled && chkRemContains.Checked;
+            opts.flgStringContains = chkStringContains.Enabled && chkStringContains.Checked;
+            opts.flgTextSearch = textsearch;
+            opts.whole_word = textsearch && chkWholeWords.Checked;
+            opts.match_case = textsearch && chkCaseSens.Checked;
 
             // pass control to the callback in Form1
-            RunSearch?.Invoke(cmbBoxAdvSearch.SelectedItem.ToString(), opts);
-
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                RunSearch?.Invoke(searchTerm, opts);
+            }
             // Hide the dialog (not close)
             this.Hide();
         }
@@ -66,10 +74,12 @@ namespace BasViewer.GUI
         {
             labTip.Visible = false;
             labMessage.Text = msg;
-            //txtBoxAdvSearch.Focus();
         }
         public void SetTextFocus()
         {
+            if (txtSearchString.Visible)
+                return;
+
             this.cmbBoxAdvSearch.Focus();
             if (tipsIndex == 1)
             {
@@ -120,18 +130,27 @@ namespace BasViewer.GUI
             cmbBoxAdvSearch.Items.Clear();
 
             // What kind of item are we looking for?
-            if (rb.Tag == "REM" || rb.Tag == "KEYWORD")
+            if ( rb.Tag == "STRING" || (SymbolKind)rb.Tag == SymbolKind.RemText) // the order here is important
             {
-                // TODO
+                txtSearchString.Visible = true;
+                chkCaseSens.Visible = true;
+                chkWholeWords.Visible = true;
+                txtSearchString.Focus();
+                //txtSearchString.SelectAll();
             }
             else
             {
+                txtSearchString.Visible = false;
+                chkCaseSens.Visible = false;
+                chkWholeWords.Visible = false;
+
                 // Extract the SymbolKind from the Tag
                 var kind = (SymbolKind)rb.Tag;
 
                 FillCombobox(kind, Engine.Symbols);
+
+                SetTextFocus();
             }
-            SetTextFocus();
         }
         private void FillCombobox(SymbolKind kind, Dictionary<string, SymbolInfo> Symbols)
         {
@@ -154,9 +173,9 @@ namespace BasViewer.GUI
             chkString.Checked = false;
             chkFn.Checked = false;
             chkProc.Checked = false;
-            chkRem.Checked = false;
+            chkRemContains.Checked = false;
             chkLiteralString.Checked = false;
-            chkKeywords.Checked = false;
+            chkStringContains.Checked = false;
         }
 
         private void cmbBoxAdvSearch_Click(object sender, EventArgs e)

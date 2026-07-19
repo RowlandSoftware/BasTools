@@ -96,9 +96,9 @@
             label1.Dock = DockStyle.Fill;
             label1.Font = new Font("Segoe UI", 18F, FontStyle.Regular, GraphicsUnit.Point, 0);
             label1.ForeColor = Color.White;
-            label1.Location = new Point(0, 0);
+            label1.Location = new Point(0, 54);
             label1.Name = "label1";
-            label1.Size = new Size(1381, 1062);
+            label1.Size = new Size(1381, 930);
             label1.TabIndex = 4;
             label1.Text = "Drag 'n' Drop a file here";
             label1.TextAlign = ContentAlignment.MiddleCenter;
@@ -111,7 +111,7 @@
             contextMenuStrip1.ImageScalingSize = new Size(32, 32);
             contextMenuStrip1.Items.AddRange(new ToolStripItem[] { dragFileToLoadToolStripMenuItem, gotoLineToolStripMenuItem, advancedSearchToolStripMenuItem, aboutToolStripMenuItem });
             contextMenuStrip1.Name = "contextMenuStrip1";
-            contextMenuStrip1.Size = new Size(398, 232);
+            contextMenuStrip1.Size = new Size(398, 188);
             // 
             // dragFileToLoadToolStripMenuItem
             // 
@@ -332,7 +332,7 @@
             hiddenFocusCatcher.FlatStyle = FlatStyle.Flat;
             hiddenFocusCatcher.Location = new Point(1123, 304);
             hiddenFocusCatcher.Name = "hiddenFocusCatcher";
-            hiddenFocusCatcher.Size = new Size(150, 46);
+            hiddenFocusCatcher.Size = new Size(60, 20);
             hiddenFocusCatcher.TabIndex = 4;
             hiddenFocusCatcher.TabStop = false;
             hiddenFocusCatcher.UseVisualStyleBackColor = false;
@@ -343,10 +343,10 @@
             AutoScaleDimensions = new SizeF(13F, 32F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1381, 1062);
+            Controls.Add(label1);
             Controls.Add(topPanel);
             Controls.Add(panelSearchNav);
             Controls.Add(statusStrip1);
-            Controls.Add(label1);
             Controls.Add(webView2);
             Controls.Add(hiddenFocusCatcher);
             Icon = (Icon)resources.GetObject("$this.Icon");

@@ -35,7 +35,7 @@
             chkString = new RadioButton();
             chkFn = new RadioButton();
             chkProc = new RadioButton();
-            chkRem = new RadioButton();
+            chkRemContains = new RadioButton();
             chkLiteralString = new RadioButton();
             label2 = new Label();
             labTip = new Label();
@@ -43,15 +43,18 @@
             label3 = new Label();
             label4 = new Label();
             label5 = new Label();
-            chkKeywords = new RadioButton();
+            chkStringContains = new RadioButton();
             cmbBoxAdvSearch = new ComboBox();
+            txtSearchString = new TextBox();
+            chkWholeWords = new CheckBox();
+            chkCaseSens = new CheckBox();
             SuspendLayout();
             // 
             // btnOK
             // 
             btnOK.DialogResult = DialogResult.OK;
             btnOK.Font = new Font("Segoe UI Semibold", 10.125F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            btnOK.Location = new Point(742, 509);
+            btnOK.Location = new Point(742, 525);
             btnOK.Name = "btnOK";
             btnOK.Size = new Size(150, 46);
             btnOK.TabIndex = 0;
@@ -63,7 +66,7 @@
             // 
             btnCancel.DialogResult = DialogResult.Cancel;
             btnCancel.Font = new Font("Segoe UI", 10.125F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            btnCancel.Location = new Point(65, 509);
+            btnCancel.Location = new Point(65, 525);
             btnCancel.Name = "btnCancel";
             btnCancel.Size = new Size(150, 46);
             btnCancel.TabIndex = 1;
@@ -107,7 +110,7 @@
             // chkFn
             // 
             chkFn.AutoSize = true;
-            chkFn.Location = new Point(349, 228);
+            chkFn.Location = new Point(356, 228);
             chkFn.Name = "chkFn";
             chkFn.Size = new Size(75, 36);
             chkFn.TabIndex = 11;
@@ -119,7 +122,7 @@
             // chkProc
             // 
             chkProc.AutoSize = true;
-            chkProc.Location = new Point(349, 168);
+            chkProc.Location = new Point(356, 168);
             chkProc.Name = "chkProc";
             chkProc.Size = new Size(105, 36);
             chkProc.TabIndex = 10;
@@ -127,22 +130,21 @@
             chkProc.UseVisualStyleBackColor = true;
             chkProc.CheckedChanged += Radio_CheckedChanged;
             // 
-            // chkRem
+            // chkRemContains
             // 
-            chkRem.AutoSize = true;
-            chkRem.Enabled = false;
-            chkRem.Location = new Point(695, 208);
-            chkRem.Name = "chkRem";
-            chkRem.Size = new Size(103, 36);
-            chkRem.TabIndex = 14;
-            chkRem.Text = "REMs";
-            chkRem.UseVisualStyleBackColor = true;
-            chkRem.CheckedChanged += Radio_CheckedChanged;
+            chkRemContains.AutoSize = true;
+            chkRemContains.Location = new Point(659, 208);
+            chkRemContains.Name = "chkRemContains";
+            chkRemContains.Size = new Size(193, 36);
+            chkRemContains.TabIndex = 14;
+            chkRemContains.Text = "REM Contains";
+            chkRemContains.UseVisualStyleBackColor = true;
+            chkRemContains.CheckedChanged += Radio_CheckedChanged;
             // 
             // chkLiteralString
             // 
             chkLiteralString.AutoSize = true;
-            chkLiteralString.Location = new Point(695, 148);
+            chkLiteralString.Location = new Point(659, 148);
             chkLiteralString.Name = "chkLiteralString";
             chkLiteralString.Size = new Size(183, 36);
             chkLiteralString.TabIndex = 13;
@@ -165,7 +167,7 @@
             labTip.AutoSize = true;
             labTip.Font = new Font("Segoe UI Semibold", 10.125F, FontStyle.Bold, GraphicsUnit.Point, 0);
             labTip.ForeColor = SystemColors.HotTrack;
-            labTip.Location = new Point(63, 433);
+            labTip.Location = new Point(63, 449);
             labTip.Name = "labTip";
             labTip.Size = new Size(63, 37);
             labTip.TabIndex = 21;
@@ -176,7 +178,7 @@
             labMessage.AutoSize = true;
             labMessage.Font = new Font("Segoe UI", 10.125F);
             labMessage.ForeColor = SystemColors.HotTrack;
-            labMessage.Location = new Point(124, 433);
+            labMessage.Location = new Point(124, 449);
             labMessage.Name = "labMessage";
             labMessage.Size = new Size(67, 37);
             labMessage.TabIndex = 22;
@@ -198,7 +200,7 @@
             label4.AutoSize = true;
             label4.Font = new Font("Segoe UI Semibold", 10.125F, FontStyle.Bold, GraphicsUnit.Point, 0);
             label4.ForeColor = SystemColors.HotTrack;
-            label4.Location = new Point(308, 84);
+            label4.Location = new Point(315, 84);
             label4.Name = "label4";
             label4.Size = new Size(220, 37);
             label4.TabIndex = 24;
@@ -209,23 +211,22 @@
             label5.AutoSize = true;
             label5.Font = new Font("Segoe UI Semibold", 10.125F, FontStyle.Bold, GraphicsUnit.Point, 0);
             label5.ForeColor = SystemColors.HotTrack;
-            label5.Location = new Point(646, 84);
+            label5.Location = new Point(610, 84);
             label5.Name = "label5";
             label5.Size = new Size(246, 37);
             label5.TabIndex = 25;
             label5.Text = "Text and Keywords";
             // 
-            // chkKeywords
+            // chkStringContains
             // 
-            chkKeywords.AutoSize = true;
-            chkKeywords.Enabled = false;
-            chkKeywords.Location = new Point(695, 268);
-            chkKeywords.Name = "chkKeywords";
-            chkKeywords.Size = new Size(147, 36);
-            chkKeywords.TabIndex = 26;
-            chkKeywords.Text = "Keywords";
-            chkKeywords.UseVisualStyleBackColor = true;
-            chkKeywords.CheckedChanged += Radio_CheckedChanged;
+            chkStringContains.AutoSize = true;
+            chkStringContains.Location = new Point(659, 268);
+            chkStringContains.Name = "chkStringContains";
+            chkStringContains.Size = new Size(207, 36);
+            chkStringContains.TabIndex = 26;
+            chkStringContains.Text = "String Contains";
+            chkStringContains.UseVisualStyleBackColor = true;
+            chkStringContains.CheckedChanged += Radio_CheckedChanged;
             // 
             // cmbBoxAdvSearch
             // 
@@ -238,22 +239,55 @@
             cmbBoxAdvSearch.TabIndex = 2;
             cmbBoxAdvSearch.Click += cmbBoxAdvSearch_Click;
             // 
+            // txtSearchString
+            // 
+            txtSearchString.Location = new Point(64, 348);
+            txtSearchString.Name = "txtSearchString";
+            txtSearchString.Size = new Size(825, 39);
+            txtSearchString.TabIndex = 27;
+            txtSearchString.Visible = false;
+            // 
+            // chkWholeWords
+            // 
+            chkWholeWords.AutoSize = true;
+            chkWholeWords.Location = new Point(704, 402);
+            chkWholeWords.Name = "chkWholeWords";
+            chkWholeWords.Size = new Size(185, 36);
+            chkWholeWords.TabIndex = 28;
+            chkWholeWords.Text = "Whole words";
+            chkWholeWords.UseVisualStyleBackColor = true;
+            chkWholeWords.Visible = false;
+            // 
+            // chkCaseSens
+            // 
+            chkCaseSens.AutoSize = true;
+            chkCaseSens.Location = new Point(409, 402);
+            chkCaseSens.Name = "chkCaseSens";
+            chkCaseSens.Size = new Size(195, 36);
+            chkCaseSens.TabIndex = 29;
+            chkCaseSens.Text = "Case sensitive";
+            chkCaseSens.UseVisualStyleBackColor = true;
+            chkCaseSens.Visible = false;
+            // 
             // frmAdvancedSearch
             // 
             AcceptButton = btnOK;
             AutoScaleDimensions = new SizeF(13F, 32F);
             AutoScaleMode = AutoScaleMode.Font;
             CancelButton = btnCancel;
-            ClientSize = new Size(960, 579);
+            ClientSize = new Size(960, 603);
+            Controls.Add(chkCaseSens);
+            Controls.Add(chkWholeWords);
+            Controls.Add(txtSearchString);
             Controls.Add(cmbBoxAdvSearch);
-            Controls.Add(chkKeywords);
+            Controls.Add(chkStringContains);
             Controls.Add(label5);
             Controls.Add(label4);
             Controls.Add(label3);
             Controls.Add(labMessage);
             Controls.Add(labTip);
             Controls.Add(label2);
-            Controls.Add(chkRem);
+            Controls.Add(chkRemContains);
             Controls.Add(chkLiteralString);
             Controls.Add(chkFn);
             Controls.Add(chkProc);
@@ -281,9 +315,9 @@
         private RadioButton chkString;
         private RadioButton chkFn;
         private RadioButton chkProc;
-        private RadioButton chkRem;
+        private RadioButton chkRemContains;
         private RadioButton chkLiteralString;
-        private RadioButton chkKeywords;
+        private RadioButton chkStringContains;
         private Label label2;
         private Label labTip;
         private Label labMessage;
@@ -291,5 +325,8 @@
         private Label label4;
         private Label label5;
         private ComboBox cmbBoxAdvSearch;
+        private TextBox txtSearchString;
+        private CheckBox chkWholeWords;
+        private CheckBox chkCaseSens;
     }
 }

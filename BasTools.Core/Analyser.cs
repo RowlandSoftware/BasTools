@@ -276,6 +276,15 @@ namespace BasTools.Core
                         expectingAssignmentTarget = false;
                         continue;
                     }
+                    if (tok.tag is SemanticTags.RemText)
+                    {
+                        RecordUse(engine, tok.tag, tok.value, line.LineNumber,
+                            SymbolReadOrWrite.Assigned,
+                            SymbolContext.NA, procedureName, procedureType);
+
+                        expectingAssignmentTarget = false;
+                        continue;
+                    }
                     if (tok.tag is SemanticTags.Label)
                     {
                         // look at LOCAL and parameters lists (w/o .)
@@ -307,7 +316,9 @@ namespace BasTools.Core
                     procedureName = "$";
                 }
             }
-            Console.Write($"Analysed {engine.Symbols.Count} unique tokens\n");
+            int remCount = engine.Symbols.Values.Count(s => s.Kind == SymbolKind.RemText);
+
+            Console.Write($"Analysed {engine.Symbols.Count - remCount} unique tokens\n");
             analyzed = true;
             return;
         }

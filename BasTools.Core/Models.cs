@@ -41,41 +41,6 @@
     }
 
     //***************** SemanticTags *****************
-    public enum SemanticTypes // not used
-    {
-        Keyword,
-        IndentingKeyword,
-        OutdentingKeyword,
-        InOutKeyword,
-        BuiltInFn,
-        Then,
-        StringLiteral,
-        Number,
-        HexNumber,
-        BinaryNumber,
-        Variable,
-        Array,
-        StaticInteger,
-        RemText,
-        AssemblerComment,
-        StarCommand,
-        EmbeddedData,
-        Proc,
-        Function,
-        Label,
-        Register,
-        Mnemonic,
-        LineNumber,
-        Operator,
-        IsEqualTo_Operator,
-        IndirectionOperator,
-        ImmediateOperator,
-        StatementSep,
-        ListSep,
-        OpenBracket,
-        CloseBracket,
-        Reset
-    }
     public static class SemanticTags
     {
         // These are the literal tags you insert into the output

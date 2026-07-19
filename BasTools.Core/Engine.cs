@@ -339,22 +339,24 @@
         {
             bool array = false;
 
-            if (name.EndsWith("()"))
+            if (tag is SemanticTags.Variable or SemanticTags.Array)
             {
-                name = name[..^2];
-                array = true;
-            }
-
-            if (!array && name.EndsWith('%') && name.Length == 2 && (char.IsAsciiLetterUpper(name[0]) || name[0] == '@'))
-                return SymbolKind.StaticInt;
-            if (name.EndsWith('%'))
-                return SymbolKind.IntVar;
-            if (name.EndsWith('$'))
-                return SymbolKind.StringVar;
-            if (name.StartsWith('.'))
-                return SymbolKind.Label;
-            if (tag == SemanticTags.Variable)
+                if (name.EndsWith("()"))
+                {
+                    name = name[..^2];
+                    array = true;
+                }            
+                if (!array && name.EndsWith('%') && name.Length == 2 && (char.IsAsciiLetterUpper(name[0]) || name[0] == '@'))
+                    return SymbolKind.StaticInt;
+                if (name.EndsWith('%'))
+                    return SymbolKind.IntVar;
+                if (name.EndsWith('$'))
+                    return SymbolKind.StringVar;
+                if (name.StartsWith('.'))
+                    return SymbolKind.Label;
+                // else
                 return SymbolKind.RealVar;
+            }
             if (tag == SemanticTags.FunctionName)
                 return SymbolKind.Fn;
             if (tag == SemanticTags.ProcName)
@@ -363,6 +365,8 @@
                 return SymbolKind.Label;
             if (tag == SemanticTags.StringLiteral)
                 return SymbolKind.LiteralString;
+            if (tag == SemanticTags.RemText)
+                return SymbolKind.RemText;
             return SymbolKind.Unknown;
         }
     }//public BasToolsEngine()
