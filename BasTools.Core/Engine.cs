@@ -261,6 +261,11 @@
         {
             return BasLister.PrintOneLine(progline, ref linesprinted);
         }
+        public static byte[] TokeniseLine(string textline)
+        {
+            return Tokeniser.TokeniseLine(textline);
+        }
+        /********** UTILITIES *********/
         public static IEnumerable<Token> WalkTagged(string line)
         {
             if (line == null) yield break;

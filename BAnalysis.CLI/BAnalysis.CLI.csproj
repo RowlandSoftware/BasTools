@@ -6,6 +6,7 @@
 	<UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+	<AssemblyName>BAnalysis</AssemblyName>
     <ApplicationIcon>RS_lg.ico</ApplicationIcon>
     <PackageIcon>RSlogo_78x78.png</PackageIcon>
     <AnalysisLevel>latest-recommended</AnalysisLevel>

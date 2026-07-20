@@ -3,4 +3,5 @@
   <Project Path="BasList.CLI/BasList.CLI.csproj" />
   <Project Path="BasTools.Core/BasTools.Core.csproj" />
   <Project Path="BasViewer.GUI/BasViewer.GUI.csproj" Id="8568f538-2ee0-41f6-b665-86ed7e17fee9" />
+  <Project Path="Text2Basic.CLI/Text2Basic.CLI.csproj" Id="6693a3bf-f3b7-4006-a50d-0e6d5ea7cb1b" />
 </Solution>

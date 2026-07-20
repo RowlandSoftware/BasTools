@@ -281,7 +281,7 @@ namespace BasViewer.GUI
 
             bool pretty = toolStripBtnPrettyprint.Checked;
 
-            string htmlHeader = "<html><head>" + Themes.GetCss(comboBoxTheme.Text) + _script + "</head>" + Environment.NewLine + "<body><table>" + Environment.NewLine;
+            string htmlHeader = "<html><head>" + Themes.GetCss(comboBoxTheme.Text, pretty) + _script + "</head>" + Environment.NewLine + "<body><table>" + Environment.NewLine;
 
             StringBuilder htmlDoc = new StringBuilder(htmlHeader);
             StringBuilder lineBody = new();
@@ -317,24 +317,14 @@ namespace BasViewer.GUI
                     }
                 }
                 int totindent = 0;
-                if (pretty)
-                {
-                    if (IsDef)
-                        htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td id = \"line_{line.LineNumber}_0\" class = \"line-number\">{line.FormattedLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
-                    else if (IsInDef)
-                        htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td id = \"line_{line.LineNumber}_0\" class = \"line-number\">{line.FormattedLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
-                    else
-                        htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td id = \"line_{line.LineNumber}_0\" class = \"line-number\">{line.FormattedLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
-                }
+
+                if (IsDef)
+                    htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td id = \"line_{line.LineNumber}_0\" class = \"line-number\">{line.FormattedLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
+                else if (IsInDef)
+                    htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td id = \"line_{line.LineNumber}_0\" class = \"line-number\">{line.FormattedLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
                 else
-                {
-                    if (IsDef)
-                        htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td id = \"line_{line.LineNumber}_0\" class = \"line-number\">{line.FormattedLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{line.FormattedPlain}</td></tr>" + Environment.NewLine);
-                    else if (IsInDef)
-                        htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td id = \"line_{line.LineNumber}_0\" class = \"line-number\">{line.FormattedLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{line.FormattedPlain}</td></tr>" + Environment.NewLine);
-                    else
-                        htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td id = \"line_{line.LineNumber}_0\" class = \"line-number\">{line.FormattedLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{line.FormattedPlain}</td></tr>" + Environment.NewLine);
-                }
+                    htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td id = \"line_{line.LineNumber}_0\" class = \"line-number\">{line.FormattedLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
+               
                 if (IsInDef && !line.IsInDef)
                     IsInDef = false;
 
@@ -362,12 +352,11 @@ namespace BasViewer.GUI
 
             bool splitLines = toolStripBtnSplitlines.Checked;
             bool pretty = toolStripBtnPrettyprint.Checked;
-            //MessageBox.Show($"Button status: {pretty} {splitLines}");
 
             ListerOptions listerOptions = new ListerOptions(true, false, splitLines, true); //bool indent, bool indentDefs, bool splitLines, bool pretty (ignored)
             List<DisplayLine> lines = engine.PrepLinesForDisplay(listerOptions);
 
-            string htmlHeader = "<html><head>" + Themes.GetCss(comboBoxTheme.Text) + _script + "</head><body><table>";
+            string htmlHeader = "<html><head>" + Themes.GetCss(comboBoxTheme.Text, pretty) + _script + "</head><body><table>";
 
             StringBuilder htmlDoc = new StringBuilder();
 
@@ -403,25 +392,13 @@ namespace BasViewer.GUI
                 }
 
                 int totindent = (line.Indent + line.DefIndent) * 2;
-                if (pretty)
-                {
-                    if (IsDef)
-                        htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td id = \"line_{line.Id}\" class = \"line-number\">{line.sLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
-                    else if (IsInDef)
-                        htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td id = \"line_{line.Id}\" class = \"line-number\">{line.sLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
-                    else
-                        htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td id = \"line_{line.Id}\" class = \"line-number\">{line.sLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
-                }
+                if (IsDef)
+                    htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td id = \"line_{line.Id}\" class = \"line-number\">{line.sLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
+                else if (IsInDef)
+                    htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td id = \"line_{line.Id}\" class = \"line-number\">{line.sLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
                 else
-                {
-                    if (IsDef)
-                        htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td id = \"line_{line.Id}\" class = \"line-number\">{line.sLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{line.PlainLine}</td></tr>" + Environment.NewLine);
-                    else if (IsInDef)
-                        htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td id = \"line_{line.Id}\" class = \"line-number\">{line.sLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{line.PlainLine}</td></tr>" + Environment.NewLine);
-                    else
-                        htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td id = \"line_{line.Id}\" class = \"line-number\">{line.sLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{line.PlainLine}</td></tr>" + Environment.NewLine);
-                }
-
+                    htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td id = \"line_{line.Id}\" class = \"line-number\">{line.sLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
+               
                 if (IsInDef && !line.IsInDef)
                     IsInDef = false;
 
@@ -700,7 +677,6 @@ namespace BasViewer.GUI
                 }
             }
             var distinctLines = matches.Select(m => m.Line).Distinct().Count();
-            Log($"{DateAndTime.Now} Search '{term}': matches.Count = {matches.Count}, distinct lines = {distinctLines}");
 
             ApplySearchResults(term);
         }
@@ -719,19 +695,15 @@ namespace BasViewer.GUI
             foreach (var use in sym.Uses)
             {
                 int targetLine = use.LineNumber;
-                Log($"{name} - Searching for line {targetLine}");
 
                 // Find the DisplayLine with this BASIC line number
                 // (stop early because BASIC lines are sorted)
                 DisplayLine? dl = null;
                 foreach (var line in displayLines)
                 {
-                    //Log($"Trying {line.Linenumber}");
                     if (line.LineNumber == targetLine)
                     {
                         dl = line;
-                        Log($"Matched line {targetLine}");
-                        //break;
                     }
                     if (line.LineNumber > targetLine)
                         break;
@@ -756,7 +728,6 @@ namespace BasViewer.GUI
                                 if (seen.Contains((line.Id, idx)))
                                     continue;
 
-                                //Log($"Adding {name} at Indx {idx} in {line.Id}");
                                 matches.Add(new SearchMatch
                                 {
                                     Line = targetLine,
@@ -783,18 +754,14 @@ namespace BasViewer.GUI
 
             foreach (SymbolUse use in sym.Uses)
             {
-                Log($"Text search for {term} - found {sym.Name}");
                 // Find the matching DisplayLine - so can figure out the index of the LiteralString or RemText token on that line (or lines if splitlines)
                 int targetLine = use.LineNumber;
                 DisplayLine? dl = null;
                 foreach (var line in displayLines)
                 {
-                    //Log($"Trying {line.Linenumber}");
                     if (line.LineNumber == targetLine)
                     {
                         dl = line;
-                        //Log($"Matched line {targetLine}");
-                        //break;
                     }
                     if (line.LineNumber > targetLine)
                         break;
@@ -813,8 +780,6 @@ namespace BasViewer.GUI
                         if (tok.tag != null)
                         {
                             idx++;
-                            //if (tok.value == "\"")
-                            Log($"! Walking tags - ({sym.Kind}) {tok.tag} = {tok.value}");
                             if (sym.Kind == BasToolsEngine.InferKind(tok.tag, tok.value))
                             {
                                 //foreach (int offset in FindAllMatches(sym.Name, term, opts.match_case))
@@ -824,7 +789,6 @@ namespace BasViewer.GUI
                                         if (seen.Contains((line.Id, idx, offset)))
                                         continue;
 
-                                    Log($"Adding {term} at Indx {idx}, offset {offset}, length {term.Length} in {line.Id}");
                                     matches.Add(new SearchMatch
                                     {
                                         Line = targetLine,

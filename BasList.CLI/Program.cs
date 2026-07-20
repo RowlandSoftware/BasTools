@@ -192,7 +192,7 @@
 
             //******** readCommandSwitches ********
 
-            readCommandSwitches(args, switches, ref filename, ref format);
+            readCommandSwitches(args, switches, ref filename);
 
             // Defaults
             
@@ -238,7 +238,7 @@
         }
 
         //**************** Get User Input *****************
-        static void readCommandSwitches(string[] args, CommandSwitches switches, ref string filename, ref string format)
+        static void readCommandSwitches(string[] args, CommandSwitches switches,ref string filename)
         {
             foreach (string arg in args)
             {
@@ -457,50 +457,51 @@
         {
             string vs = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion ?? "1.1.0"; // ?? = null coalescing operator. //requires ref to System.Windows.Forms
 
+            Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine($"\nBasList vs {vs} for BasTools (C) Andrew Rowland 2022-26");
-            Console.WriteLine("\nLists a BBC BASIC program file\n");
-            Console.WriteLine("BasList [/file=]filename ([[from line] [to line]) | [line,line]]) [Options] ([IF ...] | [IFX ...] | [LIST ...])");
+            Console.WriteLine("Lists a BBC BASIC program file\n");
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.WriteLine("    BasList [/file=]filename ([[from line] [to line]) | [line,line]]) [Options] ([IF ...] | [IFX ...] | [LIST ...])");
             //Console.WriteLine("BasList [/file=]filename [/V] [/addnumbers] [/align] [/indent] [/nonumbers] [/noformat] [/bare] [/pause] [/prettyprint] [(cls | clear)]");
             //Console.WriteLine("BasList [/file=]filename [(/dark | /light)]");
-            Console.WriteLine("BasList [/? | /h]  Display help\n");
-            Console.WriteLine("  [/file=]filename");
-            Console.WriteLine("                   Specifies filename of tokenised BASIC program.");
-            Console.WriteLine("                   Filename to follow '=' without spaces. Quote if contains spaces.");
-            Console.WriteLine("                   '/file=' may be omitted if filename is first item");
-
-            Console.WriteLine("\nOPTIONS");
-            Console.WriteLine("-------");
-            Console.WriteLine("  /V               Interpret BASIC V assembler (May be auto-detected)");
-            Console.WriteLine("  /notBasicV       Disallow BASIC V assembler (overrides auto-detection)");
-            Console.WriteLine("  /addnumbers      Supply missing line numbers (Z80 only)");
-            Console.WriteLine("  /align           Right-align line numbers");
-            Console.WriteLine("  /indent          Indent listing of loops and subprocedures");
-            Console.WriteLine("  /indent=(loops | defs | all)");
-            Console.WriteLine("                   Indent loops only | PROC & FN definitions | both");
-            Console.WriteLine("  /nonumbers       Omits line numbers");
-            Console.WriteLine("  /noformat        List program as entered (cancels prettyprint, splitlines and all additional spaces)");
-            Console.WriteLine("  /columns         Format assembly language listings into columns");
-            Console.WriteLine("  /columns=<extra> Format assembler into columns. <extra> must be -5 to 20 inc.");
-            Console.WriteLine("  /bare            Omits additional messages (cancels pause)");
-            Console.WriteLine("  /splitlines      Prints each statement on its own line");
-            Console.WriteLine("  /pause           Pause at bottom of each screenful");
-            Console.WriteLine("  /prettyprint     Adds spaces and syntax colouring");
-            Console.WriteLine("  /cls             Clear console (terminal) before listing");
-            Console.WriteLine("  /dark            Dark mode – black background (default)");
-            Console.WriteLine("  /light           Light mode – white background");
-            Console.WriteLine("  /savedefaults    Save current switches as defaults");
-            Console.WriteLine("  /resetdefaults   Clear saved defaults back to application defaults");
-            Console.WriteLine("  /debug           Display internal detokenised results for debug");
-            Console.WriteLine("  /fulldebug       Debug with additional information");
-            Console.WriteLine("  /exporttagged    Display with syntax tags only");
-            Console.WriteLine("\nE.g.");
-            Console.WriteLine("  BasList program ,200        - List up to line 200");
-            Console.WriteLine("  BasList program 1000,       - List from line 1000");
-            Console.WriteLine("  BasList program 200,1000    - List from line 200 to 1000");
-            Console.WriteLine("  BasList program 200 1000    - List from line 200 to 1000");
-            Console.WriteLine("  BasList program IF PRINTTAB - List only lines containing PRINTTAB or PRINT TAB, case insensitive");
-            Console.WriteLine("  BasList program IFX printer - As IF, but respecting spaces and case");
-            Console.WriteLine("  BasList program LIST FNinp  - List named function(s)/procedure(s)");
+            Console.WriteLine("    BasList [/? | /h]  Display help\n");
+            Console.WriteLine("    [/file=]filename  Specifies filename of tokenised BASIC program.");
+            Console.WriteLine("                      Filename to follow '=' without spaces. Quote if contains spaces.");
+            Console.WriteLine("                      '/file=' may be omitted if filename is first item");
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine("    OPTIONS");
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.WriteLine("      /V               Interpret BASIC V assembler (May be auto-detected)");
+            Console.WriteLine("      /notBasicV       Disallow BASIC V assembler (overrides auto-detection)");
+            Console.WriteLine("      /addnumbers      Supply missing line numbers (Z80 only)");
+            Console.WriteLine("      /align           Right-align line numbers");
+            Console.WriteLine("      /indent          Indent listing of loops and subprocedures");
+            Console.WriteLine("      /indent=(loops | defs | all)");
+            Console.WriteLine("                       Indent loops only | PROC & FN definitions | both");
+            Console.WriteLine("      /nonumbers       Omits line numbers");
+            Console.WriteLine("      /noformat        List program as entered (cancels prettyprint, splitlines and all additional spaces)");
+            Console.WriteLine("      /columns         Format assembly language listings into columns");
+            Console.WriteLine("      /columns=<extra> Format assembler into columns. <extra> must be -5 to 20 inc.");
+            Console.WriteLine("      /bare            Omits additional messages (cancels pause)");
+            Console.WriteLine("      /splitlines      Prints each statement on its own line");
+            Console.WriteLine("      /pause           Pause at bottom of each screenful");
+            Console.WriteLine("      /prettyprint     Adds spaces and syntax colouring");
+            Console.WriteLine("      /cls             Clear console (terminal) before listing");
+            Console.WriteLine("      /dark            Dark mode – black background (default)");
+            Console.WriteLine("      /light           Light mode – white background");
+            Console.WriteLine("      /savedefaults    Save current switches as defaults");
+            Console.WriteLine("      /resetdefaults   Clear saved defaults back to application defaults");
+            Console.WriteLine("      /debug           Display internal detokenised results for debug");
+            Console.WriteLine("      /fulldebug       Debug with additional information");
+            Console.WriteLine("      /exporttagged    Display with syntax tags only");
+            Console.WriteLine("\n    E.g.");
+            Console.WriteLine("      BasList program ,200        - List up to line 200");
+            Console.WriteLine("      BasList program 1000,       - List from line 1000");
+            Console.WriteLine("      BasList program 200,1000    - List from line 200 to 1000");
+            Console.WriteLine("      BasList program 200 1000    - List from line 200 to 1000");
+            Console.WriteLine("      BasList program IF PRINTTAB - List only lines containing PRINTTAB or PRINT TAB, case insensitive");
+            Console.WriteLine("      BasList program IFX printer - As IF, but respecting spaces and case");
+            Console.WriteLine("      BasList program LIST FNinp  - List named function(s)/procedure(s)");
             Console.WriteLine("\nOptions may be specified in any order and can be abbreviated.");
             Console.WriteLine("\nTo override a saved value, use a minus sign e.g. /-align.");
             Console.WriteLine("Parameters containing spaces must be enclosed by double quotes.");

@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+	<AssemblyName>Text2Basic</AssemblyName>
+    <ApplicationIcon>BBC_Owl_96_2col.ico</ApplicationIcon>
+    <Title>Test2Basic</Title>
+    <Company>RowlandSoftware</Company>
+    <Authors>A C Rowland</Authors>
+    <Description>Text file to BBC Basic conversion</Description>
+    <Copyright>(C) Andrew Rowland 2026</Copyright>
+    <PackageIcon>60a4603117e4204c.png</PackageIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="BBC_Owl_96_2col.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\Docs\60a4603117e4204c.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BasTools.Core\BasTools.Core.csproj" />
+  </ItemGroup>
+
+</Project>

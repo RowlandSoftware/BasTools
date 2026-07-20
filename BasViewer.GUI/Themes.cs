@@ -390,7 +390,7 @@ namespace BasViewer.GUI
                 ["closebracket"] = "color:DarkSlateGray;",
             }
         };
-        public static string GetCss(string theme)
+        public static string GetCss(string theme, bool pretty)
         {
             if (!_themes.TryGetValue(theme, out var map))
                 map = _themes["Dark"]; // fallback
@@ -449,18 +449,22 @@ namespace BasViewer.GUI
                 }}
             ");
 
-                // Semantic tag classes (loop!)
+            // Semantic tag classes (loop!)
             foreach (var kvp in map)
             {
                 string tag = kvp.Key;
 
                 // Skip global keys
-                if (tag is "background" or "foreground" or "linenumber_bg" or "linenumber_fg")
-                    continue;
+                if (pretty)
+                {
 
-                string css = kvp.Value;
+                    if (tag is "font" or "background" or "foreground" or "linenumber_bg" or "linenumber_fg")
+                        continue;
 
-                sb.Append($".{tag} {{{css}}}" + Environment.NewLine);
+                    string css = kvp.Value;
+
+                    sb.Append($".{tag} {{{css}}}" + Environment.NewLine);
+                }
             }
 
             sb.Append("</style>");
