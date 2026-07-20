@@ -42,6 +42,7 @@ namespace BasViewer.GUI
         FormattingOptions? formatOptions;
         BasToolsEngine? engine;
         private string _htmlClose;
+        private string _htmlDoc;
         private string _script;
         private bool _loaded;
         private bool _textFile;
@@ -349,7 +350,8 @@ namespace BasViewer.GUI
             statusRight.Text = "Text file";
             if (combProcFnFinder.Items.Count > 0)
                 combProcFnFinder.SelectedIndex = 0;
-            webView2.NavigateToString(htmlDoc.ToString());
+            _htmlDoc = htmlDoc.ToString();          // keep copy
+            webView2.NavigateToString(_htmlDoc);
         }
         private void BasicToHtml(BasToolsEngine engine)
         {
@@ -436,7 +438,8 @@ namespace BasViewer.GUI
             if (combProcFnFinder.Items.Count > 0)
                 combProcFnFinder.SelectedIndex = 0;
 
-            webView2.NavigateToString(htmlHeader + htmlDoc.ToString());
+            _htmlDoc = htmlHeader + htmlDoc.ToString();          // keep copy
+            webView2.NavigateToString(_htmlDoc);
         }
         private void LoadFile(string filename)
         {
@@ -464,16 +467,34 @@ namespace BasViewer.GUI
             if (panelSearchNav.Visible)
                 panelSearchNav.Visible = false;
 
-            var scrollY = await webView2.ExecuteScriptAsync("document.scrollingElement.scrollTop");
+            /*var scrollY = await webView2.ExecuteScriptAsync("document.scrollingElement.scrollTop");
             bool v = int.TryParse(scrollY, out int savedScroll);
-            if (!v) savedScroll = 0;
+            if (!v) savedScroll = 0;*/
+
+            var firstVisibleIdJson = await webView2.ExecuteScriptAsync("window.search.getFirstVisibleLineId();");
+            string firstVisibleId = firstVisibleIdJson?.Trim('"');  // JS string -> C#
+
 
             if (!_textFile)
                 BasicToHtml(engine);
             else
                 TextToHtml(engine);
 
-            await webView2.ExecuteScriptAsync($"document.scrollingElement.scrollTop = {savedScroll};");
+            //await webView2.ExecuteScriptAsync($"document.scrollingElement.scrollTop = {savedScroll};");
+            webView2.NavigationCompleted += async (_, __) =>
+            {
+                await webView2.CoreWebView2.ExecuteScriptAsync(_script);
+
+                if (!string.IsNullOrEmpty(firstVisibleId))
+                {
+                    string js = $@"
+            (function() {{
+                var el = document.getElementById('{firstVisibleId}');
+                if (el) el.scrollIntoView({{ block: 'start' }});
+            }})();";
+                    await webView2.CoreWebView2.ExecuteScriptAsync(js);
+                }
+            };
         }
         private async void Form1_Shown(object? sender, EventArgs e)
         {
@@ -570,9 +591,44 @@ namespace BasViewer.GUI
             await webView2.CoreWebView2.ExecuteScriptAsync(
                 $"window.search.scrollTo({index});");
         }
-        private void ClearSearchHighlights()
+        private async void ClearSearchHighlights()
         {
-            webView2.CoreWebView2.ExecuteScriptAsync("window.search.clear();");
+            if (!_loaded)
+                return;
+
+            if (panelSearchNav.Visible)
+                panelSearchNav.Visible = false;
+
+            //await webView2.CoreWebView2.ExecuteScriptAsync("window.search.clear();");
+
+            /*var scrollY = await webView2.ExecuteScriptAsync("document.scrollingElement.scrollTop");
+            bool v = int.TryParse(scrollY, out int savedScroll);
+            if (!v) savedScroll = 0;*/
+
+            var firstVisibleIdJson = await webView2.ExecuteScriptAsync("window.search.getFirstVisibleLineId();");
+            string firstVisibleId = firstVisibleIdJson?.Trim('"');  // JS string -> C#
+
+            webView2.NavigateToString(_htmlDoc);
+
+            //await webView2.CoreWebView2.ExecuteScriptAsync(_script);
+            //await webView2.ExecuteScriptAsync($"document.scrollingElement.scrollTop = {savedScroll};");
+
+            // Rebuild JS + restore scroll AFTER navigation completes
+            webView2.NavigationCompleted += async (_, __) =>
+            {
+                await webView2.CoreWebView2.ExecuteScriptAsync(_script);
+
+                if (!string.IsNullOrEmpty(firstVisibleId))
+                {
+                    string js = $@"
+            (function() {{
+                var el = document.getElementById('{firstVisibleId}');
+                if (el) el.scrollIntoView({{ block: 'start' }});
+            }})();";
+                    await webView2.CoreWebView2.ExecuteScriptAsync(js);
+                }
+            };
+
         }
         public async void DoGotoLine(string text)
         {
@@ -815,6 +871,7 @@ namespace BasViewer.GUI
 
             // Clear old highlights
             await webView2.CoreWebView2.ExecuteScriptAsync("window.search.clear();");
+            //ClearSearchHighlights();
 
             if (matches.Count == 0)
             {
@@ -1021,6 +1078,7 @@ namespace BasViewer.GUI
                 MessageBox.Show("Advanced Search is not currently compatible\nwith text files in this version.", "Sorry", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
+            ClearSearchHighlights();
             //advancedSearch.SetVariableEnabled(_textFile);
             advancedSearch.Show();
             advancedSearch.BringToFront();

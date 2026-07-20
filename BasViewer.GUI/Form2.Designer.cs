@@ -241,6 +241,7 @@
             // 
             // txtSearchString
             // 
+            txtSearchString.Font = new Font("Segoe UI", 9F, FontStyle.Regular, GraphicsUnit.Point, 0);
             txtSearchString.Location = new Point(64, 348);
             txtSearchString.Name = "txtSearchString";
             txtSearchString.Size = new Size(825, 39);

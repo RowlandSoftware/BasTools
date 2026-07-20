@@ -509,62 +509,6 @@ window.search.clear = function () {
     });
 };
 
-window.search.highlightAll = function (term){
-    if (!term) return;
-
-    const regex = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, ""\\$&""), ""gi"");
-
-    const walker = document.createTreeWalker(
-        document.body,
-        NodeFilter.SHOW_TEXT,
-        null,
-        false
-    );
-
-    const textNodes = [];
-    let node;
-    while (node = walker.nextNode()) {
-        if (node.parentNode &&
-            node.parentNode.classList &&
-            node.parentNode.classList.contains(""search-hit""))
-            continue;
-
-        textNodes.push(node);
-    }
-
-    for (const node of textNodes) {
-        const text = node.nodeValue;
-
-        regex.lastIndex = 0;
-
-        let match;
-        let lastIndex = 0;
-        const frag = document.createDocumentFragment();
-
-        while ((match = regex.exec(text)) !== null) {
-            const before = text.slice(lastIndex, match.index);
-            if (before)
-                frag.appendChild(document.createTextNode(before));
-
-            const span = document.createElement(""span"");
-            span.className = ""search-hit"";
-            span.textContent = match[0];
-            frag.appendChild(span);
-
-            lastIndex = match.index + match[0].length;
-        }
-
-        if (lastIndex === 0)
-            continue;
-
-        const after = text.slice(lastIndex);
-        if (after)
-            frag.appendChild(document.createTextNode(after));
-
-        node.parentNode.replaceChild(frag, node);
-    }
-};
-
 window.search.applyMatches = function (matches, currentIndex)
 {
     window.search.clear();
@@ -631,6 +575,27 @@ window.search.applyMatches = function (matches, currentIndex)
     });
 
     window.search.scrollTo(currentIndex);
+};
+
+window.search.getFirstVisibleLineId = function () {
+    const rows = document.querySelectorAll(""tr"");
+    const viewportTop = document.scrollingElement.scrollTop;
+    const viewportBottom = viewportTop + window.innerHeight;
+
+    for (const row of rows) {
+        const rect = row.getBoundingClientRect();
+        const absTop = rect.top + window.scrollY;
+        const absBottom = rect.bottom + window.scrollY;
+
+        // Row intersects viewport?
+        if (absBottom >= viewportTop && absTop <= viewportBottom) {
+            const lineCell = row.querySelector(""td.line-number"");
+            if (lineCell && lineCell.id)
+                return lineCell.id;   // e.g. ""line_250_0""
+        }
+    }
+
+    return null;
 };
 
 window.search.scrollTo = function (index) {
