@@ -147,7 +147,7 @@
         public int LineNumber { get; set; } = 0;
         public int Indent { get; set; } = 0;
         private bool _defIndent = false;
-        public bool IsDef {  get; set; } = false;
+        public bool IsDef { get; set; } = false;
         public bool IsInDef { get; set; } = false;
         public string sLineNumber { get; set; } = "";
         public string LineBody { get; set; } = "";
@@ -181,7 +181,7 @@
         public bool Z80;
         public int LineCount;
         public bool InAsm;
-        
+
         public List<string> DirectiveParams = new();
         public ParserState()
         {
@@ -352,7 +352,7 @@
             // switches for listing
             NoFormat = false;
             NoLineNumbers = false;
-            
+
             SplitLines = splitLines;
             //AssemblerColumns = opt.AssemblerColumns;
             //ColumnWidth = opt.ExtraColumnWidth;
@@ -383,4 +383,42 @@
         }
     }
     public record DimInfo(int LineNumber, bool IsLocal);
+
+    //***************** TokeniserState used by Tokeniser *****************
+    internal class TokeniserState
+    {
+        public bool StartOfStatement = true;
+        public bool InMultilineIf = false;
+        public bool MiddleOfStatement = false;
+
+    }
+    [Flags]
+    public enum TokenFlags : byte
+    {
+        None = 0,
+
+        C = 1 << 0,   // Conditional
+        M = 1 << 1,   // Multi-statement
+        S = 1 << 2,   // String function
+        F = 1 << 3,   // Function
+        L = 1 << 4,   // Loop / flow
+        R = 1 << 5,   // Reserved
+        P = 1 << 6,   // Procedure/function prefix
+        TwoByte = 1 << 7   // Double-byte token indicator
+    }
+
+    public sealed class TokenInfo
+    {
+        public string Keyword { get; init; }
+        public byte Token1 { get; init; }
+        public byte Token2 { get; init; }
+        public TokenFlags Flags { get; init; }
+        public TokenInfo(string keyword, byte token1, byte token2, byte flag)
+        {
+            Keyword = keyword;
+            Token1 = token1;
+            Token2 = token2;
+            Flags = (TokenFlags)flag;
+        }
+    }
 }

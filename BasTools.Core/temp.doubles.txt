@@ -1,0 +1,44 @@
+"APPEND   ","&C7","&8E","&86 "," 10000110   ","Acorn token"
+"BEATS    ","&C8","&9E","&86 "," 10000110   ","Acorn token"
+"BEAT     ","&C6","&8F","&83 "," 10000011   ","Acorn token"
+"CASE     ","&C8","&8E","&86 "," 10000110   ","Acorn token"
+"CIRCLE    ","&C8","&8F","&86 "," 10000110   ","Acorn token"
+"CRUNCH   ","&C7","&90","&86 "," 10000110   ","Acorn token"
+"ENDCASE  ","&CB    ","&03 ",," 00000011",
+"ENDIF    ","&CD    ","&03 ",," 00000011",
+"ENDWHILE ","&CE    ","&03 ",," 00000011",
+"ELSE     ","&8B    ","&08 ",," 00001000",
+"ELSE     ","&CC    ","&08 ",," 00001000   ","Acorn token"
+"ELLIPSE  ","&C8","&9D","&86 "," 10000110   ","Acorn token"
+"EXIT     ","&C8","&A6","&83 "," 10000011   ","Acorn token"
+"FILL      ","&C8","&90","&86 "," 10000110   ","Acorn token"
+"INSTALL  ","&C7","&9F","&86 "," 10000110   ","Acorn token"
+"INSTALL  ","&C8","&9A","&86 "," 10000110   ","Acorn token"
+"LINE     ","&86    ","&02 ",," 00000010",
+"LIBRARY  ","&C8","&9B","&06 "," 00000110   ","Acorn token"
+"LVAR     ","&C7","&96","&83 "," 10000011   ","Acorn token"
+"MID$(    ","&C1    ","&02 ",," 00000010",
+"MANDEL   ","&C8","&A4","&86 "," 10000110   ","Acorn token"
+"MOUSE    ","&C8","&97","&86 "," 10000110   ","Acorn token"
+"OFF      ","&87    ","&02 ",," 00000010","flags=&03 in later tokens"
+"OF       ","&CA    ","&02 ",," 00000010",
+"ORIGIN   ","&C8","&91","&86 "," 10000110   ","Acorn token"
+"OTHERWISE","&7F    ","&00 ",," 00000000   ","Acorn token"
+"OVERLAY  ","&C8","&A3","&86 "," 10000110   ","Acorn token"
+"POINT     ","&C8","&92","&86 "," 10000110   ","Acorn token"
+"PRIVATE  ","&C8","&A5","&86 "," 10000110   ","Acorn token"
+"RECTANGLE","&C8","&93","&86 "," 10000110   ","Acorn token"
+"STEREO   ","&C8","&A2","&86 "," 10000110   ","Acorn token"
+"SOUND    ","&D4    ","&06 ",," 00000110",
+"SUM      ","&C6","&8E","&83 "," 10000011   ","Acorn token"
+"SWAP     ","&C8","&94","&86 "," 10000110   ","Acorn token"
+"SYS      ","&C8","&99","&86 "," 10000110   ","Acorn token"
+"TEMPO    ","&C8","&9F","&86 "," 00000110   ","Acorn token"
+"TEXTLOAD ","&C7","&9B","&86 "," 10000110   ","Acorn token"
+"TEXTSAVE ","&C7","&9C","&86 "," 10000110   ","Acorn token"
+"TINT     ","&C8","&9C","&86 "," 10000110   ","Acorn token"
+"VOICES   ","&C8","&A0","&86 "," 10000110   ","Acorn token"
+"VOICE    ","&C8","&A1","&86 "," 10000110   ","Acorn token"
+"WHEN     ","&C9    ","&06 ",," 00000110",
+"WHILE    ","&C8","&95","&86 "," 10000110   ","Acorn token"
+"WAIT     ","&C8","&96","&83 "," 10000011   ","Acorn token"

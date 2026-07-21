@@ -261,9 +261,9 @@
         {
             return BasLister.PrintOneLine(progline, ref linesprinted);
         }
-        public static byte[] TokeniseLine(string textline)
+        public static byte[] TokeniseLine(string textline, BasToolsEngine engine)
         {
-            return Tokeniser.TokeniseLine(textline);
+            return Tokeniser.TokeniseLine(textline, engine);
         }
         /********** UTILITIES *********/
         public static IEnumerable<Token> WalkTagged(string line)

@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Reflection;
+using System.Security.Authentication;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -16,6 +17,7 @@ namespace BasTools.Core
         private readonly HashSet<string> Z80Mnemonics;
         private readonly HashSet<string> Z80Registers;
         Dictionary<string, KeywordRole> KeywordRoles;
+        public Dictionary<string, TokenInfo> toktable = new();
         public static List<string> keywords;
         
         public BasToolsEngine()
@@ -56,6 +58,8 @@ namespace BasTools.Core
                  .OrderByDescending(s => s.Length)
                  .ThenBy(s => s, StringComparer.OrdinalIgnoreCase)
                  .ToList();
+
+            readTokenisingTable(toktable, "BasTools.Core.TokenTable.Acorn.txt"); // for tokenising
 
         }
         internal bool ProcessRawProgram(string fn, Listing listing, ProgInfo progInfo)
@@ -1084,6 +1088,57 @@ namespace BasTools.Core
                 }
             }
         }
+        private void readTokenisingTable(Dictionary<string, TokenInfo> toktable, string filename) //, HashSet<string> TokensWithOpenParen
+        {
+            string table = GetEmbeddedResourceContent(filename);
+            string[] tokenlist = table.Split("\r\n");
+
+            bool first = true;
+            foreach (string tline in tokenlist)
+            {
+                if (string.IsNullOrWhiteSpace(tline))
+                    continue;
+                if (first)
+                {
+                    first = false;
+                    continue;
+                }
+
+                string[] temp = tline.Split(',',StringSplitOptions.TrimEntries);
+
+                string key = temp[0];
+
+                try
+                {
+                    byte token_1 = ParseByte(temp[1]);
+                    byte token_2 = ParseByte(temp[2]);
+                    byte flag    = ParseByte(temp[3]);
+
+                    TokenInfo tokInfo = new TokenInfo(key, token_1, token_2, flag);
+                    if (!toktable.ContainsKey(key))
+                        toktable.Add(key, tokInfo);
+                }                
+                catch (Exception ex)
+                {
+                    throw new BasToolsException($"Unexpected token table format in line: {tline}\n{ex.Message}");
+                }
+            }
+        }
+        static byte ParseByte(string s)
+        {
+            s = s.Trim();
+            if (s.Length == 0)
+                return 0;
+
+            if (s.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+                return Convert.ToByte(s[2..], 16);
+
+            if (s.StartsWith("&"))
+                return Convert.ToByte(s[1..], 16);
+
+            return byte.Parse(s);
+        }
+
         static string GetEmbeddedResourceContent(string resourceName)
         {
             var asm = Assembly.GetExecutingAssembly();

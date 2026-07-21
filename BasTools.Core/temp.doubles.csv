@@ -1,0 +1,41 @@
+APPEND   ,&C7,&8E,0xA6,2P-RL-S-
+BEATS    ,&C8,&9E,0xA6,2P-RL-S-
+BEAT     ,&C6,&8F,0x85,2----S-C
+CASE     ,&C8,&8E,0xA6,2P-RL-S-
+CIRCLE    ,&C8,&8F,0xA6,2P-RL-S-
+CRUNCH   ,&C7,&90,0xA6,2P-RL-S-
+ENDCASE  ,&CB    ,,0x03,-------MC
+ENDIF    ,&CD    ,,0x03,-------MC
+ENDWHILE ,&CE    ,,0x03,-------MC
+ELLIPSE  ,&C8,&9D,0xA6,2P-RL-S-
+EXIT     ,&C8,&A6,0x85,2----S-C
+FILL      ,&C8,&90,0xA6,2P-RL-S-
+INSTALL  ,&C7,&9F,0xA6,2P-RL-S-
+INSTALL  ,&C8,&9A,0xA6,2P-RL-S-
+LINE     ,&86    ,,0x04,------S--
+LIBRARY  ,&C8,&9B,0x06,------SM-
+LVAR     ,&C7,&96,0x85,2----S-C
+MOUSE    ,&C8,&97,0xA6,2P-RL-S-
+OFF      ,&87    ,,0x04,------S--
+OF       ,&CA    ,,0x04,------S--
+ORIGIN   ,&C8,&91,0xA6,2P-RL-S-
+OTHERWISE,&7F    ,,,--------
+OVERLAY  ,&C8,&A3,0xA6,2P-RL-S-
+POINT     ,&C8,&92,0xA6,2P-RL-S-
+PRIVATE  ,&C8,&A5,0xA6,2P-RL-S-
+RECTANGLE,&C8,&93,0xA6,2P-RL-S-
+REPORT$ ,&F6,&24,&01,-------C
+STEREO   ,&C8,&A2,0xA6,2P-RL-S-
+SOUND    ,&D4    ,,0x06,------SM-
+SUM      ,&C6,&8E,0x85,2----S-C
+SWAP     ,&C8,&94,0xA6,2P-RL-S-
+SYS      ,&C8,&99,0xA6,2P-RL-S-
+TEMPO    ,&C8,&9F,0xA6,2P-RL-S-
+TEXTLOAD ,&C7,&9B,0xA6,2P-RL-S-
+TEXTSAVE ,&C7,&9C,0xA6,2P-RL-S-
+TINT     ,&C8,&9C,0xA6,2P-RL-S-
+VOICES   ,&C8,&A0,0xA6,2P-RL-S-
+VOICE    ,&C8,&A1,0xA6,2P-RL-S-
+WHEN     ,&C9    ,,0x06,------SM-
+WHILE    ,&C8,&95,0xA6,2P-RL-S-
+WAIT     ,&C8,&96,0x85,2----S-C

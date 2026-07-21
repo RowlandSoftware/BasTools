@@ -160,7 +160,7 @@ namespace BasAnalysis.CLI
                 Console.WriteLine("    {0,-13}{1,-13}{2,-13}{3,-13}{4,-13}", "lvar", "lvars", "lfn", "lproc", "tree");
                 Console.WriteLine("    {0,-13}{1,-13}{2,-13}{3,-13}{4,-13}", "cls", "clear", "cat", "dir", "ls");
                 Console.WriteLine("    {0,-13}{1,-13}{2,-13}{3,-13}{4,-13}", "help", "exit", "end", "quit", "x");
-                //Console.WriteLine("    {0,-13}{1,-13}{2,-13}{3,-13}{4,-13}", "edit", "delete", "insert", "restore", "copy?");
+                //Console.WriteLine("    {0,-13}{1,-13}{2,-13}{3,-13}{4,-13}", "edit", "delete", "insert", "restore", "copy/duplicate"); // +move?
                 //Console.WriteLine("    {0,-13}{1,-13}{2,-13}{3,-13}{4,-13}", "renumber", "smartnumber", "import", "save", "");
                 Console.WriteLine("All commands can be abbreviated with a dot, e.g. lo. (load)");
                 Console.WriteLine("\nEnter help <command> for further help\n");

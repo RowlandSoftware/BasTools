@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <None Remove="ArmMnemonics.txt" />
+    <None Remove="TokenTable.Acorn.txt" />
     <None Remove="TokenTable.txt" />
     <None Remove="VTokenTable.txt" />
     <None Remove="Z80Mnemonics.txt" />
@@ -24,6 +25,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="ArmMnemonics.txt"></EmbeddedResource>
+    <EmbeddedResource Include="TokenTable.Acorn.txt" />
     <EmbeddedResource Include="TokenTable.txt"></EmbeddedResource>
     <EmbeddedResource Include="VTokenTable.txt"></EmbeddedResource>
     <EmbeddedResource Include="Z80Mnemonics.txt" />

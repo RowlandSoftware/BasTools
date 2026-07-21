@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Threading.Tasks;
 using BasTools.Core;
@@ -34,6 +35,23 @@ namespace Text2Basic.CLI
                 Environment.Exit(0);
             }
 
+            BasToolsEngine engine = new BasToolsEngine();
+            // Test harness only
+            if (args[0] == "test")
+            {
+                byte[] result = Tokeniser.TokeniseLine(string.Join(" ", args[1..]), engine);
+                for (int i = 0; i < result.Length; i++)
+                {
+                    if (char.IsAsciiLetterOrDigit((char)result[i]))
+                    {
+                        Console.Write((char)result[i]);
+                    }
+                    else { Console.Write($"[{result[i]:X2}]"); }
+                }
+                Console.WriteLine();
+                return;
+            }
+
             CommandSwitches switches = new();
             string inputfile = string.Empty;
             string outputfile = string.Empty;
@@ -44,8 +62,6 @@ namespace Text2Basic.CLI
             // Show message
             Console.Error.WriteLine("Processing, please wait...");
 
-            BasToolsEngine engine = new BasToolsEngine();
-
             try
             {
                 string[] lines = ReadLines(inputfile);
@@ -53,7 +69,7 @@ namespace Text2Basic.CLI
                 foreach (string textline in lines)
                 {
                     Console.WriteLine(textline);
-                    byte[] tokenisedLine = BasToolsEngine.TokeniseLine(textline);
+                    byte[] tokenisedLine = BasToolsEngine.TokeniseLine(textline, engine);
                     Console.WriteLine(tokenisedLine);
                 }
             }
