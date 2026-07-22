@@ -37,18 +37,30 @@ namespace Text2Basic.CLI
 
             BasToolsEngine engine = new BasToolsEngine();
             // Test harness only
-            if (args[0] == "test")
+            if (args[0].ToLower() == "test")
             {
-                byte[] result = Tokeniser.TokeniseLine(string.Join(" ", args[1..]), engine);
-                for (int i = 0; i < result.Length; i++)
+                TokeniserState State = new();
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.Write("Enter line to tokenise\n>");
+                Console.ForegroundColor= ConsoleColor.White;
+
+                string userinput = Console.ReadLine();
+                if (userinput != null)
                 {
-                    if (char.IsAsciiLetterOrDigit((char)result[i]))
+                    // Normalise Windows £ (U+00A3) to Acorn £ / backtick (ASCII 96)
+                    userinput = userinput.Replace('£', '`');
+
+                    byte[] result = Tokeniser.TokeniseLine(userinput, State, engine);
+                    for (int i = 0; i < result.Length; i++)
                     {
-                        Console.Write((char)result[i]);
+                        if (result[i] < 128)
+                        {
+                            Console.Write((char)result[i]);
+                        }
+                        else { Console.Write($"[{result[i]:X2}]"); }
                     }
-                    else { Console.Write($"[{result[i]:X2}]"); }
+                    Console.WriteLine();
                 }
-                Console.WriteLine();
                 return;
             }
 

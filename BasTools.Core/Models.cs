@@ -1,4 +1,6 @@
-﻿namespace BasTools.Core
+﻿using System.Reflection.PortableExecutable;
+
+namespace BasTools.Core
 {
     //***************** ProgInfo *****************
     // Just a little collection of information. Also used to pass some information
@@ -385,13 +387,23 @@
     public record DimInfo(int LineNumber, bool IsLocal);
 
     //***************** TokeniserState used by Tokeniser *****************
-    internal class TokeniserState
+    public class TokeniserState
     {
         public bool StartOfStatement = true;
         public bool InMultilineIf = false;
         public bool MiddleOfStatement = false;
+        public bool LineNumberFlag = false;
+        public bool FN_PROCname = false;
 
+        public void StartOfLine()
+        {
+            StartOfStatement = true;
+            MiddleOfStatement = false;
+            LineNumberFlag = false;
+            FN_PROCname = false;
+        }
     }
+
     [Flags]
     public enum TokenFlags : byte
     {
@@ -419,6 +431,22 @@
             Token1 = token1;
             Token2 = token2;
             Flags = (TokenFlags)flag;
+        }
+        public bool fl(char c)
+        {
+            char f = char.ToUpper(c);
+            switch (f)
+            {
+                case '2': return Flags.HasFlag(TokenFlags.TwoByte);
+                case 'P': return Flags.HasFlag(TokenFlags.P);
+                case 'R': return Flags.HasFlag(TokenFlags.R);
+                case 'L': return Flags.HasFlag(TokenFlags.L);
+                case 'F': return Flags.HasFlag(TokenFlags.F);
+                case 'S': return Flags.HasFlag(TokenFlags.S);
+                case 'M': return Flags.HasFlag(TokenFlags.M);
+                case 'C': return Flags.HasFlag(TokenFlags.C);
+                default: return false;
+            }
         }
     }
 }
