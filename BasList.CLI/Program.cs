@@ -187,8 +187,11 @@
             string appDir = Path.Combine(baseDir, "RowlandSoftware");
             string appDefaultsFile = Path.Combine(appDir, "BasListPrefs.json");
 
-            string json = File.ReadAllText(appDefaultsFile);
-            CommandSwitchesSerializer.Deserialize(switches, json);
+            if (File.Exists(appDefaultsFile))
+            {
+                string json = File.ReadAllText(appDefaultsFile);
+                CommandSwitchesSerializer.Deserialize(switches, json);
+            }
 
             //******** readCommandSwitches ********
 
@@ -208,7 +211,7 @@
                 if (!Directory.Exists(appDir))
                     Directory.CreateDirectory(appDir);
 
-                json = CommandSwitchesSerializer.Serialize(switches);
+                string json = CommandSwitchesSerializer.Serialize(switches);
                 File.WriteAllText(appDefaultsFile, json);
             }
 

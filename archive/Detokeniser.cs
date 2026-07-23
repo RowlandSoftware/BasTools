@@ -716,10 +716,8 @@ namespace BasTools.Core
                 sb.Append(t.value);
                 if (t.tag != null)
                     sb.Append(SemanticTags.Reset);
-
+                
                 // Track IF/THEN/ELSE
-                //**** REFACTOR ****
-                // IF starts condition
                 if (t.tag == SemanticTags.Keyword && t.value == "IF")
                 {
                     inIf = true;
@@ -727,107 +725,110 @@ namespace BasTools.Core
                     continue;
                 }
 
-                // THEN or ELSE ends condition
-                if (t.tag == SemanticTags.Then || (t.tag == SemanticTags.Keyword && t.value == "ELSE"))
+                if ((t.tag == SemanticTags.Keyword && t.value == "ELSE") || t.tag == SemanticTags.Then)
                 {
                     inIf = false;
                     continue;
                 }
 
-                // PRINT cannot appear in IF condition
-                if (inIf && parenDepth == 0 &&
-                    t.tag == SemanticTags.Keyword && t.value == "PRINT")
+                // NEW: commands that cannot appear in an IF condition
+                if (inIf && t.tag == SemanticTags.Keyword && t.value == "PRINT" && parenDepth == 0)
                 {
                     inIf = false;
                     continue;
                 }
 
-                // Parentheses
-                if (t.tag == SemanticTags.OpenBracket ||
-                    (t.tag == SemanticTags.BuiltInFn && t.value.EndsWith('(')))
-                {
+                // Track parentheses
+                if (t.tag == SemanticTags.OpenBracket || (t.tag == SemanticTags.BuiltInFn && t.value.EndsWith('(')))
                     parenDepth++;
-                    continue;
-                }
                 if (t.tag == SemanticTags.CloseBracket)
-                {
                     parenDepth--;
-                    continue;
-                }
 
-                // Only consider implied THEN inside IF and outside parentheses
+                // Only consider implied THEN if inside IF and not inside parentheses
                 if (!inIf || parenDepth != 0)
                     continue;
 
-                // Expression complete?
+                // Expression is complete if this token is a terminal
                 bool exprComplete =
                     t.tag == SemanticTags.Variable ||
                     t.tag == SemanticTags.Number ||
                     t.tag == SemanticTags.StringLiteral ||
                     t.tag == SemanticTags.CloseBracket ||
                     (t.tag == SemanticTags.Keyword &&
-                     t.value != "AND" &&
-                     t.value != "OR" &&
-                     t.value != "EOR" &&
-                     t.value != "NOT" &&
-                     t.value != "FN");
+                        t.value != "AND" &&
+                        t.value != "OR" &&
+                        t.value != "EOR" &&
+                        t.value != "NOT" &&
+                        t.value != "FN");
 
                 if (!exprComplete)
                     continue;
 
-                // Look ahead
-                var (nextIndex, next) = NextSignificantToken(tokens, i); // nextIndex = index of next signif token, -1 if EOL; next = (tag, value)
+                var (nextIndex, next) = NextSignificantToken(tokens, i);
+
                 if (nextIndex == -1)
                     continue;   // no implied THEN at end of line
 
-                // Continuation?
+                // Continuation tokens
                 bool continuation =
                     next.tag == SemanticTags.Operator ||
                     next.tag == SemanticTags.OpenBracket ||
-                    next.tag == SemanticTags.BuiltInFn ||
-                    //next.tag == SemanticTags.IndirectionOperator ||
                     next.tag == SemanticTags.Variable ||
                     next.tag == SemanticTags.Number ||
                     next.tag == SemanticTags.StringLiteral ||
-                    (next.tag == SemanticTags.Keyword &&
-                     (next.value == "AND" ||
-                      next.value == "OR" ||
-                      next.value == "EOR"));
+                    next.tag == SemanticTags.BuiltInFn ||
+                    next.tag == SemanticTags.IndirectionOperator;
 
-                // Variable after terminal → NOT continuation
+                if (next.tag == SemanticTags.Keyword && (next.value == "AND" || next.value == "OR" || next.value == "EOR"))
+                {
+                    continuation = true;
+                }
+
+                // NEW RULE: A variable does NOT continue the expression if the current token is terminal
                 bool currentIsTerminal =
-                    exprComplete ||
-                    t.tag == SemanticTags.FunctionName;
+                    t.tag == SemanticTags.Variable ||
+                    t.tag == SemanticTags.Number ||
+                    t.tag == SemanticTags.StringLiteral ||
+                    t.tag == SemanticTags.CloseBracket ||
+                    t.tag == SemanticTags.FunctionName ||
+                    (t.tag == SemanticTags.Keyword &&
+                        t.value != "AND" &&
+                        t.value != "OR" &&
+                        t.value != "EOR" &&
+                        t.value != "NOT" &&
+                        t.value != "FN");
 
                 if (currentIsTerminal && next.tag == SemanticTags.Variable)
+                {
                     continuation = false;
+                }
 
-                // Chained IF / TO
+                // Chained IF
                 if (next.tag == SemanticTags.Keyword && (next.value == "IF" || next.value == "TO"))
                     continuation = true;
 
                 if (continuation)
                     continue;
 
-                // Explicit separators or THEN → no implied THEN
-                if ((next.tag == SemanticTags.StatementSep && next.value == ":") ||
-                    next.tag == SemanticTags.Then)
+                // Explicit separators already present
+                // If the next token is an original separator (space or colon) or THEN, do NOT insert implied THEN
+                if (
+                (next.tag == SemanticTags.StatementSep &&
+                (next.value == " " || next.value == ":")) ||
+                (next.tag == SemanticTags.Then)
+                )
                     continue;
 
                 // Insert implied THEN
-                if (tokens[i + 1].tag == null && tokens[i + 1].value == " ")
-                    sb.Append($"{SemanticTags.Then} {SemanticTags.Reset}");     // space as implied THEN
-                else
-                    sb.Append($"{SemanticTags.Then}{SemanticTags.Reset}");      // nothing as implied THEN
+                sb.Append($"{SemanticTags.StatementSep}{SemanticTags.Reset}");
 
-                // Skip whitespace
+                // Skip literal whitespace after an inserted null separator
                 int j = nextIndex;
-                while (j < tokens.Count &&
-                       tokens[j].tag == null &&
-                       string.IsNullOrWhiteSpace(tokens[j].value))
+                while (j < tokens.Count && tokens[j].tag == null && string.IsNullOrWhiteSpace(tokens[j].value))
                 {
                     j++;
                 }
+                // Continue processing from the first non-whitespace token
                 i = j - 1;
 
                 inIf = false;
@@ -906,7 +907,8 @@ namespace BasTools.Core
         }
         // Returns (index, token) where token is (value, tag)
         // If none found, returns (-1, (null, null))
-        private (int index, (string value, string tag) token) NextSignificantToken(List<(string Value, string Tag)> tokens, int start)
+        private (int index, (string value, string tag) token)
+        NextSignificantToken(List<(string Value, string Tag)> tokens, int start)
         {
             for (int j = start + 1; j < tokens.Count; j++)
             {

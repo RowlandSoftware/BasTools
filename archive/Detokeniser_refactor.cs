@@ -776,7 +776,7 @@ namespace BasTools.Core
                     continue;
 
                 // Look ahead
-                var (nextIndex, next) = NextSignificantToken(tokens, i); // nextIndex = index of next signif token, -1 if EOL; next = (tag, value)
+                var (nextIndex, next) = NextSignificantToken(tokens, i);
                 if (nextIndex == -1)
                     continue;   // no implied THEN at end of line
 
@@ -785,7 +785,7 @@ namespace BasTools.Core
                     next.tag == SemanticTags.Operator ||
                     next.tag == SemanticTags.OpenBracket ||
                     next.tag == SemanticTags.BuiltInFn ||
-                    //next.tag == SemanticTags.IndirectionOperator ||
+                    next.tag == SemanticTags.IndirectionOperator ||
                     next.tag == SemanticTags.Variable ||
                     next.tag == SemanticTags.Number ||
                     next.tag == SemanticTags.StringLiteral ||
@@ -810,15 +810,13 @@ namespace BasTools.Core
                     continue;
 
                 // Explicit separators or THEN → no implied THEN
-                if ((next.tag == SemanticTags.StatementSep && next.value == ":") ||
+                if ((next.tag == SemanticTags.StatementSep &&
+                     (next.value == " " || next.value == ":")) ||
                     next.tag == SemanticTags.Then)
                     continue;
 
                 // Insert implied THEN
-                if (tokens[i + 1].tag == null && tokens[i + 1].value == " ")
-                    sb.Append($"{SemanticTags.Then} {SemanticTags.Reset}");     // space as implied THEN
-                else
-                    sb.Append($"{SemanticTags.Then}{SemanticTags.Reset}");      // nothing as implied THEN
+                sb.Append($"{SemanticTags.StatementSep}{SemanticTags.Reset}");
 
                 // Skip whitespace
                 int j = nextIndex;
@@ -831,6 +829,7 @@ namespace BasTools.Core
                 i = j - 1;
 
                 inIf = false;
+
             }
 
             returnObject.TaggedLine = sb.ToString();
@@ -906,7 +905,8 @@ namespace BasTools.Core
         }
         // Returns (index, token) where token is (value, tag)
         // If none found, returns (-1, (null, null))
-        private (int index, (string value, string tag) token) NextSignificantToken(List<(string Value, string Tag)> tokens, int start)
+        private (int index, (string value, string tag) token)
+        NextSignificantToken(List<(string Value, string Tag)> tokens, int start)
         {
             for (int j = start + 1; j < tokens.Count; j++)
             {

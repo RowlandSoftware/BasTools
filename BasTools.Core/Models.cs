@@ -1,4 +1,5 @@
-﻿using System.Reflection.PortableExecutable;
+﻿using System.Reflection.Metadata.Ecma335;
+using System.Reflection.PortableExecutable;
 
 namespace BasTools.Core
 {
@@ -394,14 +395,40 @@ namespace BasTools.Core
         public bool MiddleOfStatement = false;
         public bool LineNumberFlag = false;
         public bool FN_PROCname = false;
-
+        /*/ For implied THEN tracking
+        private bool _inIfCondition = false;
+        public int IfParenDepth = 0;
+        private bool _exprComplete = false;
+        public bool ExprMightBeComplete
+        {
+            get => _exprComplete;
+            set => _exprComplete = value;
+        }
+        public bool InIfCondition
+        {
+            get => _inIfCondition;
+            set {
+                _inIfCondition = value;
+                if (value == true)
+                {
+                    _exprComplete = false;
+                    IfParenDepth = 0;
+                }
+            }
+        }*/
         public void StartOfLine()
         {
             StartOfStatement = true;
             MiddleOfStatement = false;
             LineNumberFlag = false;
             FN_PROCname = false;
+            //_inIfCondition = false;
+            //IfParenDepth = 0;            
         }
+        /*public bool ThenPending
+        {
+            get => InIfCondition && IfParenDepth == 0;
+        }*/
     }
 
     [Flags]

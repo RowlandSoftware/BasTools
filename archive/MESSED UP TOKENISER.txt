@@ -1,4 +1,6 @@
-﻿using System;
+MESSED UP TOKENISER
+
+using System;
 using System.Collections.Generic;
 using System.Text;
 using static System.Runtime.InteropServices.JavaScript.JSType;
@@ -33,6 +35,7 @@ namespace BasTools.Core
             ReadOnlySpan<char> ln = s.Slice(i++).TrimStart();
             Console.WriteLine($"{linenum} {ln}");
 
+            State.ExprMightBeComplete = false;
             int p = 0;
 
             while (p < ln.Length)
@@ -46,6 +49,17 @@ namespace BasTools.Core
                         p++;
                         continue;
                     }
+                }
+
+                // THEN tracking
+                if (State.InIfCondition)
+                {
+                    if (ch == '(')
+                        State.IfParenDepth++;
+                    if (ch == ')')
+                        State.IfParenDepth--;
+                    if (engine.toktable["PRINT"].Token1 == (byte)ch)
+                        State.InIfCondition = false;
                 }
 
                 /***** Start to copy characters / tokens *****/
@@ -70,7 +84,8 @@ namespace BasTools.Core
                         bytes.Add((byte)c);
                         p++;
                     }
-                    continue; // back to main loop
+                    State.ExprMightBeComplete = true;
+                    //continue; // back to main loop
                 }
 
                 // QUOTED STRINGS
@@ -100,7 +115,8 @@ namespace BasTools.Core
                             break;
                         }
                     }
-                    continue; // back to main loop
+                    State.ExprMightBeComplete = true;
+                    //continue; // back to main loop
                 }
 
                 // COLON
@@ -109,6 +125,7 @@ namespace BasTools.Core
                     // colon: reset StartOfStatement, clear line-number flag
                     State.StartOfStatement = true;
                     State.LineNumberFlag = false;
+                    //State.InIfCondition = false; // could be implied THEN - do later
                     bytes.Add((byte)ch);
                     p++;
                     continue;
@@ -137,6 +154,7 @@ namespace BasTools.Core
                         // mid-statement: '*' is multiplication operator
                         bytes.Add((byte)ch);
                         p++;
+                        State.ExprMightBeComplete = false;
                         continue;
                     }
                 }
@@ -162,6 +180,7 @@ namespace BasTools.Core
                             foreach (char c in numText) bytes.Add((byte)c);
 
                         State.LineNumberFlag = false;   // ✔ clear after success
+                        State.ExprMightBeComplete = false;
                         continue;
                     }
                 }
@@ -181,12 +200,15 @@ namespace BasTools.Core
                         bytes.Add((byte)c);
                         p++;
                     }
+
                     State.StartOfStatement = false;
                     State.MiddleOfStatement = true;
-                    continue;
+                    State.ExprMightBeComplete = true;
+
+                    //continue;
                 }
                 // VARIABLE / PROC / FUNCTION NAME / KEYWORD
-                if (char.IsLetter(ch) || ch == '_' || ch == '`') // £
+                else if (char.IsLetter(ch) || ch == '_' || ch == '`') // £
                 {
                     int start = p;
                     char c = '\0';
@@ -209,7 +231,8 @@ namespace BasTools.Core
                         State.FN_PROCname = false;   // clear F-flag
                         State.StartOfStatement = false;
                         State.MiddleOfStatement = true;
-                        continue;
+                        State.ExprMightBeComplete = true;
+                        //continue;
                     }
                     else
                     {
@@ -247,64 +270,93 @@ namespace BasTools.Core
                             EmitName(word, ref bytes);
                             State.StartOfStatement = false;
                             State.MiddleOfStatement = true;
-                            continue;
+                            State.ExprMightBeComplete = true; // NOT A KEYWORD
+                            //continue;
                         }
-
-                        // KEYWORD FOUND
-                        // C-flag handling (don't tokenise if followed by variable continuation character, e.g. TIMER)
-                        if (tokinfo.fl('C'))
-                        {
-                            int next = start + advanceBy;
-
-                            if (next < ln.Length)
+                        else
+                        { // KEYWORD FOUND
+                          // C-flag handling (don't tokenise if followed by variable continuation character, e.g. TIMER)
+                            if (tokinfo.fl('C'))
                             {
-                                c = ln[next];
-                                if (char.IsLetterOrDigit(c) || c == '_' || c == '`') // £
+                                int next = start + advanceBy;
+
+                                if (next < ln.Length)
                                 {
-                                    if (kind != MatchKind.Abbreviation)
+                                    c = ln[next];
+                                    if (char.IsLetterOrDigit(c) || c == '_' || c == '`') // £
                                     {
-                                        EmitName(word, ref bytes);
-                                        State.StartOfStatement = false;
-                                        State.MiddleOfStatement = true;
-                                        continue;
+                                        if (kind != MatchKind.Abbreviation)
+                                        {
+                                            EmitName(word, ref bytes);
+                                            State.StartOfStatement = false;
+                                            State.MiddleOfStatement = true;
+                                            State.ExprMightBeComplete = true; // NOT A KEYWORD
+                                                                              //continue;
+                                        }
                                     }
                                 }
                             }
+                            else // KEYWORD, NOT VARIABLE THAT STARTS WITH KEYWORD LIKE 'TIMER'
+                            {
+                                p = start + advanceBy;
+
+                                // Emit token
+                                byte token1 = tokinfo.Token1;
+
+                                if (tokinfo.fl('P') && State.StartOfStatement) // LHS pseudo-variable
+                                {
+                                    token1 += 0x40;
+                                }
+
+                                bytes.Add(token1);
+
+                                if (tokinfo.fl('2'))
+                                    bytes.Add(tokinfo.Token2);
+
+                                // Apply flag bits (M, S, F, L, R)
+                                ApplyFlags(tokinfo, ref State, ref p, ln, bytes);
+
+                                // Now we've emitted the token or identifier
+                                if (tokinfo.Keyword == "IF")
+                                    State.InIfCondition = true;
+
+                                if (tokinfo.Keyword is "THEN" or "ELSE")
+                                    State.InIfCondition = false;
+
+                                if (tokinfo.Keyword.EndsWith("(")) // e.g. STRING$(
+                                {
+                                    if (State.InIfCondition)
+                                        State.IfParenDepth++;
+                                }
+                                if (tokinfo.Keyword is "AND" or "OR" or "NOT" or "EOR")
+                                    State.ExprMightBeComplete = false;
+                            }
                         }
+                    }
+                    // not a keyword either
+                    // symbol: copy as-is
+                    bytes.Add((byte)ch);
+                    p++;
+                    // LOOKAHEAD
+                    int j = p;
+                    while (j < ln.Length && ln[j] == 32)
+                        j++;
+                    char nextChar = ln[j];
 
-                        // KEYWORD
+                    
 
-                        p = start + advanceBy;
-
-                        // Emit token
-                        byte token1 = tokinfo.Token1;
-
-                        if (tokinfo.fl('P') && State.StartOfStatement) // LHS pseudo-variable
-                        {
-                            token1 += 0x40;
-                        }
-
-                        bytes.Add(token1);
-
-                        if (tokinfo.fl('2'))
-                            bytes.Add(tokinfo.Token2);
-
-                        // Apply flag bits (M, S, F, L, R)
-                        ApplyFlags(tokinfo, ref State, ref p, ln, bytes);
-
-                        continue;
+                    if (State.ThenPending && State.ExprMightBeComplete)
+                    {
+                        if (nextTokinfo.Keyword != "THEN")
+                            bytes.Add(32); // space = implied THEN
                     }
                 }
-                // not a keyword either
-                // symbol: copy as-is
-                bytes.Add((byte)ch);
-                p++;
             }
 
             /****** Make byte array of line number and line length ******/
 
             /****** combine that with 'bytes' *******/
-            Console.WriteLine("line done");
+
             return bytes.ToArray();
         }
         private static (MatchKind kind, int advanceBy, TokenInfo tokinfo) TryKeyword(ReadOnlySpan<char> word, BasToolsEngine engine)

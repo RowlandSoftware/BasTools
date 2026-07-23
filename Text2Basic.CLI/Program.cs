@@ -36,33 +36,37 @@ namespace Text2Basic.CLI
             }
 
             BasToolsEngine engine = new BasToolsEngine();
-            // Test harness only
-            if (args[0].ToLower() == "test")
+
+            /******** Test harness only ****************/
+
+            if (args[0].ToLower() == "/test")
             {
-                TokeniserState State = new();
+                Console.WriteLine("\nEnter empty line to finish.");
                 Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.Write("Enter line to tokenise\n>");
-                Console.ForegroundColor= ConsoleColor.White;
-
-                string userinput = Console.ReadLine();
-                if (userinput != null)
+                Console.WriteLine("Enter line to tokenise");
+                while (true)
                 {
-                    // Normalise Windows £ (U+00A3) to Acorn £ / backtick (ASCII 96)
-                    userinput = userinput.Replace('£', '`');
+                    TokeniserState State = new();
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.Write(">");
+                    Console.ForegroundColor = ConsoleColor.White;
 
-                    byte[] result = Tokeniser.TokeniseLine(userinput, State, engine);
-                    for (int i = 0; i < result.Length; i++)
+                    string userinput = Console.ReadLine();
+                    if (userinput != null)
                     {
-                        if (result[i] < 128)
-                        {
-                            Console.Write((char)result[i]);
-                        }
-                        else { Console.Write($"[{result[i]:X2}]"); }
+                        if (string.IsNullOrWhiteSpace(userinput)) { break; }
+
+                        // Normalise Windows £ (U+00A3) to Acorn £ / backtick (ASCII 96)
+                        userinput = userinput.Replace('£', '`');
+
+                        byte[] result = Tokeniser.TokeniseLine(userinput, false, false, State, engine);
+                        WriteTokenisedLine(result);
                     }
-                    Console.WriteLine();
                 }
                 return;
             }
+
+            /********** MAIN PROGRAM ************/
 
             CommandSwitches switches = new();
             string inputfile = string.Empty;
@@ -148,6 +152,21 @@ namespace Text2Basic.CLI
                     Environment.Exit(0);
                 }
             }
+        }
+
+        /************** Utilities ***************/
+
+        private static void WriteTokenisedLine(byte[] result)
+        {
+            for (int i = 0; i < result.Length; i++)
+            {
+                if (result[i] < 128)
+                {
+                    Console.Write((char)result[i]);
+                }
+                else { Console.Write($"[{result[i]:X2}]"); }
+            }
+            Console.WriteLine();
         }
         static void help()
         {

@@ -48,7 +48,7 @@ namespace BasTools.Core
         internal static bool IsSpaceBetween(Token token1, Token token2)
         {
             // special rule for null Statement separators
-            if (token1.tag == SemanticTags.StatementSep && token1.value == "") return true;
+            if ((token1.tag is SemanticTags.StatementSep or SemanticTags.Then) && token1.value == "") return true;
 
             // special rule for when : is implied THEN
             if (token2.tag == SemanticTags.Then && token2.value == ":") return false;
@@ -163,7 +163,6 @@ namespace BasTools.Core
 
                     // Indenting
                     HandleIndents(token1, state, progInfo, IsSplitLines);
-                    //Console.WriteLine($"  - now: [{token1.tag}-{token1.value}] inIf={progline.fstate.InIf}, in lvl = {progline.IndentLevel}, in={progline.fstate.Indent}, pend in={progline.fstate.PendingIndent}, mult lvl={progline.fstate.MultiLineIfDepth}");
 
                     // Reached end of token list?
                     if (i == tokens.Count - 1)
@@ -181,8 +180,8 @@ namespace BasTools.Core
                         state.InIf = true;
                     }
 
-                    if (token1.tag == SemanticTags.Keyword &&
-                       (token1.value == "THEN" || token1.value == "ELSE"))
+                    if ((token1.tag == SemanticTags.Keyword && token1.value == "ELSE")
+                        || token1.tag == SemanticTags.Then)
                     {
                         state.InIfCondition = false;      // reached end of the expression
                     }
@@ -286,7 +285,7 @@ namespace BasTools.Core
                     state.IsDef = true;
                 }
             }
-            else if (InSplitLines && (token1.tag == SemanticTags.StatementSep))     // s.a. above
+            else if (InSplitLines && (token1.tag == SemanticTags.StatementSep))     // s.a. above - Null StatementSep probably never happens
             {
                 if (token1.value == "") // || (token1.value == ":" && token1.isLast))
                 {
