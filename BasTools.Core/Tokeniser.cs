@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using static System.Net.Mime.MediaTypeNames;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace BasTools.Core
@@ -13,14 +14,50 @@ namespace BasTools.Core
             FullKeyword,
             Abbreviation
         }
-        public static byte[] TokeniseLine(string text, bool Z80, bool SkipSpaces, TokeniserState State, BasToolsEngine engine)
+        public static ProgramLine ProgramLineFromText(string text, bool Z80, bool SkipSpaces, TokeniserState State, BasToolsEngine engine)
+        {
+            ProgramLine ProgLine = new();
+
+            // First pass
+            ProgLine.PlainDetokenisedLine = text;
+            ProgLine.TokenisedLine = TokeniseLine(text, Z80, SkipSpaces, State, engine, out int linenum);
+            ProgLine.LineNumber = linenum;
+            WriteTokenisedLine(ProgLine.TokenisedLine);
+            // Second pass - detokenise and tag
+            ParserState parserState = new();
+            ProgInfo progInfo = new(Z80, false, "NA");
+            engine.ProcessLineBody(parserState, ProgLine.TokenisedLine, ProgLine, progInfo);
+
+            Console.WriteLine(ProgLine.TaggedLine);
+
+            // Third pass - compact tokenised line, inserting implied THEN as required
+            ProgLine.TokenisedLine = NormaliseTokenised(ProgLine, engine);
+
+
+            return ProgLine;
+        }
+        public static byte[] TokeniseLine(string text, bool Z80, bool SkipSpaces, TokeniserState State, BasToolsEngine engine, out int lineNumber)
         {
             State.StartOfLine(); // sets initial conditions
-            List<byte> bytes = new();
 
             ReadOnlySpan<char> s = text.AsSpan().Trim();
             int i = 0;
 
+            lineNumber = GetLineNum(s, ref i);
+
+            ReadOnlySpan<char> ln = s.Slice(i++).TrimStart();
+            Console.WriteLine($"{lineNumber} {ln}");
+
+            List<byte> tokenisedLine = TokeniseLineBody(ln, SkipSpaces, lineNumber, State, engine);
+
+            /****** Make byte array of line number and line length ******/
+
+            /****** combine that with 'tokenisedLine' *******/
+
+            return tokenisedLine.ToArray();
+        }
+        private static int GetLineNum(ReadOnlySpan<char> s, ref int i)
+        {
             /******* Line number ******/
 
             while (i < s.Length && char.IsDigit(s[i]))
@@ -28,10 +65,13 @@ namespace BasTools.Core
 
             int linenum = (i > 0) ? int.Parse(s[..i]) : 0;
 
-            /******* Parse, looking for keywords *********/
+            return linenum;
+        }
+        private static List<byte> TokeniseLineBody(ReadOnlySpan<char> ln, bool SkipSpaces, int linenum, TokeniserState State, BasToolsEngine engine)
+        {
+            List<byte> bytes = new();
 
-            ReadOnlySpan<char> ln = s.Slice(i++).TrimStart();
-            Console.WriteLine($"{linenum} {ln}");
+            /******* Parse, looking for keywords *********/
 
             int p = 0;
 
@@ -143,14 +183,29 @@ namespace BasTools.Core
                 // GOTO STYLE LINE NO.
                 else if (State.LineNumberFlag)
                 {
-                    if (!char.IsDigit(ch))
+                    // 1. Skip spaces
+                    while (p < ln.Length && ln[p] == ' ')
+                        p++;
+
+                    if (p >= ln.Length)
                     {
                         State.LineNumberFlag = false;
-                        // continue with normal tokenisation
+                        break;
                     }
-                    else
+
+                    char c = ln[p];
+
+                    // 2. Comma → emit and continue line-number mode
+                    if (c == ',')
                     {
-                        // parse line number
+                        bytes.Add((byte)',');
+                        p++;
+                        continue;
+                    }
+
+                    // 3. Digit → parse line number
+                    if (char.IsDigit(c))
+                    {
                         int start = p;
                         while (p < ln.Length && char.IsDigit(ln[p]))
                             p++;
@@ -159,11 +214,14 @@ namespace BasTools.Core
                         if (ushort.TryParse(numText, out ushort lineNum))
                             EmitLineNumber(lineNum, bytes);
                         else
-                            foreach (char c in numText) bytes.Add((byte)c);
+                            foreach (char cc in numText) bytes.Add((byte)cc);
 
-                        State.LineNumberFlag = false;   // ✔ clear after success
                         continue;
                     }
+
+                    // 4. Anything else → exit line-number mode
+                    State.LineNumberFlag = false;
+                    // fall through to normal tokenisation
                 }
                 else if (char.IsDigit(ch) || ch == '.')
                 {
@@ -300,12 +358,7 @@ namespace BasTools.Core
                 bytes.Add((byte)ch);
                 p++;
             }
-
-            /****** Make byte array of line number and line length ******/
-
-            /****** combine that with 'bytes' *******/
-            Console.WriteLine("line done");
-            return bytes.ToArray();
+            return bytes;
         }
         private static (MatchKind kind, int advanceBy, TokenInfo tokinfo) TryKeyword(ReadOnlySpan<char> word, BasToolsEngine engine)
         {
@@ -339,6 +392,55 @@ namespace BasTools.Core
             }
 
             return (MatchKind.None, 0, default);
+        }
+        private static byte[] NormaliseTokenised(ProgramLine ProgLine, BasToolsEngine engine)
+        {
+            byte[] bytes = ProgLine.TokenisedLine;
+            string taggedLine = ProgLine.TaggedLine;
+            List<byte> output = new();
+            int i = 0;
+
+            foreach (Token tok in BasToolsEngine.WalkTagged(taggedLine))
+            {
+                switch (tok.tag)
+                {
+                    case SemanticTags.Keyword:
+                    case SemanticTags.InOutKeyword:
+                    case SemanticTags.IndentingKeyword:
+                    case SemanticTags.BuiltInFn:
+                        byte token1 = copyByte(ref i, bytes, output);
+                        if (engine.IsDoubleToken(token1))
+                            copyByte(ref i, bytes, output);
+                        break;
+                    case SemanticTags.LineNumber:
+                        for (int j = 0; j < 4; j++)
+                        {
+                            copyByte(ref i, bytes, output);
+                        }
+                        break;
+                    case null:
+                        // skip spaces
+                        while (i < bytes.Length && bytes[i] == 32) { i++; }
+                        break;
+                    default:
+                        for (int j = 0; j < tok.value.Length; j++)
+                        {
+                            copyByte(ref i, bytes, output);
+                        }
+                        break;
+                }
+            }
+            return output.ToArray();
+        }
+        private static byte copyByte(ref int i, byte[] bytes, List<byte> output)
+        {
+            if (i >= bytes.Length)
+                throw new BasToolsException($"Error in copyByte. i >= bytes.Length: [{i}]");
+
+            byte token1 = bytes[i];
+            output.Add(token1);
+            i++;
+            return token1;
         }
         private static void EmitName(ReadOnlySpan<char> word, ref List<byte> bytes)
         {
@@ -400,6 +502,18 @@ namespace BasTools.Core
             bytes.Add(b1);
             bytes.Add(b2);
             bytes.Add(b3);
+        }
+        private static void WriteTokenisedLine(byte[] result)
+        {
+            for (int i = 0; i < result.Length; i++)
+            {
+                if (result[i] < 128)
+                {
+                    Console.Write((char)result[i]);
+                }
+                else { Console.Write($"[{result[i]:X2}]"); }
+            }
+            Console.WriteLine();
         }
     }
 }

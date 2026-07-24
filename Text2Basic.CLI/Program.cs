@@ -59,8 +59,8 @@ namespace Text2Basic.CLI
                         // Normalise Windows £ (U+00A3) to Acorn £ / backtick (ASCII 96)
                         userinput = userinput.Replace('£', '`');
 
-                        byte[] result = Tokeniser.TokeniseLine(userinput, false, false, State, engine);
-                        WriteTokenisedLine(result);
+                        ProgramLine result = Tokeniser.ProgramLineFromText(userinput, false, false, State, engine);
+                        WriteTokenisedLine(result.TokenisedLine);
                     }
                 }
                 return;

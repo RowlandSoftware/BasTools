@@ -19,7 +19,8 @@ namespace BasTools.Core
         Dictionary<string, KeywordRole> KeywordRoles;
         public Dictionary<string, TokenInfo> toktable = new();
         public static List<string> keywords;
-        
+        private List<byte> doubles = new(); // list of first byte of double byte tokens
+
         public BasToolsEngine()
         {
             // Initialise the fields
@@ -59,8 +60,12 @@ namespace BasTools.Core
                  .ThenBy(s => s, StringComparer.OrdinalIgnoreCase)
                  .ToList();
 
-            readTokenisingTable(toktable, "BasTools.Core.TokenTable.Acorn.txt"); // for tokenising
+            readTokenisingTable(toktable, "BasTools.Core.TokenTable.Acorn.txt", doubles); // for tokenising
 
+        }
+        public bool IsDoubleToken(byte tok1)
+        {
+            return doubles.Contains(tok1);
         }
         internal bool ProcessRawProgram(string fn, Listing listing, ProgInfo progInfo)
         {
@@ -109,7 +114,7 @@ namespace BasTools.Core
 
                 // Line contents
 
-                processLineBody(State, thisline.TokenisedLine, thisline, progInfo);
+                ProcessLineBody(State, thisline.TokenisedLine, thisline, progInfo);
 
                 listing.Lines.Add(thisline);
 
@@ -185,7 +190,7 @@ namespace BasTools.Core
                 yield return new LineRecord(lineNumber, slice);
             }
         }
-        private void processLineBody(ParserState parserState, byte[] tokenisedLine, ProgramLine returnObject, ProgInfo progInfo)
+        internal void ProcessLineBody(ParserState parserState, byte[] tokenisedLine, ProgramLine returnObject, ProgInfo progInfo)
         {
             firstPass(parserState, tokenisedLine, returnObject, progInfo);
 
@@ -1086,7 +1091,7 @@ namespace BasTools.Core
                 }
             }
         }
-        private void readTokenisingTable(Dictionary<string, TokenInfo> toktable, string filename) //, HashSet<string> TokensWithOpenParen
+        private void readTokenisingTable(Dictionary<string, TokenInfo> toktable, string filename, List<byte> doubles) //, HashSet<string> TokensWithOpenParen
         {
             string table = GetEmbeddedResourceContent(filename);
             string[] tokenlist = table.Split("\r\n");
@@ -1115,6 +1120,13 @@ namespace BasTools.Core
                     TokenInfo tokInfo = new TokenInfo(key, token_1, token_2, flag);
                     if (!toktable.ContainsKey(key))
                         toktable.Add(key, tokInfo);
+                    else
+                        tokInfo = toktable[key];
+                    if (tokInfo.fl('2'))
+                    {
+                        if (!doubles.Contains(token_1))
+                            doubles.Add(token_1);
+                    }                        
                 }                
                 catch (Exception ex)
                 {

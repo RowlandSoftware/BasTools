@@ -264,7 +264,7 @@
         public static byte[] TokeniseLine(string textline, BasToolsEngine engine)
         {
             TokeniserState State = new();
-            return Tokeniser.TokeniseLine(textline, false, false, State, engine);
+            return Tokeniser.TokeniseLine(textline, false, false, State, engine, out int linenum);
         }
         /********** UTILITIES *********/
         public static IEnumerable<Token> WalkTagged(string line)
