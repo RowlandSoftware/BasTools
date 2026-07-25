@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using BasTools.Core;
 
 namespace Text2Basic.CLI
@@ -32,7 +33,7 @@ namespace Text2Basic.CLI
             if (args.Length == 0)
             {
                 help();
-                Environment.Exit(0);
+                return; // Environment.Exit(0);
             }
 
             BasToolsEngine engine = new BasToolsEngine();
@@ -59,7 +60,8 @@ namespace Text2Basic.CLI
                         // Normalise Windows £ (U+00A3) to Acorn £ / backtick (ASCII 96)
                         userinput = userinput.Replace('£', '`');
 
-                        ProgramLine result = Tokeniser.ProgramLineFromText(userinput, false, false, State, engine);
+                        int dummy = 0;
+                        ProgramLine result = Tokeniser.ProgramLineFromText(userinput, false, false, State, engine, ref dummy);
                         WriteTokenisedLine(result.TokenisedLine);
                     }
                 }
@@ -71,9 +73,10 @@ namespace Text2Basic.CLI
             CommandSwitches switches = new();
             string inputfile = string.Empty;
             string outputfile = string.Empty;
+            bool save = false;
 
             //******** readCommandSwitches ********
-            readCommandSwitches(args, switches, ref inputfile, ref outputfile);
+            readCommandSwitches(args, switches, ref inputfile, ref outputfile, ref save);
 
             // Show message
             Console.Error.WriteLine("Processing, please wait...");
@@ -81,12 +84,14 @@ namespace Text2Basic.CLI
             try
             {
                 string[] lines = ReadLines(inputfile);
+                TokeniserState State = new();
+                int FakeLineNum = 0;
 
                 foreach (string textline in lines)
                 {
-                    Console.WriteLine(textline);
-                    byte[] tokenisedLine = BasToolsEngine.TokeniseLine(textline, engine);
-                    Console.WriteLine(tokenisedLine);
+                    ProgramLine result = Tokeniser.ProgramLineFromText(textline, false, false, State, engine, ref FakeLineNum);
+                    //Console.Write($"{result.LineNumber} + "); WriteTokenisedLine(result.TokenisedLine);
+                    //Console.WriteLine();
                 }
             }
             catch (Exception ex)
@@ -102,7 +107,7 @@ namespace Text2Basic.CLI
             string text = File.ReadAllText(path);
             return text.Split(Newlines, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         }
-        static void readCommandSwitches(string[] args, CommandSwitches switches, ref string inputfile, ref string outputfile)
+        static void readCommandSwitches(string[] args, CommandSwitches switches, ref string inputfile, ref string outputfile, ref bool save)
         {
             foreach (string arg in args)
             {
@@ -120,7 +125,7 @@ namespace Text2Basic.CLI
                         arg3 = arg2.Substring(x + 1);
 
                         if ("FILE".StartsWith(arg1)) { inputfile = arg3; recognised = true; }
-                        if ("SAVE".StartsWith(arg1)) { outputfile = arg3; recognised = true; }
+                        if ("SAVE".StartsWith(arg1)) { outputfile = arg3; recognised = true; save = true; }
                     }
                     bool flgNegative = arg2.StartsWith('-');
                     if (flgNegative)
@@ -130,28 +135,38 @@ namespace Text2Basic.CLI
                     if ("Z80".StartsWith(arg2)) { switches.Z80 = !flgNegative; recognised = true; }
                     if (arg2 == "?" || "HELP".StartsWith(arg2)) { help(); Environment.Exit(0); }
                     if ("NONUMBERS".StartsWith(arg2)) { switches.noNumbers = !flgNegative; recognised = true; }
+
                     if (!recognised)
                     {
+                        Console.ForegroundColor = ConsoleColor.Red;
                         Console.Error.WriteLine("Option " + arg.ToLowerInvariant() + " not recognised");
-
-                        if (inputfile.Length == 0) // This is where we pick up the filename if not already found
-                            inputfile = arg;
+                        Console.ForegroundColor = ConsoleColor.White;
                     }
                 }
-                // no filename found:
-                if (inputfile.Length == 0)
+                else
                 {
-                    Console.Error.WriteLine("Error: No input filename found");
-                    help();
-                    Environment.Exit(0);
-                }
-                if (outputfile.Length == 0)
-                {
-                    Console.Error.WriteLine("Error: No output filename found");
-                    help();
-                    Environment.Exit(0);
+                    if (inputfile.Length == 0) // This is where we pick up the filename if not already found
+                        inputfile = arg;
+                    else
+                        if (!save)
+                        {
+                            outputfile = arg;
+                            save = true;
+                        }
                 }
             }
+            // no filename found:
+            if (inputfile.Length == 0)
+            {
+                Console.Error.WriteLine("Error: No input filename found");
+                help();
+                Environment.Exit(0);
+            }
+            if (outputfile.Length == 0)
+            {
+                save = false;
+            }
+            //else Console.WriteLine($"={outputfile}");
         }
 
         /************** Utilities ***************/
@@ -176,20 +191,24 @@ namespace Text2Basic.CLI
             Console.WriteLine($"\nText2Basic vs {vs} for BasTools (C) Andrew Rowland 2022-26");
             Console.WriteLine("Converts text file to tokenised BBC BASIC program file");
             Console.ForegroundColor = ConsoleColor.White;
-            Console.WriteLine("\n    Text2Basic [/file=]filename /save=filename [/V] [/Z80] [/nonumbers]");
+            Console.WriteLine("\n    Text2Basic [/file=]filename [[/save=]filename] [/V] [/Z80] [/nonumbers] [/list] [/blist] [/test]");
             Console.WriteLine("    Text2Basic [/? | /h]  Display help\n");
             Console.WriteLine("      [/file=]filename");
-            Console.WriteLine("                   Specifies filename of BASIC program in plain text format.");
+            Console.WriteLine("                   BASIC program in plain text format to be tokenised.");
             Console.WriteLine("                   Filename to follow '=' without spaces. Quote if contains spaces.");
             Console.WriteLine("                   '/file=' may be omitted if filename is first item");
             Console.WriteLine("      [/save=]filename");
             Console.WriteLine("                   Specifies filename of tokenised BASIC program.");
+            Console.WriteLine("                   '/save=' may be omitted if filename is second item");
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine("    OPTIONS");
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine("    /V               Specifies that BASIC V keywords and assembler may be included");
             Console.WriteLine("    /Z80             Output file should be saved in Z80 format");
             Console.WriteLine("    /nonumbers       Do not number program lines (Z80 only)");
+            Console.WriteLine("    /list            Display program after tokenising");
+            Console.WriteLine("    /blist           Display program with PrettyPrint");
+            Console.WriteLine("    /test            Invoke single line test harness for debug");
 
             Console.WriteLine("\nOptions may be specified in any order and can be abbreviated.");
             Console.WriteLine("Parameters containing spaces must be enclosed by double quotes.");

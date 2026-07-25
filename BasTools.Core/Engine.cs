@@ -39,7 +39,7 @@
         {
             Listing listing = new(new List<ProgramLine>());
 
-            if (ProcessRawProgram(filename, listing, progInfo)) // load, detokenise and tag
+            if (ProcessRawProgram(filename, listing, progInfo))  // load, detokenise and tag
             {
                 //Console.WriteLine($"ProcessRawProgram returned true");
                 if (FormatProgram(listing, formatOptions, progInfo))
@@ -57,6 +57,7 @@
             else
                 return false;
         }
+            
         public void Analyse(BasToolsEngine engine, ref bool analyzed)
         {
             Symbols.Clear();
@@ -261,10 +262,10 @@
         {
             return BasLister.PrintOneLine(progline, ref linesprinted);
         }
-        public static byte[] TokeniseLine(string textline, BasToolsEngine engine)
+        public static byte[] TokeniseLine(string textline, BasToolsEngine engine, ref int FakeLineNum)
         {
             TokeniserState State = new();
-            return Tokeniser.TokeniseLine(textline, false, false, State, engine, out int linenum);
+            return Tokeniser.TokeniseLine(textline, false, false, State, engine, out int linenum, ref FakeLineNum);
         }
         /********** UTILITIES *********/
         public static IEnumerable<Token> WalkTagged(string line)

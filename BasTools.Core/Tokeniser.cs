@@ -8,21 +8,22 @@ namespace BasTools.Core
 {
     public class Tokeniser
     {
+        public byte firstByte = 0;
         public enum MatchKind
         {
             None,
             FullKeyword,
             Abbreviation
         }
-        public static ProgramLine ProgramLineFromText(string text, bool Z80, bool SkipSpaces, TokeniserState State, BasToolsEngine engine)
+        public static ProgramLine ProgramLineFromText(string text, bool Z80, bool SkipSpaces, TokeniserState State, BasToolsEngine engine, ref int FakeLineNum)
         {
             ProgramLine ProgLine = new();
 
             // First pass
             ProgLine.PlainDetokenisedLine = text;
-            ProgLine.TokenisedLine = TokeniseLine(text, Z80, SkipSpaces, State, engine, out int linenum);
+            ProgLine.TokenisedLine = TokeniseLine(text, Z80, SkipSpaces, State, engine, out int linenum, ref FakeLineNum);
             ProgLine.LineNumber = linenum;
-            WriteTokenisedLine(ProgLine.TokenisedLine);
+
             // Second pass - detokenise and tag
             ParserState parserState = new();
             ProgInfo progInfo = new(Z80, false, "NA");
@@ -36,19 +37,19 @@ namespace BasTools.Core
 
             return ProgLine;
         }
-        public static byte[] TokeniseLine(string text, bool Z80, bool SkipSpaces, TokeniserState State, BasToolsEngine engine, out int lineNumber)
+        public static byte[] TokeniseLine(string text, bool Z80, bool SkipSpaces, TokeniserState State, BasToolsEngine engine, out int lineNumber, ref int FakeLineNum)
         {
             State.StartOfLine(); // sets initial conditions
 
             ReadOnlySpan<char> s = text.AsSpan().Trim();
             int i = 0;
 
-            lineNumber = GetLineNum(s, ref i);
+            lineNumber = GetLineNum(s, ref i, ref FakeLineNum);
 
             ReadOnlySpan<char> ln = s.Slice(i++).TrimStart();
-            Console.WriteLine($"{lineNumber} {ln}");
+            //Console.WriteLine($"{lineNumber} {ln}");
 
-            List<byte> tokenisedLine = TokeniseLineBody(ln, SkipSpaces, lineNumber, State, engine);
+            List<byte> tokenisedLine = TokeniseLineBody(ln, lineNumber, State, engine);
 
             /****** Make byte array of line number and line length ******/
 
@@ -56,7 +57,7 @@ namespace BasTools.Core
 
             return tokenisedLine.ToArray();
         }
-        private static int GetLineNum(ReadOnlySpan<char> s, ref int i)
+        private static int GetLineNum(ReadOnlySpan<char> s, ref int i, ref int fakelinenum)
         {
             /******* Line number ******/
 
@@ -65,9 +66,13 @@ namespace BasTools.Core
 
             int linenum = (i > 0) ? int.Parse(s[..i]) : 0;
 
+            if (linenum == 0)
+                linenum = fakelinenum;
+            fakelinenum += 10;
+
             return linenum;
         }
-        private static List<byte> TokeniseLineBody(ReadOnlySpan<char> ln, bool SkipSpaces, int linenum, TokeniserState State, BasToolsEngine engine)
+        private static List<byte> TokeniseLineBody(ReadOnlySpan<char> ln, int linenum, TokeniserState State, BasToolsEngine engine)
         {
             List<byte> bytes = new();
 
@@ -78,17 +83,6 @@ namespace BasTools.Core
             while (p < ln.Length)
             {
                 char ch = ln[p];
-
-                if (SkipSpaces) // don't skip spaces because of implied THENs
-                {
-                    if (char.IsWhiteSpace(ch))
-                    {
-                        p++;
-                        continue;
-                    }
-                }
-
-                /***** Start to copy characters / tokens *****/
 
                 // HEX
                 if (ch == '&')
@@ -180,7 +174,7 @@ namespace BasTools.Core
                         continue;
                     }
                 }
-                // GOTO STYLE LINE NO.
+                // GOTO-STYLE LINE NO.
                 else if (State.LineNumberFlag)
                 {
                     // 1. Skip spaces
@@ -350,6 +344,12 @@ namespace BasTools.Core
                         // Apply flag bits (M, S, F, L, R)
                         ApplyFlags(tokinfo, ref State, ref p, ln, bytes);
 
+                        // NEW: skip whitespace after keyword
+                        while (p < ln.Length && ln[p] == ' ')
+                        {
+                            bytes.Add((byte)ln[p]);
+                            p++;
+                        }
                         continue;
                     }
                 }
@@ -407,9 +407,14 @@ namespace BasTools.Core
                     case SemanticTags.Keyword:
                     case SemanticTags.InOutKeyword:
                     case SemanticTags.IndentingKeyword:
+                    case SemanticTags.OutdentingKeyword:
                     case SemanticTags.BuiltInFn:
                         byte token1 = copyByte(ref i, bytes, output);
-                        if (engine.IsDoubleToken(token1))
+                        if (engine.IsDoubleToken(token1) || (token1 == 0xB8 && bytes[i] == 'P'))
+                            copyByte(ref i, bytes, output);
+                        break;
+                    case SemanticTags.Then:
+                        if (tok.value.Length > 0)
                             copyByte(ref i, bytes, output);
                         break;
                     case SemanticTags.LineNumber:
@@ -419,14 +424,21 @@ namespace BasTools.Core
                         }
                         break;
                     case null:
-                        // skip spaces
-                        while (i < bytes.Length && bytes[i] == 32) { i++; }
+                        // skip spaces, copy other non-tagged characters e.g. ~ in PRINT
+                        for (int j = 0; j < tok.value.Length; j++)
+                        {
+                            if (bytes[i] != 32)
+                                copyByte(ref i, bytes, output);
+                            else i++;
+                        } 
                         break;
                     default:
                         for (int j = 0; j < tok.value.Length; j++)
                         {
+                            //Console.Write($"{bytes[i]:X2} {(char)bytes[i]} - ");
                             copyByte(ref i, bytes, output);
                         }
+                        Console.WriteLine("");
                         break;
                 }
             }
@@ -435,7 +447,10 @@ namespace BasTools.Core
         private static byte copyByte(ref int i, byte[] bytes, List<byte> output)
         {
             if (i >= bytes.Length)
+            {
+                //WriteTokenisedLine(output.ToArray());
                 throw new BasToolsException($"Error in copyByte. i >= bytes.Length: [{i}]");
+            }
 
             byte token1 = bytes[i];
             output.Add(token1);

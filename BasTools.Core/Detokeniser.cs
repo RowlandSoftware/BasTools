@@ -19,7 +19,7 @@ namespace BasTools.Core
         Dictionary<string, KeywordRole> KeywordRoles;
         public Dictionary<string, TokenInfo> toktable = new();
         public static List<string> keywords;
-        private List<byte> doubles = new(); // list of first byte of double byte tokens
+        private List<byte> doubles = new(); // list of first byte of double byte tokens (198-200)
 
         public BasToolsEngine()
         {
@@ -61,7 +61,8 @@ namespace BasTools.Core
                  .ToList();
 
             readTokenisingTable(toktable, "BasTools.Core.TokenTable.Acorn.txt", doubles); // for tokenising
-
+            foreach (byte b in doubles)
+              Console.WriteLine($"[{b:X2}] - {b}");
         }
         public bool IsDoubleToken(byte tok1)
         {
@@ -959,8 +960,12 @@ namespace BasTools.Core
                     in Arm Basic according to https://mdfs.net/Docs/Comp/BBCBasic/Tokens, and BY is 0F
                     */
                 }
-                if (curbyte != 0x8D) // 'line number' marker
+                if (curbyte != 0x8D) // Single-bybte tokens (except line numbers)
                 {
+                    if (curbyte < 17)
+                    {
+                        progInfo.Z80 = true;
+                    }
                     string keyword = token[curbyte];
                     if (keyword == "TO" && nxtchar == 'P')
                     {
