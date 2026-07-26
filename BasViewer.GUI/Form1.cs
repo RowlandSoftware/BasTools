@@ -39,7 +39,7 @@ namespace BasViewer.GUI
     {
         private readonly string[] _args;
         ProgInfo? progInfo;
-        FormattingOptions? formatOptions;
+        private FormattingOptions _formatOptions;
         BasToolsEngine? engine;
         private string _htmlClose;
         private string _htmlDoc;
@@ -185,7 +185,7 @@ namespace BasViewer.GUI
             bool flgZ80 = false;
             engine = new BasToolsEngine();
             progInfo = new ProgInfo(flgZ80, false, "");
-            formatOptions = new FormattingOptions(true);
+            _formatOptions = new FormattingOptions(true);
             //_theme = "Dark";
             _loaded = false;
             _textFile = false;
@@ -254,6 +254,7 @@ namespace BasViewer.GUI
         }
         internal bool loadBasicOrText(string filename, BasToolsEngine engine, FormattingOptions formatOptions, ProgInfo progInfo)
         {
+            formatOptions.SplitLines = false;
             bool IsTextNotBasic = false;
             try
             {
@@ -353,7 +354,7 @@ namespace BasViewer.GUI
             bool splitLines = toolStripBtnSplitlines.Checked;
             bool pretty = toolStripBtnPrettyprint.Checked;
 
-            ListerOptions listerOptions = new ListerOptions(true, false, splitLines, true); //bool indent, bool indentDefs, bool splitLines, bool pretty (ignored)
+            ListerOptions listerOptions = new ListerOptions(true, false, splitLines , true); //bool indent, bool indentDefs, bool splitLines, bool pretty
             List<DisplayLine> lines = engine.PrepLinesForDisplay(listerOptions);
 
             string htmlHeader = "<html><head>" + Themes.GetCss(comboBoxTheme.Text, pretty) + _script + "</head><body><table>";
@@ -392,6 +393,7 @@ namespace BasViewer.GUI
                 }
 
                 int totindent = (line.Indent + line.DefIndent) * 2;
+                //if (line.LineNumber == 90) MessageBox.Show($"Line 90 indent: {totindent}");
                 if (IsDef)
                     htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td id = \"line_{line.Id}\" class = \"line-number\">{line.sLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
                 else if (IsInDef)
@@ -421,8 +423,9 @@ namespace BasViewer.GUI
         private void LoadFile(string filename)
         {
             progInfo.Filename = filename;
-            _textFile = loadBasicOrText(filename, engine, formatOptions, progInfo);
-
+            
+            _textFile = loadBasicOrText(filename, engine, _formatOptions, progInfo);
+            
             if (engine.CurrentListing != null)
                 _loaded = true;
             //else

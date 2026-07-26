@@ -503,7 +503,7 @@ namespace BasAnalysis.CLI
                 Console.WriteLine("PREVIEW - No program loaded.");
                 return;
             }
-            List(engine, 0, 0xFEFF, 20, true);
+            Utilities.List(engine, 0, 0xFEFF, 20, true);
         }
         static void ListProg(BasToolsEngine engine, string[] arglist, bool pretty)
         {
@@ -548,7 +548,7 @@ namespace BasAnalysis.CLI
                     if (endsWithComma) toline = 0xFEFF;
                 }
             }
-            List(engine, fromline, toline, 0, pretty);
+            Utilities.List(engine, fromline, toline, 0, pretty);
         }
         static void ListIf(BasToolsEngine engine, string[] arglist)
         {
@@ -579,34 +579,7 @@ namespace BasAnalysis.CLI
                 }
             }
         }
-        static void List(BasToolsEngine engine, int fromline, int toline, int totLineCount, bool pretty)
-        {
-            int linesprinted = 0;
-            int linecount = 0;
-
-            for (int i = 0; i < 0xFEFF && (totLineCount == 0 ? true : ++linecount <= totLineCount); i++)
-            {
-                if (i == engine.CurrentListing.Lines.Count)
-                    return;
-
-                ProgramLine progLine = engine.CurrentListing.Lines[i];
-
-                if (progLine.LineNumber > toline) return;
-
-                if (progLine.LineNumber >= fromline)
-                {
-                    //if (!Utilities.printLine(progLine, ref linesprinted)) break;
-                    if (pretty)
-                    {
-                        if (!BasToolsEngine.PrintOneLine(progLine, ref linesprinted)) break;
-                    }
-                    else
-                    {
-                        if (!Utilities.printLine(progLine, ref linesprinted)) break;
-                    }
-                }
-            }
-        }
+        
         static void ListDef(BasToolsEngine engine, string[] arglist, bool pretty)
         {
             for (int i = 0; i < arglist.Length; i++)

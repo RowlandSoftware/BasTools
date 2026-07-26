@@ -57,7 +57,66 @@
             else
                 return false;
         }
-            
+
+        // The public 'pipeline' for Text2Basic
+        public bool LoadAndTokeniseFile(TokeniserCommandSwitches switches, ProgInfo progInfo)
+        {
+            Listing listing = new(new List<ProgramLine>());
+            try
+            {
+                string[] lines = Tokeniser.ReadLines(switches.inputfile);
+                TokeniserState State = new();
+                int FakeLineNum = 0;
+
+                foreach (string textline in lines)
+                {
+                    ProgramLine result = ProgramLineFromText(textline, false, false, State, ref FakeLineNum);
+                    listing.Lines.Add(result);
+                    //Console.Write($"{result.LineNumber} "); WriteTokenisedLine(result.TokenisedLine);
+                    //Console.WriteLine();
+                }
+
+                FormattingOptions formatOptions = new FormattingOptions(true);
+                if (FormatProgram(listing, formatOptions, progInfo))
+                {
+                    //Console.WriteLine($"FormatProgram returned true");
+                    CurrentListing = listing;
+                    CurrentProgInfo = progInfo;
+                    Analyzed = false;
+
+                    return true;
+                }
+                else
+                    return false;
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine(ex.Message);
+                return false;
+            }
+        }
+        public ProgramLine ProgramLineFromText(string text, bool Z80, bool SkipSpaces, TokeniserState State, ref int FakeLineNum)
+        {
+            ProgramLine ProgLine = new();
+
+            // First pass
+            ProgLine.PlainDetokenisedLine = text;
+            ProgLine.TokenisedLine = Tokeniser.TokeniseLine(text, Z80, SkipSpaces, State, this, out int linenum, ref FakeLineNum);
+            ProgLine.LineNumber = linenum;
+
+            // Second pass - detokenise and tag
+            ParserState parserState = new();
+            ProgInfo progInfo = new(Z80, false, "NA");
+            ProcessLineBody(parserState, ProgLine.TokenisedLine, ProgLine, progInfo);
+
+            //Console.WriteLine(ProgLine.TaggedLine);
+
+            // Third pass - compact tokenised line, inserting implied THEN as required
+            ProgLine.TokenisedLine = Tokeniser.NormaliseTokenised(ProgLine, this);
+
+            return ProgLine;
+        }
+
         public void Analyse(BasToolsEngine engine, ref bool analyzed)
         {
             Symbols.Clear();
@@ -244,7 +303,7 @@
         } // parseTextLine
         public List<DisplayLine> PrepLinesForDisplay(ListerOptions listerOptions)
         {
-            if (CurrentListing.Lines.Count > 0)
+            /*if (CurrentListing.Lines.Count > 0)
             {
                 // Clear indents set by previous runs
                 foreach(ProgramLine line in CurrentListing.Lines)
@@ -254,18 +313,24 @@
                     line.fstate.MultiLineIfDepth = 0;
                     line.fstate.PendingIndent = 0;
                 }
-            }
-            DisplayLines = BasLister.PrepLinesForDisplay(CurrentListing, listerOptions, CurrentProgInfo);
+            }*/
+
+            // clone listing
+            var tempListing = new Listing(CurrentListing.Lines
+                .Select(line => new ProgramLine(line))
+                .ToList());
+
+            DisplayLines = BasLister.PrepLinesForDisplay(tempListing, listerOptions, CurrentProgInfo);
             return DisplayLines;
         }
         public static bool PrintOneLine(ProgramLine progline, ref int linesprinted)
         {
             return BasLister.PrintOneLine(progline, ref linesprinted);
         }
-        public static byte[] TokeniseLine(string textline, BasToolsEngine engine, ref int FakeLineNum)
+        public byte[] TokeniseLine(string textline, ref int FakeLineNum)
         {
             TokeniserState State = new();
-            return Tokeniser.TokeniseLine(textline, false, false, State, engine, out int linenum, ref FakeLineNum);
+            return Tokeniser.TokeniseLine(textline, false, false, State, this, out int linenum, ref FakeLineNum);
         }
         /********** UTILITIES *********/
         public static IEnumerable<Token> WalkTagged(string line)

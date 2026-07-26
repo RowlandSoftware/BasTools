@@ -196,7 +196,6 @@ namespace BasTools.Core
                             {
                                 if (!switches.FlgExportTagged)
                                 {
-
                                     // Call the Formatter to format these 'lines'
                                     BasToolsEngine engine = new();
 
@@ -330,15 +329,15 @@ namespace BasTools.Core
                             // generate a 'mini-program-listing' from the sections
                             foreach (string taggedSection in SplitStatements(progline.TaggedLine))
                             {
-                                ProgramLine line = new(progline);
+                                ProgramLine line = new(progline); // clone needed properties
                                 line.TaggedLine = taggedSection;
 
-                                line.IndentLevel = progline.IndentLevel;
-                                line.LineNumber = progline.LineNumber;
-                                line.InAsm = progline.InAsm;
-                                line.IsArm = progline.IsArm;
-                                line.IsDef = progline.IsDef;
-                                line.IsInDef = progline.IsInDef;
+                                //line.IndentLevel = progline.IndentLevel;
+                                //line.LineNumber = progline.LineNumber;
+                                //line.InAsm = progline.InAsm;
+                                //line.IsArm = progline.IsArm;
+                                //line.IsDef = progline.IsDef;
+                                //line.IsInDef = progline.IsInDef;
 
                                 sections.Lines.Add(line);
                             }

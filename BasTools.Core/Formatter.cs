@@ -10,39 +10,41 @@ namespace BasTools.Core
             {
                 case SemanticTags.Keyword:
                     if (value == "PROC" || value == "FN")
-                                                    return (true, false);
-                    else                            return (true, true);
+                        return (true, false);
+                    else return (true, true);
                 case SemanticTags.IndentingKeyword:
                 case SemanticTags.OutdentingKeyword:
-                case SemanticTags.InOutKeyword:
-                case SemanticTags.Then:             return (true, true);
-                case SemanticTags.BuiltInFn:        return (true, false);
-                case SemanticTags.StringLiteral:    return (true, true);
-                case SemanticTags.Number:           return (true, true);
-                case SemanticTags.HexNumber:        return (true, true);
-                case SemanticTags.BinaryNumber:     return (true, false);
-                case SemanticTags.Variable:         return (true, true);
-                case SemanticTags.Array:            return (true, false);
-                case SemanticTags.StaticInteger:    return (true, true);
-                case SemanticTags.RemText:          return (false, false);
+                case SemanticTags.InOutKeyword: return (true, true);
+                case SemanticTags.Then:
+                    bool r = value == "THEN";
+                    return (r, r);
+                case SemanticTags.BuiltInFn: return (true, false);
+                case SemanticTags.StringLiteral: return (true, true);
+                case SemanticTags.Number: return (true, true);
+                case SemanticTags.HexNumber: return (true, true);
+                case SemanticTags.BinaryNumber: return (true, false);
+                case SemanticTags.Variable: return (true, true);
+                case SemanticTags.Array: return (true, false);
+                case SemanticTags.StaticInteger: return (true, true);
+                case SemanticTags.RemText: return (false, false);
                 case SemanticTags.AssemblerComment: return (true, false);
-                case SemanticTags.StarCommand:      return (false, false);
-                case SemanticTags.EmbeddedData:     return (false, false);
-                case SemanticTags.ProcName:         return (false, true);
-                case SemanticTags.FunctionName:     return (false, true);
-                case SemanticTags.Label:            return (false, true);
-                case SemanticTags.Register:         return (false, true);
-                case SemanticTags.Mnemonic:         return (true, true);
-                case SemanticTags.LineNumber:       return (true, true);
-                case SemanticTags.Operator:         return (true, true);
+                case SemanticTags.StarCommand: return (false, false);
+                case SemanticTags.EmbeddedData: return (false, false);
+                case SemanticTags.ProcName: return (false, true);
+                case SemanticTags.FunctionName: return (false, true);
+                case SemanticTags.Label: return (false, true);
+                case SemanticTags.Register: return (false, true);
+                case SemanticTags.Mnemonic: return (true, true);
+                case SemanticTags.LineNumber: return (true, true);
+                case SemanticTags.Operator: return (true, true);
                 case SemanticTags.IndirectionOperator: return (false, false);
                 case SemanticTags.ImmediateOperator: return (true, false);
-                case SemanticTags.StatementSep:     return (false, false);
-                case SemanticTags.ListSep:          return (false, true);
-                case SemanticTags.OpenBracket:      return (false, false);
-                case SemanticTags.CloseBracket:     return (false, true);
-                case SemanticTags.Reset:            return (false, false);
-                default:                            return (false, false);
+                case SemanticTags.StatementSep: return (false, false);
+                case SemanticTags.ListSep: return (false, true);
+                case SemanticTags.OpenBracket: return (false, false);
+                case SemanticTags.CloseBracket: return (false, true);
+                case SemanticTags.Reset: return (false, false);
+                default: return (false, false);
             }
         }
         internal static bool IsSpaceBetween(Token token1, Token token2)
@@ -51,7 +53,7 @@ namespace BasTools.Core
             if ((token1.tag is SemanticTags.StatementSep or SemanticTags.Then) && token1.value == "") return true;
 
             // special rule for when : is implied THEN
-            if (token2.tag == SemanticTags.Then && token2.value == ":") return false;
+            if (token2.tag == SemanticTags.Then && token2.value is ":") return false;
 
             // read spacing rules
             (bool dummy, bool spaceafter) = GetSpacingRule(token1.tag, token1.value);
@@ -127,6 +129,7 @@ namespace BasTools.Core
         // Called from FormatProgram AND to format individual lines when split
         public void formatLines(Listing lines, FormattingOptions switches, FormatterState state, ProgInfo progInfo, bool IsSplitLines)
         {
+            //Log($"{DateTime.Now} Formatting with Splitlines = {switches.SplitLines}, indent {switches.FlgIndent}, IsSplitLines {IsSplitLines}");
             state.InIf = false; // for the benefit of SplitLines
 
             for (int counter = 0; counter < lines.Lines.Count; counter++)
@@ -135,7 +138,7 @@ namespace BasTools.Core
                 state.LineCount++;
 
                 // Capture formatter state at start of this line
-                progline.fstate = new(state);
+                progline.fstate = new(state, false);
                 //Console.WriteLine($"  Processing {progline.TaggedLine}\nin lvl = {progline.IndentLevel}, in={progline.fstate.Indent}, pend in={progline.fstate.PendingIndent}, mult lvl={progline.fstate.MultiLineIfDepth}");
                 formatLineNumber(progline, switches, state, progInfo);
 
@@ -656,6 +659,11 @@ namespace BasTools.Core
             value += new string(' ', padlen);
 
             return padded;
+        }
+
+        private static void Log(string message)
+        {
+            File.AppendAllText("search-debug.log", message + Environment.NewLine);
         }
     }
 }

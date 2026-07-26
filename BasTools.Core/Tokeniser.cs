@@ -14,29 +14,7 @@ namespace BasTools.Core
             None,
             FullKeyword,
             Abbreviation
-        }
-        public static ProgramLine ProgramLineFromText(string text, bool Z80, bool SkipSpaces, TokeniserState State, BasToolsEngine engine, ref int FakeLineNum)
-        {
-            ProgramLine ProgLine = new();
-
-            // First pass
-            ProgLine.PlainDetokenisedLine = text;
-            ProgLine.TokenisedLine = TokeniseLine(text, Z80, SkipSpaces, State, engine, out int linenum, ref FakeLineNum);
-            ProgLine.LineNumber = linenum;
-
-            // Second pass - detokenise and tag
-            ParserState parserState = new();
-            ProgInfo progInfo = new(Z80, false, "NA");
-            engine.ProcessLineBody(parserState, ProgLine.TokenisedLine, ProgLine, progInfo);
-
-            Console.WriteLine(ProgLine.TaggedLine);
-
-            // Third pass - compact tokenised line, inserting implied THEN as required
-            ProgLine.TokenisedLine = NormaliseTokenised(ProgLine, engine);
-
-
-            return ProgLine;
-        }
+        }        
         public static byte[] TokeniseLine(string text, bool Z80, bool SkipSpaces, TokeniserState State, BasToolsEngine engine, out int lineNumber, ref int FakeLineNum)
         {
             State.StartOfLine(); // sets initial conditions
@@ -64,13 +42,11 @@ namespace BasTools.Core
             while (i < s.Length && char.IsDigit(s[i]))
                 i++;
 
-            int linenum = (i > 0) ? int.Parse(s[..i]) : 0;
+            int linenum = (i > 0) ? int.Parse(s[..i]) : -1;
 
-            if (linenum == 0)
-                linenum = fakelinenum;
             fakelinenum += 10;
 
-            return linenum;
+            return linenum < 0 ? fakelinenum : linenum;
         }
         private static List<byte> TokeniseLineBody(ReadOnlySpan<char> ln, int linenum, TokeniserState State, BasToolsEngine engine)
         {
@@ -130,7 +106,7 @@ namespace BasTools.Core
                         if (p == ln.Length && c != '"')
                         {
                             // Unterminated string: BASIC stops tokenising the line
-                            Console.WriteLine($"Missing closing quote at line {linenum}");
+                            Console.Error.WriteLine($"Missing closing quote at line {linenum}");
                             break;
                         }
                     }
@@ -393,7 +369,7 @@ namespace BasTools.Core
 
             return (MatchKind.None, 0, default);
         }
-        private static byte[] NormaliseTokenised(ProgramLine ProgLine, BasToolsEngine engine)
+        public static byte[] NormaliseTokenised(ProgramLine ProgLine, BasToolsEngine engine)
         {
             byte[] bytes = ProgLine.TokenisedLine;
             string taggedLine = ProgLine.TaggedLine;
@@ -430,7 +406,7 @@ namespace BasTools.Core
                             if (bytes[i] != 32)
                                 copyByte(ref i, bytes, output);
                             else i++;
-                        } 
+                        }
                         break;
                     default:
                         for (int j = 0; j < tok.value.Length; j++)
@@ -438,7 +414,7 @@ namespace BasTools.Core
                             //Console.Write($"{bytes[i]:X2} {(char)bytes[i]} - ");
                             copyByte(ref i, bytes, output);
                         }
-                        Console.WriteLine("");
+                        //Console.WriteLine("");
                         break;
                 }
             }
@@ -517,6 +493,12 @@ namespace BasTools.Core
             bytes.Add(b1);
             bytes.Add(b2);
             bytes.Add(b3);
+        }
+        private static readonly string[] Newlines = { "\r\n", "\n", "\r" };
+        public static string[] ReadLines(string path)
+        {
+            string text = File.ReadAllText(path);
+            return text.Split(Newlines, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         }
         private static void WriteTokenisedLine(byte[] result)
         {

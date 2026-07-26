@@ -11,21 +11,7 @@ using System.Xml.Linq;
 using BasTools.Core;
 
 namespace Text2Basic.CLI
-{
-    //***************** CommandSwitches *****************
-    public class CommandSwitches
-    {
-        // switches for detokenisation
-        internal bool basicV;
-        internal bool Z80;
-        internal bool noNumbers;
-        public CommandSwitches()
-        {
-            basicV = false;
-            Z80 = false;
-            noNumbers = false;
-        }
-    }
+{    
     internal class Program
     {
         static void Main(string[] args)
@@ -37,9 +23,10 @@ namespace Text2Basic.CLI
             }
 
             BasToolsEngine engine = new BasToolsEngine();
+            ProgInfo progInfo = new ProgInfo();
 
             /******** Test harness only ****************/
-
+            #region test harness
             if (args[0].ToLower() == "/test")
             {
                 Console.WriteLine("\nEnter empty line to finish.");
@@ -61,53 +48,36 @@ namespace Text2Basic.CLI
                         userinput = userinput.Replace('£', '`');
 
                         int dummy = 0;
-                        ProgramLine result = Tokeniser.ProgramLineFromText(userinput, false, false, State, engine, ref dummy);
+                        ProgramLine result = engine.ProgramLineFromText(userinput, false, false, State, ref dummy);
                         WriteTokenisedLine(result.TokenisedLine);
                     }
                 }
                 return;
             }
-
+            #endregion
             /********** MAIN PROGRAM ************/
 
-            CommandSwitches switches = new();
-            string inputfile = string.Empty;
-            string outputfile = string.Empty;
-            bool save = false;
+            TokeniserCommandSwitches switches = new();
 
             //******** readCommandSwitches ********
-            readCommandSwitches(args, switches, ref inputfile, ref outputfile, ref save);
+            readCommandSwitches(args, switches);
 
             // Show message
             Console.Error.WriteLine("Processing, please wait...");
 
-            try
+            engine.LoadAndTokeniseFile(switches, progInfo);
+            Console.Error.WriteLine($"{engine.CurrentListing.Lines.Count} lines processed");
+
+            if (switches.list || switches.blist)
             {
-                string[] lines = ReadLines(inputfile);
-                TokeniserState State = new();
-                int FakeLineNum = 0;
-
-                foreach (string textline in lines)
-                {
-                    ProgramLine result = Tokeniser.ProgramLineFromText(textline, false, false, State, engine, ref FakeLineNum);
-                    //Console.Write($"{result.LineNumber} + "); WriteTokenisedLine(result.TokenisedLine);
-                    //Console.WriteLine();
-                }
+                BasAnalysis.CLI.Utilities.List(engine, 0, 0xFEFF, 20, switches.blist); // TODO
             }
-            catch (Exception ex)
+            if (switches.save)
             {
-                Console.WriteLine(ex.Message);
+                savefile(switches, engine);
             }
-
         }
-        private static readonly string[] Newlines = { "\r\n", "\n", "\r" };
-
-        public static string[] ReadLines(string path)
-        {
-            string text = File.ReadAllText(path);
-            return text.Split(Newlines, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        }
-        static void readCommandSwitches(string[] args, CommandSwitches switches, ref string inputfile, ref string outputfile, ref bool save)
+        static void readCommandSwitches(string[] args, TokeniserCommandSwitches switches)
         {
             foreach (string arg in args)
             {
@@ -124,17 +94,16 @@ namespace Text2Basic.CLI
                         arg1 = arg2.Substring(0, x);
                         arg3 = arg2.Substring(x + 1);
 
-                        if ("FILE".StartsWith(arg1)) { inputfile = arg3; recognised = true; }
-                        if ("SAVE".StartsWith(arg1)) { outputfile = arg3; recognised = true; save = true; }
+                        if ("FILE".StartsWith(arg1)) { switches.inputfile = arg3; recognised = true; }
+                        if ("SAVE".StartsWith(arg1)) { switches.outputfile = arg3; recognised = true; switches.save = true; }
                     }
-                    bool flgNegative = arg2.StartsWith('-');
-                    if (flgNegative)
-                        arg2 = arg2.Substring(1);
 
-                    if (arg2 == "V") { switches.basicV = !flgNegative; recognised = true; }
-                    if ("Z80".StartsWith(arg2)) { switches.Z80 = !flgNegative; recognised = true; }
+                    if (arg2 == "V") { switches.basicV = true; recognised = true; }
+                    if ("Z80".StartsWith(arg2)) { switches.Z80 = true; recognised = true; }
+                    if ("NONUMBERS".StartsWith(arg2)) { switches.noNumbers = true; recognised = true; }
+                    if ("LIST".StartsWith(arg2)) { switches.list = true; recognised = true; }
+                    if ("BLIST".StartsWith(arg2)) { switches.blist = true; recognised = true; }
                     if (arg2 == "?" || "HELP".StartsWith(arg2)) { help(); Environment.Exit(0); }
-                    if ("NONUMBERS".StartsWith(arg2)) { switches.noNumbers = !flgNegative; recognised = true; }
 
                     if (!recognised)
                     {
@@ -145,30 +114,90 @@ namespace Text2Basic.CLI
                 }
                 else
                 {
-                    if (inputfile.Length == 0) // This is where we pick up the filename if not already found
-                        inputfile = arg;
+                    if (switches.inputfile.Length == 0) // This is where we pick up the filename if not already found
+                        switches.inputfile = arg;
                     else
-                        if (!save)
+                        if (!switches.save)
                         {
-                            outputfile = arg;
-                            save = true;
+                            switches.outputfile = arg;
+                            switches.save = true;
                         }
                 }
             }
             // no filename found:
-            if (inputfile.Length == 0)
+            if (switches.inputfile.Length == 0)
             {
                 Console.Error.WriteLine("Error: No input filename found");
                 help();
                 Environment.Exit(0);
             }
-            if (outputfile.Length == 0)
+            if (switches.outputfile.Length == 0)
             {
-                save = false;
+                switches.save = false;
             }
             //else Console.WriteLine($"={outputfile}");
         }
+        static void savefile(TokeniserCommandSwitches switches, BasToolsEngine engine)
+        {
+            if (string.IsNullOrEmpty(switches.outputfile))
+            {
+                Console.Error.WriteLine("Filename for save is missing");
+                return;
+            }
+            if (engine.CurrentListing.Lines.Count == 0)
+            {
+                Console.Error.WriteLine("No program lines to save");
+                return;
+            }
 
+            using var bw = new BinaryWriter(File.OpenWrite(switches.outputfile));
+
+            if (!switches.Z80)
+            {
+                bw.Write('\r');
+            }
+
+            foreach (ProgramLine line in engine.CurrentListing.Lines)
+            {
+                int linenum = line.LineNumber;
+                byte ln_hi = (byte)(linenum >> 8);   // top 8 bits
+                byte ln_lo = (byte)(linenum & 0xFF); // bottom 8 bits
+                byte[] linebody = line.TokenisedLine;
+                if (linebody.Length > 251)
+                {
+                    Console.WriteLine($"Line {linenum} too long by {251 - linebody.Length} bytes.");
+                    continue;
+                }
+                byte linelen = (byte)(linebody.Length + 4);
+
+                if (switches.Z80)
+                {
+                    bw.Write(linelen);
+                    bw.Write(ln_lo);
+                    bw.Write(ln_hi);
+                }
+                else
+                {
+                    bw.Write(ln_hi);
+                    bw.Write(ln_lo);
+                    bw.Write(linelen);
+                }
+                bw.Write(linebody);
+                bw.Write('\r');
+            }
+            // End of program marker
+            if (switches.Z80)
+            {
+                bw.Write('\0');
+                bw.Write(0xFF);
+                bw.Write(0xFF);
+            }
+            else
+            {
+                bw.Write(0xFF);
+            }
+            bw.Close();
+        }
         /************** Utilities ***************/
 
         private static void WriteTokenisedLine(byte[] result)

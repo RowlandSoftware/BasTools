@@ -61,8 +61,8 @@ namespace BasTools.Core
                  .ToList();
 
             readTokenisingTable(toktable, "BasTools.Core.TokenTable.Acorn.txt", doubles); // for tokenising
-            foreach (byte b in doubles)
-              Console.WriteLine($"[{b:X2}] - {b}");
+            //foreach (byte b in doubles)
+            //  Console.WriteLine($"[{b:X2}] - {b}");
         }
         public bool IsDoubleToken(byte tok1)
         {

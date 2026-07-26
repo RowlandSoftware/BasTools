@@ -130,6 +130,7 @@ namespace BasTools.Core
 
         // Properties needed for SplitLines
         public FormatterState fstate = new();
+        public ProgramLine() { }
         public ProgramLine(ProgramLine other)
         {
             LineNumber = other.LineNumber;
@@ -138,9 +139,31 @@ namespace BasTools.Core
             IsInDef = other.IsInDef;
             InAsm = other.InAsm;
             IsArm = other.IsArm;
+
+            //fstate = new(); // FormatterState(other.fstate);
+        }
+        public ProgramLine(ProgramLine other, FormatterState otherFState)
+        {
+            LineNumber = other.LineNumber;
+            IndentLevel = other.IndentLevel;
+
+            PlainDetokenisedLine = other.PlainDetokenisedLine;
+            TaggedLine = other.TaggedLine;
+            FormattedPlain = other.FormattedPlain;
+            FormattedTagged = other.FormattedTagged;
+
+            TokenisedLine = other.TokenisedLine.ToArray();
+
+            IsDef = other.IsDef;
+            IsInDef = other.IsInDef;
+            InAsm = other.InAsm;
+            IsArm = other.IsArm;
+
+            fstate = new FormatterState(otherFState, true);
         }
     }
     public record Listing(List<ProgramLine> Lines);
+
     internal record LineRecord(
         int linenumber,
         byte[] lineContent
@@ -211,6 +234,7 @@ namespace BasTools.Core
         public bool InDefInition;
         public bool IsDef;
         public bool SeenFirstWhen;
+
         public FormatterState()
         {
             LineCount = 0;
@@ -225,10 +249,16 @@ namespace BasTools.Core
             InDefInition = false;
             SeenFirstWhen = false;
         }
-        public FormatterState(FormatterState other) : this()
+        public FormatterState(FormatterState other, bool something) : this()
         {
             LineCount = other.LineCount;
-            Indent = other.Indent + other.PendingIndent;
+            if (something)
+                Indent = other.Indent + other.PendingIndent;
+            else
+            {
+                Indent = other.Indent;
+                PendingIndent = other.PendingIndent;
+            }
             MultiLineIfDepth = other.MultiLineIfDepth;
             InIfCondition = other.InIfCondition;
             InIf = other.InIf;
@@ -387,6 +417,19 @@ namespace BasTools.Core
     }
     public record DimInfo(int LineNumber, bool IsLocal);
 
+    //***************** CommandSwitches used by Tokeniser *****************
+    public class TokeniserCommandSwitches
+    {
+        // switches for detokenisation
+        public bool basicV = false;
+        public bool Z80 = false;
+        public bool noNumbers = false;
+        public bool save = false;
+        public bool list = false;
+        public bool blist = false;
+        public string inputfile = "";
+        public string outputfile = "";
+    }
     //***************** TokeniserState used by Tokeniser *****************
     public class TokeniserState
     {

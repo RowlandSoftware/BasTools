@@ -7,7 +7,7 @@ using System.Text;
 
 namespace BasAnalysis.CLI
 {
-    internal static class Utilities
+    public static class Utilities
     {
         public static void PrintByKind(SymbolKind kind, Dictionary<string, SymbolInfo> Symbols, BasToolsEngine engine,
             string heading1, string heading2)
@@ -277,6 +277,33 @@ namespace BasAnalysis.CLI
                 SymbolKind.Fn => "FN" + name,
                 _ => name
             };
+        }
+        public static void List(BasToolsEngine engine, int fromline, int toline, int totLineCount, bool pretty)
+        {
+            int linesprinted = 0;
+            int linecount = 0;
+
+            for (int i = 0; i < 0xFEFF && (totLineCount == 0 ? true : ++linecount <= totLineCount); i++)
+            {
+                if (i == engine.CurrentListing.Lines.Count)
+                    return;
+
+                ProgramLine progLine = engine.CurrentListing.Lines[i];
+
+                if (progLine.LineNumber > toline) return;
+
+                if (progLine.LineNumber >= fromline)
+                {
+                    if (pretty)
+                    {
+                        if (!BasToolsEngine.PrintOneLine(progLine, ref linesprinted)) break;
+                    }
+                    else
+                    {
+                        if (!Utilities.printLine(progLine, ref linesprinted)) break;
+                    }
+                }
+            }
         }
         // Print line and check for pause
         // Returns: true - continue, false - stop listing
