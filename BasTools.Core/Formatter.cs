@@ -138,7 +138,7 @@ namespace BasTools.Core
                 state.LineCount++;
 
                 // Capture formatter state at start of this line
-                progline.fstate = new(state, false);
+                progline.fstate = new(state);
                 //Console.WriteLine($"  Processing {progline.TaggedLine}\nin lvl = {progline.IndentLevel}, in={progline.fstate.Indent}, pend in={progline.fstate.PendingIndent}, mult lvl={progline.fstate.MultiLineIfDepth}");
                 formatLineNumber(progline, switches, state, progInfo);
 

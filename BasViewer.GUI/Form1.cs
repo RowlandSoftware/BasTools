@@ -51,6 +51,7 @@ namespace BasViewer.GUI
         private int currentMatchIndex;
         private List<SearchMatch> matches;
         private GoToLine gotoLineForm;
+        private DisplayLines CurrentDisplayLines;
 
         public Form1(string[] args)
         {
@@ -344,18 +345,37 @@ namespace BasViewer.GUI
             _htmlDoc = htmlDoc.ToString();          // keep copy
             webView2.NavigateToString(_htmlDoc);
         }
-        private void BasicToHtml(BasToolsEngine engine)
+        private void GetBasicFileLines(BasToolsEngine engine)
         {
             if (engine.CurrentListing == null) return;
+
+            CurrentDisplayLines?.LinesWithSplitLines.Clear();
+            CurrentDisplayLines?.LinesNotSplit.Clear();
 
             _loaded = true;
             combProcFnFinder.Items.Clear();
 
-            bool splitLines = toolStripBtnSplitlines.Checked;
-            bool pretty = toolStripBtnPrettyprint.Checked;
+            bool splitLines = toolStripBtnSplitlines.Checked;            
 
-            ListerOptions listerOptions = new ListerOptions(true, false, splitLines , true); //bool indent, bool indentDefs, bool splitLines, bool pretty
-            List<DisplayLine> lines = engine.PrepLinesForDisplay(listerOptions);
+            ListerOptions listerOptions = new ListerOptions(true, false, splitLines, true); //bool indent, bool indentDefs, bool splitLines not used, bool pretty
+            if (engine._LinesForDisplay == null || engine._LinesForDisplay.LinesNotSplit.Count == 0)
+            {
+                engine.PrepLinesForDisplay(listerOptions);
+            }
+            CurrentDisplayLines = engine._LinesForDisplay;
+        }
+        private void BasicToHtml(BasToolsEngine engine)
+        {
+            if (engine.CurrentListing == null) return;
+
+            bool pretty = toolStripBtnPrettyprint.Checked;
+            bool splitLines = toolStripBtnSplitlines.Checked;
+
+            List<DisplayLine> lines;
+            if (splitLines)
+                lines = CurrentDisplayLines.LinesWithSplitLines;
+            else
+                lines = CurrentDisplayLines.LinesNotSplit;
 
             string htmlHeader = "<html><head>" + Themes.GetCss(comboBoxTheme.Text, pretty) + _script + "</head><body><table>";
 
@@ -393,7 +413,6 @@ namespace BasViewer.GUI
                 }
 
                 int totindent = (line.Indent + line.DefIndent) * 2;
-                //if (line.LineNumber == 90) MessageBox.Show($"Line 90 indent: {totindent}");
                 if (IsDef)
                     htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td id = \"line_{line.Id}\" class = \"line-number\">{line.sLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
                 else if (IsInDef)
@@ -435,7 +454,10 @@ namespace BasViewer.GUI
             webView2.Enabled = true;
 
             if (!_textFile)
+            {
+                GetBasicFileLines(engine);
                 BasicToHtml(engine);
+            }
             else
                 TextToHtml(engine);
         }
@@ -454,11 +476,13 @@ namespace BasViewer.GUI
             var firstVisibleIdJson = await webView2.ExecuteScriptAsync("window.search.getFirstVisibleLineId();");
             string firstVisibleId = firstVisibleIdJson?.Trim('"');  // JS string -> C#
 
-
             if (!_textFile)
+            {
+                //GetBasicFileLines(engine);
                 BasicToHtml(engine);
+            }
             else
-                TextToHtml(engine);
+                TextToHtml(engine); // TODO
 
             //await webView2.ExecuteScriptAsync($"document.scrollingElement.scrollTop = {savedScroll};");
             webView2.NavigationCompleted += async (_, __) =>
@@ -644,6 +668,8 @@ namespace BasViewer.GUI
             else
                 matches.Clear();
 
+            bool splitlines = toolStripBtnSplitlines.Checked;
+
             foreach (var kvp in engine.Symbols)
             {
                 var sym = kvp.Value;
@@ -665,7 +691,7 @@ namespace BasViewer.GUI
                 if (opts.flgTextSearch)
                 {
                     if (sym.Name.Contains(term, matchCase))
-                        getTextMatches(sym, term, opts, matches, engine.DisplayLines);
+                        getTextMatches(sym, term, opts, matches, splitlines ? CurrentDisplayLines.LinesWithSplitLines : CurrentDisplayLines.LinesNotSplit);
                 }
                 else
                 {
@@ -675,7 +701,7 @@ namespace BasViewer.GUI
                     if (found)
                     {
                         //MessageBox.Show("Matched!");
-                        getMatches(sym, matches, engine.DisplayLines);
+                        getMatches(sym, matches, splitlines ? CurrentDisplayLines.LinesWithSplitLines : CurrentDisplayLines.LinesNotSplit);
                     }
                 }
             }

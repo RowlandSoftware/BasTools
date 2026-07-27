@@ -177,12 +177,12 @@ namespace BasTools.Core
                                 ProgramLine line = new(progline);
                                 line.TaggedLine = taggedSection;
 
-                                line.IndentLevel = progline.IndentLevel;
+                                /*line.IndentLevel = progline.IndentLevel;
                                 line.LineNumber = progline.LineNumber;
                                 line.InAsm = progline.InAsm;
                                 line.IsArm = progline.IsArm;
                                 line.IsDef = progline.IsDef;
-                                line.IsInDef = progline.IsInDef;
+                                line.IsInDef = progline.IsInDef;*/
 
                                 sections.Lines.Add(line);
                             }
@@ -277,9 +277,10 @@ namespace BasTools.Core
             }
         }
         // ******** Make List of tagged program lines ********
-        public static List<DisplayLine> PrepLinesForDisplay(Listing formattedListing, ListerOptions switches, ProgInfo progInfo)
+        public static DisplayLines PrepLinesForDisplay(Listing formattedListing, ListerOptions switches, ProgInfo progInfo)
         {
-            List<DisplayLine> output = new();
+            List<DisplayLine> output_notsplit = new();
+            List<DisplayLine> output_splitlines = new();
             ListerState listerState = new(); // this sets initial conditions
 
             string sIndent = string.Empty;
@@ -303,21 +304,27 @@ namespace BasTools.Core
 
                     if (shouldPrint)
                     {
-                        if (!switches.SplitLines)
-                        {
-                            DisplayLine displayLine = new(progline.LineNumber)
-                            {
-                                sLineNumber = progline.FormattedLineNumber.Trim(),
-                                Indent = progline.IndentLevel,
-                                IsDef = progline.IsDef,
-                                IsInDef = progline.IsInDef,
-                                LineBody = progline.FormattedTagged.TrimStart(),
-                                PlainLine = progline.FormattedPlain.Trim(),
-                                Id = progline.LineNumber.ToString() + "_0"
-                            };
-                            displayLine.SetDefIndent(progline.DefIndent > 0);
+                        // See whether the line has sections
+                        List<string> SectionList = SplitStatements(progline.TaggedLine).ToList();
 
-                            output.Add(displayLine);
+                        // create a DisplayLine, whether we use it or not
+                        DisplayLine displayLine1 = new(progline.LineNumber)
+                        {
+                            sLineNumber = progline.FormattedLineNumber.Trim(),
+                            Indent = progline.IndentLevel,
+                            IsDef = progline.IsDef,
+                            IsInDef = progline.IsInDef,
+                            LineBody = progline.FormattedTagged.TrimStart(),
+                            PlainLine = progline.FormattedPlain.Trim(),
+                            Id = progline.LineNumber.ToString() + "_0"
+                        };
+                        displayLine1.SetDefIndent(progline.DefIndent > 0);
+
+                        output_notsplit.Add(displayLine1);
+
+                        if (SectionList.Count == 1)
+                        {
+                            output_splitlines.Add(displayLine1);
                         }
                         else // SplitLines
                         {
@@ -327,18 +334,11 @@ namespace BasTools.Core
                             Listing sections = new(new List<ProgramLine>());
 
                             // generate a 'mini-program-listing' from the sections
-                            foreach (string taggedSection in SplitStatements(progline.TaggedLine))
+                            foreach (string taggedSection in SectionList)
                             {
                                 ProgramLine line = new(progline); // clone needed properties
                                 line.TaggedLine = taggedSection;
-
-                                //line.IndentLevel = progline.IndentLevel;
-                                //line.LineNumber = progline.LineNumber;
-                                //line.InAsm = progline.InAsm;
-                                //line.IsArm = progline.IsArm;
-                                //line.IsDef = progline.IsDef;
-                                //line.IsInDef = progline.IsInDef;
-
+                                
                                 sections.Lines.Add(line);
                             }
 
@@ -362,9 +362,9 @@ namespace BasTools.Core
                                 displayLine.IsDef = line.IsDef;
                                 displayLine.IsInDef = line.IsInDef;
                                 displayLine.Indent = line.IndentLevel;
-                                displayLine.SetDefIndent(line.DefIndent > 0);                                
+                                displayLine.SetDefIndent(line.DefIndent > 0);
 
-                                output.Add(displayLine);
+                                output_splitlines.Add(displayLine);
                             }
                             // the last one might be last of a PROC/FN, but as formatLines only got one real line...
                             // will usually be OK, and always register when new PROC/FN found
@@ -381,6 +381,12 @@ namespace BasTools.Core
                     } // end shouldprint
                 }
             }
+
+            // return both lists
+            var output = new DisplayLines(
+                output_notsplit,
+                output_splitlines
+            );
             return output;
         }
         // ******** PrintOneLine - Utility procedure to PrettyPrint a single line ********

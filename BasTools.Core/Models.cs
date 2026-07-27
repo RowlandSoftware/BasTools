@@ -139,34 +139,17 @@ namespace BasTools.Core
             IsInDef = other.IsInDef;
             InAsm = other.InAsm;
             IsArm = other.IsArm;
-
-            //fstate = new(); // FormatterState(other.fstate);
-        }
-        public ProgramLine(ProgramLine other, FormatterState otherFState)
-        {
-            LineNumber = other.LineNumber;
-            IndentLevel = other.IndentLevel;
-
-            PlainDetokenisedLine = other.PlainDetokenisedLine;
-            TaggedLine = other.TaggedLine;
-            FormattedPlain = other.FormattedPlain;
-            FormattedTagged = other.FormattedTagged;
-
-            TokenisedLine = other.TokenisedLine.ToArray();
-
-            IsDef = other.IsDef;
-            IsInDef = other.IsInDef;
-            InAsm = other.InAsm;
-            IsArm = other.IsArm;
-
-            fstate = new FormatterState(otherFState, true);
-        }
+        }        
     }
     public record Listing(List<ProgramLine> Lines);
 
     internal record LineRecord(
         int linenumber,
         byte[] lineContent
+    );
+    public record DisplayLines(
+        List<DisplayLine> LinesNotSplit,
+        List<DisplayLine> LinesWithSplitLines
     );
     public class DisplayLine
     {
@@ -249,16 +232,11 @@ namespace BasTools.Core
             InDefInition = false;
             SeenFirstWhen = false;
         }
-        public FormatterState(FormatterState other, bool something) : this()
+        public FormatterState(FormatterState other) : this()
         {
             LineCount = other.LineCount;
-            if (something)
-                Indent = other.Indent + other.PendingIndent;
-            else
-            {
-                Indent = other.Indent;
-                PendingIndent = other.PendingIndent;
-            }
+            Indent = other.Indent + other.PendingIndent;
+            //PendingIndent = 0; // NEW
             MultiLineIfDepth = other.MultiLineIfDepth;
             InIfCondition = other.InIfCondition;
             InIf = other.InIf;
@@ -438,40 +416,14 @@ namespace BasTools.Core
         public bool MiddleOfStatement = false;
         public bool LineNumberFlag = false;
         public bool FN_PROCname = false;
-        /*/ For implied THEN tracking
-        private bool _inIfCondition = false;
-        public int IfParenDepth = 0;
-        private bool _exprComplete = false;
-        public bool ExprMightBeComplete
-        {
-            get => _exprComplete;
-            set => _exprComplete = value;
-        }
-        public bool InIfCondition
-        {
-            get => _inIfCondition;
-            set {
-                _inIfCondition = value;
-                if (value == true)
-                {
-                    _exprComplete = false;
-                    IfParenDepth = 0;
-                }
-            }
-        }*/
+        
         public void StartOfLine()
         {
             StartOfStatement = true;
             MiddleOfStatement = false;
             LineNumberFlag = false;
             FN_PROCname = false;
-            //_inIfCondition = false;
-            //IfParenDepth = 0;            
         }
-        /*public bool ThenPending
-        {
-            get => InIfCondition && IfParenDepth == 0;
-        }*/
     }
 
     [Flags]

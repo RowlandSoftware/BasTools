@@ -25,10 +25,9 @@
     public partial class BasToolsEngine
     {
         public Listing CurrentListing { get; private set; } = null;
+        public DisplayLines _LinesForDisplay = null;
         public ProgInfo CurrentProgInfo { get; private set; } = null;
         public Dictionary<string, List<DimInfo>> DimLines = new();
-        public List<DisplayLine> DisplayLines = null;
-
 
         // for the benefit of BasAnalysis
         public Dictionary<string, SymbolInfo> Symbols { get; private set; } = new();
@@ -301,27 +300,11 @@
 
             return output.ToString();
         } // parseTextLine
-        public List<DisplayLine> PrepLinesForDisplay(ListerOptions listerOptions)
+        public DisplayLines PrepLinesForDisplay(ListerOptions listerOptions)
         {
-            /*if (CurrentListing.Lines.Count > 0)
-            {
-                // Clear indents set by previous runs
-                foreach(ProgramLine line in CurrentListing.Lines)
-                {
-                    line.IndentLevel = 0;
-                    line.fstate.Indent = 0;
-                    line.fstate.MultiLineIfDepth = 0;
-                    line.fstate.PendingIndent = 0;
-                }
-            }*/
-
-            // clone listing
-            var tempListing = new Listing(CurrentListing.Lines
-                .Select(line => new ProgramLine(line))
-                .ToList());
-
-            DisplayLines = BasLister.PrepLinesForDisplay(tempListing, listerOptions, CurrentProgInfo);
-            return DisplayLines;
+            var LinesForDisplay = BasLister.PrepLinesForDisplay(CurrentListing, listerOptions, CurrentProgInfo);
+            _LinesForDisplay = LinesForDisplay;
+            return LinesForDisplay; // could return void
         }
         public static bool PrintOneLine(ProgramLine progline, ref int linesprinted)
         {
