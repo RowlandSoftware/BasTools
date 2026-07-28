@@ -94,6 +94,7 @@
         }
         internal bool NotBasicV
         {
+            get => _notBasicV;
             set => _notBasicV = value;
         }
         public void SetColumnWidth(int width)
@@ -227,7 +228,7 @@
             try
             {
                 Listing? formattedListing = null;
-                if (engine.LoadAndFormatFile(filename, formatOptions, progInfo))
+                if (engine.LoadAndFormatFile(filename, formatOptions, progInfo, switches.NotBasicV))
                 {
                     formattedListing = engine.CurrentListing;
                     //Console.WriteLine($"I got {formattedListing.Lines.Count} lines");

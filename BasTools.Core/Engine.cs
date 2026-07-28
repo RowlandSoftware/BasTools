@@ -34,11 +34,11 @@
         public bool Analyzed { get; private set; } = false;
 
         // The public 'pipeline' for BasList
-        public bool LoadAndFormatFile(string filename, FormattingOptions formatOptions, ProgInfo progInfo)
+        public bool LoadAndFormatFile(string filename, FormattingOptions formatOptions, ProgInfo progInfo, bool NotBasicV)
         {
             Listing listing = new(new List<ProgramLine>());
 
-            if (ProcessRawProgram(filename, listing, progInfo))  // load, detokenise and tag
+            if (ProcessRawProgram(filename, listing, progInfo, NotBasicV))  // load, detokenise and tag
             {
                 //Console.WriteLine($"ProcessRawProgram returned true");
                 if (FormatProgram(listing, formatOptions, progInfo))
@@ -106,7 +106,7 @@
             // Second pass - detokenise and tag
             ParserState parserState = new();
             ProgInfo progInfo = new(Z80, false, "NA");
-            ProcessLineBody(parserState, ProgLine.TokenisedLine, ProgLine, progInfo);
+            ProcessLineBody(parserState, ProgLine.TokenisedLine, ProgLine, progInfo, false);
 
             //Console.WriteLine(ProgLine.TaggedLine);
 

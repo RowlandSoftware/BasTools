@@ -167,7 +167,7 @@ namespace BasAnalysis.CLI
                     FlgIndent = true
                 };
 
-                if (engine.LoadAndFormatFile(filename, formatOptions, BAprogInfo))
+                if (engine.LoadAndFormatFile(filename, formatOptions, BAprogInfo, false))
                 {
                     prompt = "BasAnalysis " + Path.GetFileName(filename) + " >";
 

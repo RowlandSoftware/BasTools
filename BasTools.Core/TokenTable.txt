@@ -84,9 +84,9 @@ RIGHT$(	194	Function
 STR$	195	Function
 STRING$(	196	Function
 EOF	197	Function
-	198	Other
-	199	Other
-LOAD	200	Command
+AUTO	198	Other
+DELETE	199	Other
+LOAD	200	Other
 WHEN	201	Flow
 OF	202	Other
 ENDCASE	203	Flow

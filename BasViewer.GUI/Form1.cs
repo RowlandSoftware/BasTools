@@ -253,13 +253,13 @@ namespace BasViewer.GUI
 
             return dlg.ShowDialog() == DialogResult.OK ? dlg.FileName : null;
         }
-        internal bool loadBasicOrText(string filename, BasToolsEngine engine, FormattingOptions formatOptions, ProgInfo progInfo)
+        internal bool loadBasicOrText(string filename, BasToolsEngine engine, FormattingOptions formatOptions, ProgInfo progInfo, bool NotBasicV)
         {
             formatOptions.SplitLines = false;
             bool IsTextNotBasic = false;
             try
             {
-                if (!engine.LoadAndFormatFile(filename, formatOptions, progInfo))
+                if (!engine.LoadAndFormatFile(filename, formatOptions, progInfo, NotBasicV))
                 {
                     IsTextNotBasic = true;
                     engine.LoadAndFormatTextFile(filename, formatOptions, progInfo);
@@ -443,7 +443,7 @@ namespace BasViewer.GUI
         {
             progInfo.Filename = filename;
             
-            _textFile = loadBasicOrText(filename, engine, _formatOptions, progInfo);
+            _textFile = loadBasicOrText(filename, engine, _formatOptions, progInfo, false);
             
             if (engine.CurrentListing != null)
                 _loaded = true;
@@ -681,6 +681,8 @@ namespace BasViewer.GUI
                 if (!MatchesKind(sym, opts))
                     continue;
 
+                bool IsArray = sym.Name.EndsWith("()");
+
                 // For 'contains' text search
                 StringComparison matchCase;
                 if (opts.match_case)
@@ -701,7 +703,7 @@ namespace BasViewer.GUI
                     if (found)
                     {
                         //MessageBox.Show("Matched!");
-                        getMatches(sym, matches, splitlines ? CurrentDisplayLines.LinesWithSplitLines : CurrentDisplayLines.LinesNotSplit);
+                        getMatches(sym, matches, splitlines ? CurrentDisplayLines.LinesWithSplitLines : CurrentDisplayLines.LinesNotSplit, IsArray);
                     }
                 }
             }
@@ -709,7 +711,7 @@ namespace BasViewer.GUI
 
             ApplySearchResults(term);
         }
-        public static void getMatches(SymbolInfo sym, List<SearchMatch> matches, IReadOnlyList<DisplayLine> displayLines)
+        public static void getMatches(SymbolInfo sym, List<SearchMatch> matches, IReadOnlyList<DisplayLine> displayLines, bool IsArray)
         {
             string name = sym.Name;
             int nameLength = name.Length;
@@ -751,7 +753,7 @@ namespace BasViewer.GUI
                         if (tok.tag != null)
                         {
                             idx++;
-                            if (tok.value == name)
+                            if (tok.value == name && (!IsArray || tok.tag == SemanticTags.Array)) // TODO Check tags really match type looking for - Kind loses distinctions
                             {
                                 // skip if previously found
                                 if (seen.Contains((line.Id, idx)))

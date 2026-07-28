@@ -68,12 +68,12 @@ namespace BasTools.Core
         {
             return doubles.Contains(tok1);
         }
-        internal bool ProcessRawProgram(string fn, Listing listing, ProgInfo progInfo)
+        internal bool ProcessRawProgram(string fn, Listing listing, ProgInfo progInfo, bool NotBasicV)
         {
             ParserState State = new();
 
             // *********** Load File **************
-
+            #region loadfile
             try
             {
                 LoadFile(fn, State);
@@ -103,6 +103,7 @@ namespace BasTools.Core
                     //throw new BasToolsException("\'" + fn + "\' is not a BASIC program");
                 }
             }
+            #endregion
             progInfo.Z80 = State.Z80;
             //Console.WriteLine($"Format {progInfo.BasicDialect} detected");
 
@@ -115,7 +116,7 @@ namespace BasTools.Core
 
                 // Line contents
 
-                ProcessLineBody(State, thisline.TokenisedLine, thisline, progInfo);
+                ProcessLineBody(State, thisline.TokenisedLine, thisline, progInfo, NotBasicV);
 
                 listing.Lines.Add(thisline);
 
@@ -191,15 +192,15 @@ namespace BasTools.Core
                 yield return new LineRecord(lineNumber, slice);
             }
         }
-        internal void ProcessLineBody(ParserState parserState, byte[] tokenisedLine, ProgramLine returnObject, ProgInfo progInfo)
+        internal void ProcessLineBody(ParserState parserState, byte[] tokenisedLine, ProgramLine returnObject, ProgInfo progInfo, bool NotBasicV)
         {
-            firstPass(parserState, tokenisedLine, returnObject, progInfo);
+            firstPass(parserState, tokenisedLine, returnObject, progInfo, NotBasicV);
 
             secondPass(returnObject); // for 'implied THEN'
 
             thirdPass(returnObject);  // detect = as Comparison Operator for assignment/reference in BasAnalysis
         }
-        private void firstPass(ParserState parserState, byte[] tokenisedLine, ProgramLine returnObject, ProgInfo progInfo)
+        private void firstPass(ParserState parserState, byte[] tokenisedLine, ProgramLine returnObject, ProgInfo progInfo, bool NotBasicV)
         {
             string plainline = string.Empty;
             string linenospaces = string.Empty;
@@ -372,7 +373,7 @@ namespace BasTools.Core
                             if (possibleMnemonic != string.Empty)
                             {
                                 bool isMnemonic;
-                                if (progInfo.BasicV)
+                                if (progInfo.BasicV && !NotBasicV)
                                 {
                                     isMnemonic = ArmMnemonics.Contains(possibleMnemonic.ToUpperInvariant());
                                 }
@@ -397,7 +398,7 @@ namespace BasTools.Core
                                     prevbyte = (byte)plainline[^1];
                                     continue;
                                 }
-                                if (progInfo.BasicV)
+                                if (progInfo.BasicV && !NotBasicV)
                                 {
                                     // ARM registers: Detect tokens like R0, R12, SP, LR, PC
                                     char uchar = char.ToUpperInvariant(curchar);
@@ -615,7 +616,7 @@ namespace BasTools.Core
                 else
                 // 4. Now deal with tokenised keywords
                 {
-                    string keyword = getKeywordOrLineNumber(tokenisedLine, curbyte, ref i, ref nxtchar, progInfo, parserState);
+                    string keyword = getKeywordOrLineNumber(tokenisedLine, curbyte, ref i, ref nxtchar, progInfo, parserState, NotBasicV);
 
                     if (keyword == "THEN" || keyword == "ELSE")
                         startOfStatement = true;
@@ -927,16 +928,20 @@ namespace BasTools.Core
 
             return (-1, (null, null));
         }
-        private string getKeywordOrLineNumber(byte[] tokenisedLine, byte curbyte, ref int ptr, ref char nxtchar, ProgInfo progInfo, ParserState s)
+        private string getKeywordOrLineNumber(byte[] tokenisedLine, byte curbyte, ref int ptr, ref char nxtchar, ProgInfo progInfo, ParserState s, bool NotBasicV)
         {
             try
             {
-                if (!s.Z80 && (curbyte > 197 && curbyte < 201))
+                if (!s.Z80 && !NotBasicV && (curbyte > 197 && curbyte < 201) && ptr < tokenisedLine.Length)
                 {
-                    progInfo.BasicV = true;
-                    int token = curbyte * 256 + tokenisedLine[++ptr];
-                    nxtchar = (ptr == tokenisedLine.Length - 1) ? '\0' : (char)tokenisedLine[ptr + 1];
-                    return Vtoken[token];
+                    int token = curbyte * 256 + tokenisedLine[ptr + 1];
+                    if (Vtoken.TryGetValue(token, out string kw))   // If not found in Vtoken, try as single token
+                    {
+                        ptr++;
+                        nxtchar = (ptr == tokenisedLine.Length - 1) ? '\0' : (char)tokenisedLine[ptr + 1];
+                        progInfo.BasicV = true;
+                        return kw;
+                    }                    
                 }
                 if (s.Z80) // RT Russell tokens that could not be included in token table (though overlap)
                 {
