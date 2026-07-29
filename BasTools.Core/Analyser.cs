@@ -326,14 +326,14 @@ namespace BasTools.Core
             SymbolReadOrWrite readwrite, SymbolContext context,
             string currentProcName, ProcedureType procedureType) // , SymbolInfo parentSymbolInfo
         {
-            if (tag == SemanticTags.StringLiteral && string.IsNullOrWhiteSpace(name))
+            if (tag == SemanticTags.StringLiteral && string.IsNullOrWhiteSpace(name)) // Ignore ""
                 return;
 
             SymbolKind kind = BasToolsEngine.InferKind(tag, name);
 
             if (!engine.Symbols.TryGetValue(kind + ":" + name, out var sym)) // If first sight, create SymbolInfo with key "<kind>:<name>"
             {
-                sym = new SymbolInfo { Name = name, Kind = kind };
+                sym = new SymbolInfo { Name = name, Kind = kind, OriginalTag = tag};
                 engine.Symbols.Add(kind + ":" + name, sym);
             }
 

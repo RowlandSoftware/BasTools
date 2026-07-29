@@ -52,7 +52,7 @@
     {
         public string Name { get; init; } = "";
         public SymbolKind Kind { get; init; }   // IntVar, RealVar, StringVar, PROC, FN, etc.
-
+        public string OriginalTag { get; init; }   // SemanticTag
         public int AssignedCount { get; set; }
         public int ReferencedCount { get; set; }
 
