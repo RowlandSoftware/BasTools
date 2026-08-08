@@ -15,18 +15,12 @@ namespace BasViewer.GUI
         public BasToolsEngine? Engine { get; set; }
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public Action<string, SearchOptions>? RunSearch { get; set; }
-        string[] tips;
-        int tipsIndex;
+        string tip = "Select category first, then choose the item";
+        bool firstshowing = true;
 
         public frmAdvancedSearch()
         {
             InitializeComponent();
-
-            tips = new string[] {
-                "Select category first, then choose the item",
-                "When a text file is loaded, search for variables with Quick Search"
-            };
-            tipsIndex = 0;
 
             chkFn.Tag = SymbolKind.Fn;
             chkProc.Tag = SymbolKind.Proc;
@@ -40,6 +34,17 @@ namespace BasViewer.GUI
         private void DoSearch()
         {
             bool textsearch = txtSearchString.Visible;
+            if (textsearch && string.IsNullOrEmpty(txtSearchString.Text))
+            {
+                SetMessage("Enter search terms or Cancel");
+                return;
+            }
+            if (!textsearch && cmbBoxAdvSearch.Items.Count == 0)
+            {
+                SetMessage("Select item to find or Cancel");
+                return;
+            }
+
             string searchTerm = textsearch ? txtSearchString.Text : cmbBoxAdvSearch.SelectedItem.ToString();
 
             SearchOptions opts = new();
@@ -64,11 +69,9 @@ namespace BasViewer.GUI
             // Hide the dialog (not close)
             this.Hide();
         }
-        public void SetVariableEnabled(bool IsTextFile)
+        public void SetFirstshowing()
         {
-            chkReal.Enabled = !IsTextFile;
-            chkInt.Enabled = !IsTextFile;
-            chkString.Enabled = !IsTextFile;
+            firstshowing = true;
         }
         public void SetMessage(string msg)
         {
@@ -78,14 +81,19 @@ namespace BasViewer.GUI
         public void SetTextFocus()
         {
             if (txtSearchString.Visible)
-                return;
-
-            this.cmbBoxAdvSearch.Focus();
-            if (tipsIndex == 1)
             {
-                if (chkReal.Enabled) tipsIndex = 0;
+                labTip.Visible = false;
+                labMessage.Text = "";
+                return;
             }
-            labMessage.Text = tips[(tipsIndex++) % 2];
+            if (!firstshowing)
+            {
+                labTip.Visible = false;
+                labMessage.Text = "";
+                return;
+            }
+
+            labMessage.Text = tip;
             labTip.Visible = true;
         }
         private void btnOK_Click(object sender, EventArgs e)
@@ -137,6 +145,8 @@ namespace BasViewer.GUI
                 chkWholeWords.Visible = true;
                 txtSearchString.Focus();
                 //txtSearchString.SelectAll();
+                firstshowing = true; // ?
+                labMessage.Text = "";
             }
             else
             {
@@ -149,6 +159,7 @@ namespace BasViewer.GUI
 
                 FillCombobox(kind, Engine.Symbols);
 
+                firstshowing = false;
                 SetTextFocus();
             }
         }
@@ -176,6 +187,7 @@ namespace BasViewer.GUI
             chkRemContains.Checked = false;
             chkLiteralString.Checked = false;
             chkStringContains.Checked = false;
+            SetFirstshowing();
         }
 
         private void cmbBoxAdvSearch_Click(object sender, EventArgs e)

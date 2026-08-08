@@ -262,7 +262,7 @@ namespace BasViewer.GUI
                 if (!engine.LoadAndFormatFile(filename, formatOptions, progInfo, NotBasicV))
                 {
                     IsTextNotBasic = true;
-                    engine.LoadAndFormatTextFile(filename, formatOptions, progInfo);
+                    engine.LoadAndFormatTextFile(filename, progInfo);
                 }
             }
             catch (BasToolsException ex)
@@ -274,77 +274,6 @@ namespace BasViewer.GUI
 
             return IsTextNotBasic;
         }
-        private void TextToHtml(BasToolsEngine engine)
-        {
-            if (engine.CurrentListing == null) return;
-
-            _loaded = true;
-            combProcFnFinder.Items.Clear();
-
-            bool pretty = toolStripBtnPrettyprint.Checked;
-
-            string htmlHeader = "<html><head>" + Themes.GetCss(comboBoxTheme.Text, pretty) + _script + "</head>" + Environment.NewLine + "<body><table>" + Environment.NewLine;
-
-            StringBuilder htmlDoc = new StringBuilder(htmlHeader);
-            StringBuilder lineBody = new();
-
-            bool IsDef = false;
-            bool IsInDef = false;
-            string id = string.Empty;
-            foreach (var line in engine.CurrentListing.Lines)
-            {
-                IsDef = line.IsDef;
-
-                lineBody.Clear();
-                foreach (Token tok in BasToolsEngine.WalkTagged(line.TaggedLine))
-                {
-                    if (tok.tag == null)
-                        lineBody.Append(tok.value);
-                    else
-                    {
-                        if (IsDef && (tok.tag == SemanticTags.FunctionName || tok.tag == SemanticTags.ProcName))
-                        {
-                            if (tok.tag == SemanticTags.ProcName)
-                                id = "proc_" + tok.value;
-                            else
-                                id = "fn_" + tok.value;
-
-                            combProcFnFinder.Items.Add(line.FormattedPlain);
-                        }
-                        // convert tags to HTML spans
-                        string tag = tok.tag.Substring(2, tok.tag.Length - 3); // peel off {= ... }
-                        lineBody.Append($"<span class=\"{tag}\">");
-                        lineBody.Append(tok.value);
-                        lineBody.Append("</span>");
-                    }
-                }
-                int totindent = 0;
-
-                if (IsDef)
-                    htmlDoc.Append($"<tr id={id} class=\"fold-header\" onclick=\"toggleFold('{id}')\"><td class=\"fold-marker\"><span id=\"arrow_{id}\" class=\"arrow-open\">▼</span></td><td id = \"line_{line.LineNumber}_0\" class = \"line-number\">{line.FormattedLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
-                else if (IsInDef)
-                    htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td id = \"line_{line.LineNumber}_0\" class = \"line-number\">{line.FormattedLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
-                else
-                    htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td id = \"line_{line.LineNumber}_0\" class = \"line-number\">{line.FormattedLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
-               
-                if (IsInDef && !line.IsInDef)
-                    IsInDef = false;
-
-                if (IsDef)
-                {
-                    IsDef = false;
-                    IsInDef = true;
-                }
-            }
-            htmlDoc.Append(Environment.NewLine + _htmlClose);
-
-            statusLeft.Text = $"{progInfo.ProgName}: {progInfo.NumberOfLines} lines";
-            statusRight.Text = "Text file";
-            if (combProcFnFinder.Items.Count > 0)
-                combProcFnFinder.SelectedIndex = 0;
-            _htmlDoc = htmlDoc.ToString();          // keep copy
-            webView2.NavigateToString(_htmlDoc);
-        }
         private void GetBasicFileLines(BasToolsEngine engine)
         {
             if (engine.CurrentListing == null) return;
@@ -355,7 +284,7 @@ namespace BasViewer.GUI
             _loaded = true;
             combProcFnFinder.Items.Clear();
 
-            bool splitLines = toolStripBtnSplitlines.Checked;            
+            bool splitLines = toolStripBtnSplitlines.Checked;
 
             ListerOptions listerOptions = new ListerOptions(true, false, splitLines, true); //bool indent, bool indentDefs, bool splitLines not used, bool pretty
             if (engine._LinesForDisplay == null || engine._LinesForDisplay.LinesNotSplit.Count == 0)
@@ -419,7 +348,7 @@ namespace BasViewer.GUI
                     htmlDoc.Append($"<tr class=\"fold-body {id}\"><td class=\"fold-marker\"></td><td id = \"line_{line.Id}\" class = \"line-number\">{line.sLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
                 else
                     htmlDoc.Append($"<tr><td class=\"fold-marker\"></td><td id = \"line_{line.Id}\" class = \"line-number\">{line.sLineNumber}</td><td class=\"code\" style=\"padding-left:{totindent.ToString()}ch\">{lineBody.ToString()}</td></tr>" + Environment.NewLine);
-               
+
                 if (IsInDef && !line.IsInDef)
                     IsInDef = false;
 
@@ -431,20 +360,15 @@ namespace BasViewer.GUI
             }
             htmlDoc.Append(Environment.NewLine + _htmlClose);
 
-            statusLeft.Text = $"{progInfo.ProgName}: {progInfo.NumberOfLines} lines";
-            statusRight.Text = $"{progInfo.BasicDialect}";
-            if (combProcFnFinder.Items.Count > 0)
-                combProcFnFinder.SelectedIndex = 0;
-
             _htmlDoc = htmlHeader + htmlDoc.ToString();          // keep copy
             webView2.NavigateToString(_htmlDoc);
         }
         private void LoadFile(string filename)
         {
             progInfo.Filename = filename;
-            
+
             _textFile = loadBasicOrText(filename, engine, _formatOptions, progInfo, false);
-            
+
             if (engine.CurrentListing != null)
                 _loaded = true;
             //else
@@ -453,13 +377,16 @@ namespace BasViewer.GUI
             webView2.Visible = true;
             webView2.Enabled = true;
 
-            if (!_textFile)
-            {
-                GetBasicFileLines(engine);
-                BasicToHtml(engine);
-            }
+            GetBasicFileLines(engine);
+            BasicToHtml(engine);
+
+            statusLeft.Text = $"{progInfo.ProgName}: {progInfo.NumberOfLines} lines";
+            if (_textFile)
+                statusRight.Text = "Text file";
             else
-                TextToHtml(engine);
+                statusRight.Text = $"{progInfo.BasicDialect}";
+            if (combProcFnFinder.Items.Count > 0)
+                combProcFnFinder.SelectedIndex = 0;
         }
         private async void Reload(BasToolsEngine engine)
         {
@@ -476,13 +403,7 @@ namespace BasViewer.GUI
             var firstVisibleIdJson = await webView2.ExecuteScriptAsync("window.search.getFirstVisibleLineId();");
             string firstVisibleId = firstVisibleIdJson?.Trim('"');  // JS string -> C#
 
-            if (!_textFile)
-            {
-                //GetBasicFileLines(engine);
-                BasicToHtml(engine);
-            }
-            else
-                TextToHtml(engine); // TODO
+            BasicToHtml(engine);
 
             //await webView2.ExecuteScriptAsync($"document.scrollingElement.scrollTop = {savedScroll};");
             webView2.NavigationCompleted += async (_, __) =>
@@ -603,19 +524,12 @@ namespace BasViewer.GUI
             if (panelSearchNav.Visible)
                 panelSearchNav.Visible = false;
 
-            //await webView2.CoreWebView2.ExecuteScriptAsync("window.search.clear();");
-
-            /*var scrollY = await webView2.ExecuteScriptAsync("document.scrollingElement.scrollTop");
-            bool v = int.TryParse(scrollY, out int savedScroll);
-            if (!v) savedScroll = 0;*/
+            // The only way to restore the DOM structure is to reload the HTMLdoc
 
             var firstVisibleIdJson = await webView2.ExecuteScriptAsync("window.search.getFirstVisibleLineId();");
             string firstVisibleId = firstVisibleIdJson?.Trim('"');  // JS string -> C#
 
             webView2.NavigateToString(_htmlDoc);
-
-            //await webView2.CoreWebView2.ExecuteScriptAsync(_script);
-            //await webView2.ExecuteScriptAsync($"document.scrollingElement.scrollTop = {savedScroll};");
 
             // Rebuild JS + restore scroll AFTER navigation completes
             webView2.NavigationCompleted += async (_, __) =>
@@ -624,15 +538,14 @@ namespace BasViewer.GUI
 
                 if (!string.IsNullOrEmpty(firstVisibleId))
                 {
-                    string js = $@"
-            (function() {{
+                    string js = $@"(function()
+                {{
                 var el = document.getElementById('{firstVisibleId}');
                 if (el) el.scrollIntoView({{ block: 'start' }});
-            }})();";
+                }})();";
                     await webView2.CoreWebView2.ExecuteScriptAsync(js);
                 }
             };
-
         }
         public async void DoGotoLine(string text)
         {
@@ -812,10 +725,10 @@ namespace BasViewer.GUI
                             if (sym.Kind == BasToolsEngine.InferKind(tok.tag, tok.value))
                             {
                                 //foreach (int offset in FindAllMatches(sym.Name, term, opts.match_case))
-                                    foreach (int offset in FindAllMatches(tok.value, term, opts.whole_word, opts.match_case))
-                                    {
-                                        // skip if previously found TODO
-                                        if (seen.Contains((line.Id, idx, offset)))
+                                foreach (int offset in FindAllMatches(tok.value, term, opts.whole_word, opts.match_case))
+                                {
+                                    // skip if previously found TODO
+                                    if (seen.Contains((line.Id, idx, offset)))
                                         continue;
 
                                     matches.Add(new SearchMatch
@@ -835,7 +748,7 @@ namespace BasViewer.GUI
                         }
                     }
                 }
-                
+
             }
         }
         public static IEnumerable<int> FindAllMatches(string text, string term, bool wholeWord, bool matchCase)
@@ -1066,13 +979,9 @@ namespace BasViewer.GUI
         }
         private void ShowAdvancedSearch()
         {
-            if (_textFile)
-            {
-                MessageBox.Show("Advanced Search is not currently compatible\nwith text files in this version.", "Sorry", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
-            }
             ClearSearchHighlights();
-            //advancedSearch.SetVariableEnabled(_textFile);
+
+            advancedSearch.SetFirstshowing();
             advancedSearch.Show();
             advancedSearch.BringToFront();
             advancedSearch.SetTextFocus();
@@ -1117,11 +1026,7 @@ namespace BasViewer.GUI
             if (toolbarWidth - totwidth > 100)
                 return toolbarWidth - totwidth - 15;
             else
-                return 100; // TODO Goes wrong if window too narrow
-        }
-        private static void Log(string message)
-        {
-            File.AppendAllText("search-debug.log", message + Environment.NewLine);
+                return 100;
         }
         private void toolStripBtnPrevMatch_MouseDown(object sender, MouseEventArgs e)
         {
@@ -1131,6 +1036,20 @@ namespace BasViewer.GUI
         private void toolStripBtnNextMatch_MouseDown(object sender, MouseEventArgs e)
         {
             QuickSearch(false);
+        }
+        private void WebToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            // open default web browser
+
+            CBrowserMethods.OpenURL("https://www.rowlandsoftware.com/BBC/BasTools/");
+        }
+        private void helpToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            CBrowserMethods.OpenURL("https://www.rowlandsoftware.com/BBC/BasTools/help.php?id=998");
+        }
+        private static void Log(string message)
+        {
+            File.AppendAllText("search-debug.log", message + Environment.NewLine);
         }
     }
 }

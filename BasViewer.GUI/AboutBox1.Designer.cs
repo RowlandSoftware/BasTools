@@ -35,6 +35,7 @@
             labelCopyright = new Label();
             labelCompanyName = new Label();
             textBoxDescription = new TextBox();
+            btnWebsite = new Button();
             okButton = new Button();
             tableLayoutPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)logoPictureBox).BeginInit();
@@ -51,18 +52,21 @@
             tableLayoutPanel.Controls.Add(labelCopyright, 1, 2);
             tableLayoutPanel.Controls.Add(labelCompanyName, 1, 3);
             tableLayoutPanel.Controls.Add(textBoxDescription, 1, 4);
-            tableLayoutPanel.Controls.Add(okButton, 1, 5);
+            tableLayoutPanel.Controls.Add(btnWebsite, 1, 5);
+            tableLayoutPanel.Controls.Add(okButton, 1, 6);
             tableLayoutPanel.Dock = DockStyle.Fill;
             tableLayoutPanel.Location = new Point(20, 22);
             tableLayoutPanel.Margin = new Padding(6, 7, 6, 7);
             tableLayoutPanel.Name = "tableLayoutPanel";
-            tableLayoutPanel.RowCount = 6;
-            tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 10F));
-            tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 10F));
-            tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 10F));
-            tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 10F));
-            tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
-            tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 10F));
+            tableLayoutPanel.RowCount = 8;
+            tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 9.090909F));
+            tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 9.090909F));
+            tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 9.090909F));
+            tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 9.090909F));
+            tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 45.4545441F));
+            tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 9.090909F));
+            tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 9.090909F));
+            tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
             tableLayoutPanel.Size = new Size(903, 653);
             tableLayoutPanel.TabIndex = 0;
             // 
@@ -94,7 +98,7 @@
             // labelVersion
             // 
             labelVersion.Dock = DockStyle.Fill;
-            labelVersion.Location = new Point(310, 65);
+            labelVersion.Location = new Point(310, 57);
             labelVersion.Margin = new Padding(13, 0, 6, 0);
             labelVersion.MaximumSize = new Size(0, 42);
             labelVersion.Name = "labelVersion";
@@ -106,7 +110,7 @@
             // labelCopyright
             // 
             labelCopyright.Dock = DockStyle.Fill;
-            labelCopyright.Location = new Point(310, 130);
+            labelCopyright.Location = new Point(310, 114);
             labelCopyright.Margin = new Padding(13, 0, 6, 0);
             labelCopyright.MaximumSize = new Size(0, 42);
             labelCopyright.Name = "labelCopyright";
@@ -119,7 +123,7 @@
             // 
             labelCompanyName.Dock = DockStyle.Fill;
             labelCompanyName.Font = new Font("Segoe UI", 10.875F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            labelCompanyName.Location = new Point(310, 195);
+            labelCompanyName.Location = new Point(310, 171);
             labelCompanyName.Margin = new Padding(13, 0, 6, 0);
             labelCompanyName.MaximumSize = new Size(0, 42);
             labelCompanyName.Name = "labelCompanyName";
@@ -132,25 +136,37 @@
             // 
             textBoxDescription.Dock = DockStyle.Fill;
             textBoxDescription.Font = new Font("Segoe UI", 10.125F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            textBoxDescription.Location = new Point(310, 267);
+            textBoxDescription.Location = new Point(310, 235);
             textBoxDescription.Margin = new Padding(13, 7, 6, 7);
             textBoxDescription.Multiline = true;
             textBoxDescription.Name = "textBoxDescription";
             textBoxDescription.ReadOnly = true;
             textBoxDescription.ScrollBars = ScrollBars.Both;
-            textBoxDescription.Size = new Size(587, 312);
+            textBoxDescription.Size = new Size(587, 273);
             textBoxDescription.TabIndex = 23;
             textBoxDescription.TabStop = false;
             textBoxDescription.Text = "Description";
+            // 
+            // btnWebsite
+            // 
+            btnWebsite.DialogResult = DialogResult.Cancel;
+            btnWebsite.Dock = DockStyle.Fill;
+            btnWebsite.Location = new Point(303, 522);
+            btnWebsite.Margin = new Padding(6, 7, 6, 7);
+            btnWebsite.Name = "btnWebsite";
+            btnWebsite.Size = new Size(594, 43);
+            btnWebsite.TabIndex = 25;
+            btnWebsite.Text = "www.rowlandsoftware.com";
+            btnWebsite.Click += btnWebsite_Click;
             // 
             // okButton
             // 
             okButton.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             okButton.DialogResult = DialogResult.Cancel;
-            okButton.Location = new Point(735, 593);
+            okButton.Location = new Point(735, 579);
             okButton.Margin = new Padding(6, 7, 6, 7);
             okButton.Name = "okButton";
-            okButton.Size = new Size(162, 53);
+            okButton.Size = new Size(162, 43);
             okButton.TabIndex = 24;
             okButton.Text = "&OK";
             // 
@@ -188,5 +204,6 @@
         private System.Windows.Forms.Label labelCompanyName;
         private System.Windows.Forms.TextBox textBoxDescription;
         private System.Windows.Forms.Button okButton;
+        private Button btnWebsite;
     }
 }

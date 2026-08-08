@@ -1,4 +1,6 @@
-﻿using System;
+﻿using BasAnalysis.CLI;
+using BasTools.Core;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -8,7 +10,6 @@ using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
-using BasTools.Core;
 
 namespace Text2Basic.CLI
 {    
@@ -18,7 +19,7 @@ namespace Text2Basic.CLI
         {
             if (args.Length == 0)
             {
-                help();
+                help("");
                 return; // Environment.Exit(0);
             }
 
@@ -70,7 +71,8 @@ namespace Text2Basic.CLI
 
             if (switches.list || switches.blist)
             {
-                BasAnalysis.CLI.Utilities.List(engine, 0, 0xFEFF, 20, switches.blist); // TODO
+                Utilities.ListProg(engine, switches.listargs, switches.blist);
+                //BasAnalysis.CLI.Utilities.List(engine, 0, 0xFEFF, 20, switches.blist); // TODO
             }
             if (switches.save)
             {
@@ -101,9 +103,22 @@ namespace Text2Basic.CLI
                     if (arg2 == "V") { switches.basicV = true; recognised = true; }
                     if ("Z80".StartsWith(arg2)) { switches.Z80 = true; recognised = true; }
                     if ("NONUMBERS".StartsWith(arg2)) { switches.noNumbers = true; recognised = true; }
-                    if ("LIST".StartsWith(arg2)) { switches.list = true; recognised = true; }
-                    if ("BLIST".StartsWith(arg2)) { switches.blist = true; recognised = true; }
-                    if (arg2 == "?" || "HELP".StartsWith(arg2)) { help(); Environment.Exit(0); }
+                    if ("LIST".StartsWith(arg2)) {
+                        switches.list = true; recognised = true;
+                        switches.listargs = args[(Array.IndexOf(args, arg) + 1)..]; // dump remaining arguments into listargs
+                        break;
+                    }
+                    if ("BLIST".StartsWith(arg2)) {
+                        switches.blist = true; recognised = true;
+                        switches.listargs = args[(Array.IndexOf(args, arg) + 1)..]; // dump remaining arguments into listargs
+                        break;
+                    }
+                    if (arg2 == "?" || "HELP".StartsWith(arg2))
+                    {
+                        string[] helpargs = args[(Array.IndexOf(args, arg2) + 1)..]; // dump remaining arguments into helpargs
+                        if (helpargs.Length > 1) arg1 = helpargs[1];
+                        help(arg1); Environment.Exit(0);
+                    }
 
                     if (!recognised)
                     {
@@ -128,7 +143,7 @@ namespace Text2Basic.CLI
             if (switches.inputfile.Length == 0)
             {
                 Console.Error.WriteLine("Error: No input filename found");
-                help();
+                help("");
                 Environment.Exit(0);
             }
             if (switches.outputfile.Length == 0)
@@ -212,16 +227,58 @@ namespace Text2Basic.CLI
             }
             Console.WriteLine();
         }
-        static void help()
+        static void help(string arg)
         {
-            string vs = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion ?? "1.1.0"; // ?? = null coalescing operator. //requires ref to System.Windows.Forms
+            string vs = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion ?? "1.0.0"; // ?? = null coalescing operator. //requires ref to System.Windows.Forms
 
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine($"\nText2Basic vs {vs} for BasTools (C) Andrew Rowland 2022-26");
+            Console.WriteLine($"\nText2Basic vs {vs} for BasTools (C) Andrew Rowland 2026");
+
+            if (!string.IsNullOrEmpty(arg))
+            {
+                arg = arg.ToLower();
+                if (arg.StartsWith("/")) { arg = arg.Substring(1); }
+                if ("list".StartsWith(arg) || "blist".StartsWith(arg))
+                {
+                    Console.ForegroundColor = ConsoleColor.White;
+                    Console.WriteLine("  list          - Display entire program");
+                    Console.WriteLine("  list nn       - Display program line");
+                    Console.WriteLine("  list nn,      - Display program starting at line nn");
+                    Console.WriteLine("  list ,nn      - Display program up to line nn");
+                    Console.WriteLine("  list nn nn    - Display program lines (from to)");
+                    Console.WriteLine("  list {<name>} - Display PROC or FN (list)");
+                    Console.WriteLine("             e.g. List PROCinit FNinput PROCexit");
+                    Console.WriteLine("  Minimum abbreviation: l.\n");
+
+                    Console.WriteLine("  blist         - As List with syntax colouring");
+                    Console.WriteLine("  Minimum abbreviation: b.");
+                    return;
+                }
+                else if ("nonumbers".StartsWith(arg))
+                {
+                    Console.ForegroundColor = ConsoleColor.White;
+                    Console.WriteLine("  nonumbers - Do not number program lines (Z80 only)");
+                    return;
+                }
+                else if ("z80".StartsWith(arg))
+                {
+                    Console.ForegroundColor = ConsoleColor.White;
+                    Console.WriteLine("  Z80 - Output file should be saved in Z80 format");
+                    return;
+                }
+                else if (arg == "v")
+                {
+                    Console.ForegroundColor = ConsoleColor.White;
+                    Console.WriteLine("  V - Specifies that BASIC V keywords and assembler may be included. Default: off (Basic I-IV)");
+                    return;
+                }
+            }
+
+            Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine("Converts text file to tokenised BBC BASIC program file");
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine("\n    Text2Basic [/file=]filename [[/save=]filename] [/V] [/Z80] [/nonumbers] [/list] [/blist] [/test]");
-            Console.WriteLine("    Text2Basic [/? | /h]  Display help\n");
+            Console.WriteLine("    Text2Basic [/? | /help]  Display help\n");
             Console.WriteLine("      [/file=]filename");
             Console.WriteLine("                   BASIC program in plain text format to be tokenised.");
             Console.WriteLine("                   Filename to follow '=' without spaces. Quote if contains spaces.");
@@ -239,7 +296,8 @@ namespace Text2Basic.CLI
             Console.WriteLine("    /blist           Display program with PrettyPrint");
             Console.WriteLine("    /test            Invoke single line test harness for debug");
 
-            Console.WriteLine("\nOptions may be specified in any order and can be abbreviated.");
+            Console.WriteLine("\nOptions may be specified in any order, but /[b]list and its arguments must be last.");
+            Console.WriteLine("\nOptions may be abbreviated, e.g. /no /l");
             Console.WriteLine("Parameters containing spaces must be enclosed by double quotes.");
             Console.WriteLine("\nFor further help, see ReadMe.");
         }

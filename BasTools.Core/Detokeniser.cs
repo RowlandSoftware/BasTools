@@ -267,6 +267,7 @@ namespace BasTools.Core
                     tag: SemanticTags.HexNumber,
                     ref plainline, ref linenospaces, ref taggedline))
                     {
+                        startOfStatement = false; // NEW
                         continue;
                     }
                     // Binary (Basic V)
@@ -563,6 +564,7 @@ namespace BasTools.Core
                     }
 
                     taggedline += SemanticTags.Reset;
+                    startOfStatement = false; // NEW
                     continue;
                 }
                 #endregion
@@ -605,6 +607,7 @@ namespace BasTools.Core
                         {
                             string realTag = (nxtchar == '(') ? SemanticTags.Array : SemanticTags.Variable;
                             taggedline = taggedline.Replace(SemanticTags.PLACEHOLDER, realTag);
+                            startOfStatement = false; // NEW
                         }
                     }
                     // check for end of statement
@@ -620,7 +623,9 @@ namespace BasTools.Core
 
                     if (keyword == "THEN" || keyword == "ELSE")
                         startOfStatement = true;
-                    
+                    else
+                        startOfStatement = false; // NEW
+
                     if (keyword == "FN" || keyword == "PROC")
                         flgFnOrProc = true;
 

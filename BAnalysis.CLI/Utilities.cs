@@ -71,7 +71,7 @@ namespace BasAnalysis.CLI
                             else
                                 globalCount++;
                         }
-                        Console.WriteLine("  {0,-20}{1,10}{2,11} ", symInfo.Name, globalCount, localCount); // TODO
+                        Console.WriteLine("  {0,-20}{1,10}{2,11} ", symInfo.Name, globalCount, localCount); // TODO - ?? Colour if possible mismatch??
                     }
                 }
                 else // everything else
@@ -142,10 +142,10 @@ namespace BasAnalysis.CLI
 
         public static void banner()
         {
-            string vs = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion ?? "1.1.0"; // ?? = null coalescing operator. //requires ref to System.Windows.Forms
+            string vs = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion ?? "1.0.0"; // ?? = null coalescing operator. //requires ref to System.Windows.Forms
 
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine($"\nBasAnalysis vs {vs} for BasTools (C) Andrew Rowland 2022-26");
+            Console.WriteLine($"\nBasAnalysis vs {vs} for BasTools (C) Andrew Rowland 2026");
             Console.WriteLine("Detailed analysis of a BBC BASIC program\n");
             Console.ForegroundColor = ConsoleColor.White;
         }
@@ -278,6 +278,51 @@ namespace BasAnalysis.CLI
                 _ => name
             };
         }
+        public static void ListProg(BasToolsEngine engine, string[] arglist, bool pretty)
+        {
+            int fromline = 0;
+            int toline = 0xFEFF;
+            bool endsWithComma = false;
+
+            if (arglist.Length > 0)
+            {
+                endsWithComma = arglist[0].TrimEnd().EndsWith(',');
+                if (endsWithComma)
+                {
+                    arglist[0] = arglist[0].TrimEnd()[..^1];
+                }
+                bool startsWithComma = arglist[0].TrimStart().StartsWith(',');
+                if (startsWithComma)
+                {
+                    arglist[0] = arglist[0].TrimStart()[1..];
+                }
+
+                if (!int.TryParse(arglist[0], out fromline)) // If first argument not a number, list DEF
+                {
+                    Utilities.ListDef(engine, arglist, pretty);
+                    return;
+                }
+                else if (endsWithComma)
+                    toline = 0xFEFF;
+                else if (startsWithComma)
+                {
+                    toline = fromline;
+                    fromline = 0;
+                }
+                else
+                    toline = fromline; // so LIST nn displays just one line                
+            }
+            if (arglist.Length > 1)
+            {
+                if (!int.TryParse(arglist[1], out toline)) // If second argument not a number, ignore
+                {
+                    toline = fromline;
+                    if (endsWithComma) toline = 0xFEFF;
+                }
+            }
+            if (fromline > toline) { (fromline, toline) = (toline, fromline); }
+            Utilities.List(engine, fromline, toline, 0, pretty);
+        }
         public static void List(BasToolsEngine engine, int fromline, int toline, int totLineCount, bool pretty)
         {
             int linesprinted = 0;
@@ -326,6 +371,80 @@ namespace BasAnalysis.CLI
                 case ConsoleKey.Escape: return false;
             }
             return true;
+        }
+        public static void ListDef(BasToolsEngine engine, string[] arglist, bool pretty)
+        {
+            for (int i = 0; i < arglist.Length; i++)
+            {
+                if (!(arglist[i].StartsWith("FN", StringComparison.OrdinalIgnoreCase) || arglist[i].StartsWith("PROC", StringComparison.OrdinalIgnoreCase)))
+                {
+                    //tilities.help(new string[] { "list" }, false);
+                    Console.WriteLine("Syntax: List <FNname | PROCname> [<FNname | PROCname>] ...");
+                    Console.WriteLine("   e.g. List PROCinit FNinput PROCexit");
+                    return;
+                }
+
+                else
+                {
+                    if (arglist[i].StartsWith("FN", StringComparison.OrdinalIgnoreCase))
+                        arglist[i] = "FN" + arglist[i][2..];
+                    else if (arglist[i].StartsWith("PROC", StringComparison.OrdinalIgnoreCase))
+                        arglist[i] = "PROC" + arglist[i][4..];
+                }
+            }
+
+            int linesprinted = 0;
+            bool listme = false;
+
+            for (int i = 0; i < engine.CurrentListing.Lines.Count; i++)
+            {
+                ProgramLine progLine = engine.CurrentListing.Lines[i];
+
+                if (listme)
+                {
+                    if (pretty)
+                    {
+                        if (!BasToolsEngine.PrintOneLine(progLine, ref linesprinted)) break;
+                    }
+                    else
+                    {
+                        if (!Utilities.printLine(progLine, ref linesprinted)) break;
+                    }
+
+                    listme = progLine.IsInDef;
+                    if (!listme) Console.WriteLine("");
+                    continue;
+                }
+                if (!progLine.IsDef)
+                    continue;
+
+                string name = BasToolsEngine.getTagValueFromLine(progLine.TaggedLine, SemanticTags.FunctionName);
+                if (name != null)
+                {
+                    name = "FN" + name;
+                }
+                else
+                {
+                    name = BasToolsEngine.getTagValueFromLine(progLine.TaggedLine, SemanticTags.ProcName);
+                    if (name != null)
+                        name = "PROC" + name;
+                    else continue;
+                }
+                foreach (string arg in arglist)
+                {
+                    if (string.Equals(name, arg, StringComparison.Ordinal))
+                    {
+                        listme = true;
+                        Console.WriteLine("");
+                        // need to print out the DEF line
+                        if (pretty)
+                            BasToolsEngine.PrintOneLine(progLine, ref linesprinted);
+                        else
+                            Utilities.printLine(progLine, ref linesprinted);
+                        break;
+                    }
+                }
+            }
         }
         /********** General Utilities *********/
         public static bool checkLoaded(string caller, BasToolsEngine engine)

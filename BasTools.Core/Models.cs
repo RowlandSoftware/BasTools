@@ -405,6 +405,7 @@ namespace BasTools.Core
         public bool save = false;
         public bool list = false;
         public bool blist = false;
+        public string[] listargs;
         public string inputfile = "";
         public string outputfile = "";
     }

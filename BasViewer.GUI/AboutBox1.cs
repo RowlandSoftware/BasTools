@@ -99,5 +99,10 @@ namespace BasViewer.GUI
             }
         }
         #endregion
+
+        private void btnWebsite_Click(object sender, EventArgs e)
+        {
+            CBrowserMethods.OpenURL("https://www.rowlandsoftware.com/");
+        }
     }
 }

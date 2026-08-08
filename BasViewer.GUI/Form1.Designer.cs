@@ -34,10 +34,13 @@
             webView2 = new Microsoft.Web.WebView2.WinForms.WebView2();
             label1 = new Label();
             contextMenuStrip1 = new ContextMenuStrip(components);
+            helpToolStripMenuItem = new ToolStripMenuItem();
             dragFileToLoadToolStripMenuItem = new ToolStripMenuItem();
             gotoLineToolStripMenuItem = new ToolStripMenuItem();
             toolStripTextBoxGoto = new ToolStripTextBox();
             advancedSearchToolStripMenuItem = new ToolStripMenuItem();
+            toolStripSeparator4 = new ToolStripSeparator();
+            WebToolStripMenuItem = new ToolStripMenuItem();
             aboutToolStripMenuItem = new ToolStripMenuItem();
             topPanel = new Panel();
             toolStripLeft = new ToolStrip();
@@ -109,9 +112,18 @@
             // 
             contextMenuStrip1.Font = new Font("Segoe UI", 10.875F, FontStyle.Regular, GraphicsUnit.Point, 0);
             contextMenuStrip1.ImageScalingSize = new Size(32, 32);
-            contextMenuStrip1.Items.AddRange(new ToolStripItem[] { dragFileToLoadToolStripMenuItem, gotoLineToolStripMenuItem, advancedSearchToolStripMenuItem, aboutToolStripMenuItem });
+            contextMenuStrip1.Items.AddRange(new ToolStripItem[] { helpToolStripMenuItem, dragFileToLoadToolStripMenuItem, gotoLineToolStripMenuItem, advancedSearchToolStripMenuItem, toolStripSeparator4, WebToolStripMenuItem, aboutToolStripMenuItem });
             contextMenuStrip1.Name = "contextMenuStrip1";
-            contextMenuStrip1.Size = new Size(398, 188);
+            contextMenuStrip1.Size = new Size(398, 330);
+            // 
+            // helpToolStripMenuItem
+            // 
+            helpToolStripMenuItem.Name = "helpToolStripMenuItem";
+            helpToolStripMenuItem.ShortcutKeys = Keys.F1;
+            helpToolStripMenuItem.Size = new Size(397, 46);
+            helpToolStripMenuItem.Text = "Help";
+            helpToolStripMenuItem.ToolTipText = "On-line Help";
+            helpToolStripMenuItem.Click += helpToolStripMenuItem_Click;
             // 
             // dragFileToLoadToolStripMenuItem
             // 
@@ -144,11 +156,23 @@
             advancedSearchToolStripMenuItem.Text = "Advanced Search";
             advancedSearchToolStripMenuItem.Click += advancedSearchToolStripMenuItem_Click;
             // 
+            // toolStripSeparator4
+            // 
+            toolStripSeparator4.Name = "toolStripSeparator4";
+            toolStripSeparator4.Size = new Size(394, 6);
+            // 
+            // WebToolStripMenuItem
+            // 
+            WebToolStripMenuItem.Name = "WebToolStripMenuItem";
+            WebToolStripMenuItem.Size = new Size(397, 46);
+            WebToolStripMenuItem.Text = "Website";
+            WebToolStripMenuItem.Click += WebToolStripMenuItem_Click;
+            // 
             // aboutToolStripMenuItem
             // 
             aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
             aboutToolStripMenuItem.Size = new Size(397, 46);
-            aboutToolStripMenuItem.Text = "About ...";
+            aboutToolStripMenuItem.Text = "About . . .";
             aboutToolStripMenuItem.Click += aboutToolStripMenuItem_Click;
             // 
             // topPanel
@@ -407,5 +431,8 @@
         private ToolStripButton toolStripBtnNextMatch;
         private ToolStripSeparator toolStripSeparator3;
         private Button hiddenFocusCatcher;
+        private ToolStripMenuItem helpToolStripMenuItem;
+        private ToolStripSeparator toolStripSeparator4;
+        private ToolStripMenuItem WebToolStripMenuItem;
     }
 }
