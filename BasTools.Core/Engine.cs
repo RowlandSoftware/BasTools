@@ -63,6 +63,27 @@
             Listing listing = new(new List<ProgramLine>());
             try
             {
+                // determine file type (Acorn or Z80)
+                byte[] raw = File.ReadAllBytes(switches.inputfile);
+
+                if (raw.Length > 3)
+                {
+                    int ll = raw[3];
+                    if (raw[0] == 13 && raw[ll] == 13)
+                    {
+                        return false; // Acorn format tokenised file
+                    }
+                    else
+                    {
+                        ll = raw[0];
+                        if (raw[ll - 1] == 13)
+                        {
+                            return false; // Z80 tokenised file
+                            //throw new BasToolsException("\'" + fn + "\' is already a BASIC program");
+                        }
+                    }
+                }
+
                 string[] lines = Tokeniser.ReadLines(switches.inputfile);
                 TokeniserState State = new();
                 int FakeLineNum = 0;

@@ -66,7 +66,11 @@ namespace Text2Basic.CLI
             // Show message
             Console.Error.WriteLine("Processing, please wait...");
 
-            engine.LoadAndTokeniseFile(switches, progInfo);
+            if (!engine.LoadAndTokeniseFile(switches, progInfo))
+            {
+                Console.Error.WriteLine($"Not a text file.\n  {switches.inputfile} is already tokenised.");
+                return;
+            }
             Console.Error.WriteLine($"{engine.CurrentListing.Lines.Count} lines processed");
 
             if (switches.list || switches.blist)
@@ -248,6 +252,7 @@ namespace Text2Basic.CLI
                     Console.WriteLine("  list nn nn    - Display program lines (from to)");
                     Console.WriteLine("  list {<name>} - Display PROC or FN (list)");
                     Console.WriteLine("             e.g. List PROCinit FNinput PROCexit");
+                    Console.WriteLine("  'start' and 'end' may also be used after list");
                     Console.WriteLine("  Minimum abbreviation: l.\n");
 
                     Console.WriteLine("  blist         - As List with syntax colouring");

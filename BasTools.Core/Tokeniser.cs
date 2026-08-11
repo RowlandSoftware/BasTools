@@ -269,6 +269,30 @@ namespace BasTools.Core
 
                         var (kind, advanceBy, tokinfo) = TryKeyword(word, engine); // << We've got the 'word'. Is it a keyword or identifier?
 
+                        if (kind == MatchKind.None) // not a keyword unless TAB(, INKEY$, MID$( etc.
+                        {
+                            // Try extended keyword with suffixes $, $(
+                            int p2 = p;
+
+                            while (p2 < ln.Length && (ln[p2] == '$' || ln[p2] == '('))
+                                p2++;
+
+                            if (p2 > p) // suffix found
+                            {
+                                ReadOnlySpan<char> word2 = ln[start..p2];
+                                var (kind2, advanceBy2, tokinfo2) = TryKeyword(word2, engine);
+
+                                if (kind2 != MatchKind.None)
+                                {
+                                    // Extended keyword matched
+                                    kind = kind2;
+                                    advanceBy = advanceBy2;
+                                    tokinfo = tokinfo2;
+                                    p = start + advanceBy;
+                                }
+                            }
+                        }
+
                         if (kind == MatchKind.None) // not a keyword
                         {
                             // plain name

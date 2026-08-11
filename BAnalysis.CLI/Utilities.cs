@@ -180,12 +180,13 @@ namespace BasAnalysis.CLI
                         help(new string[] { "list" }, false);
                         break;
                     case "list":
-                        Console.WriteLine("list          - Display entire program");
+                        Console.WriteLine("list          - XXDisplay entire program");
                         Console.WriteLine("list nn       - Display program line");
                         Console.WriteLine("list nn,      - Display program starting at line nn");
                         Console.WriteLine("list ,nn      - Display program up to line nn");
                         Console.WriteLine("list nn nn    - Display program lines (from to)");
                         Console.WriteLine("list {<name>} - Display PROC or FN (list)");
+                        Console.WriteLine("'start' and 'end' may also be used after list");
                         Console.WriteLine("Minimum abbreviation: l.");
                         break;
                     case "preview":
@@ -280,12 +281,16 @@ namespace BasAnalysis.CLI
         }
         public static void ListProg(BasToolsEngine engine, string[] arglist, bool pretty)
         {
+            int linecount = engine.CurrentListing.Lines.Count; 
             int fromline = 0;
             int toline = 0xFEFF;
+            int start = engine.CurrentListing.Lines[0].LineNumber;
+            int end = engine.CurrentListing.Lines[linecount - 1].LineNumber;
             bool endsWithComma = false;
 
             if (arglist.Length > 0)
             {
+                // First param
                 endsWithComma = arglist[0].TrimEnd().EndsWith(',');
                 if (endsWithComma)
                 {
@@ -297,7 +302,16 @@ namespace BasAnalysis.CLI
                     arglist[0] = arglist[0].TrimStart()[1..];
                 }
 
-                if (!int.TryParse(arglist[0], out fromline)) // If first argument not a number, list DEF
+                if (arglist[0].ToLower(CultureInfo.InvariantCulture).Equals("start"))
+                {
+                    fromline = start;
+                    toline = start;
+                }
+                else if (arglist[0].ToLower(CultureInfo.InvariantCulture).Equals("end"))
+                {
+                    fromline = end;
+                }
+                else if (!int.TryParse(arglist[0], out fromline)) // If first argument not a number, list DEF
                 {
                     Utilities.ListDef(engine, arglist, pretty);
                     return;
@@ -314,12 +328,33 @@ namespace BasAnalysis.CLI
             }
             if (arglist.Length > 1)
             {
-                if (!int.TryParse(arglist[1], out toline)) // If second argument not a number, ignore
+                //    second param
+                bool startsWithComma = arglist[1].TrimStart().StartsWith(',');
+                if (startsWithComma)
+                {
+                    arglist[1] = arglist[1].TrimStart()[1..];
+                }
+                if (arglist[1].ToLower(CultureInfo.InvariantCulture).Equals("start"))
+                {
+                    toline = start;
+                }
+                else if (arglist[1].ToLower(CultureInfo.InvariantCulture).Equals("end"))
+                {
+                    toline = end;
+                }
+                else if (!int.TryParse(arglist[1], out toline)) // If second argument not a number, ignore
                 {
                     toline = fromline;
                     if (endsWithComma) toline = 0xFEFF;
                 }
             }
+            /* check for split param
+            bool split = false;
+            foreach (var arg in arglist)
+            {
+                if (arg.Trim().Equals("split", StringComparison.OrdinalIgnoreCase))
+                    split = true;
+            }*/
             if (fromline > toline) { (fromline, toline) = (toline, fromline); }
             Utilities.List(engine, fromline, toline, 0, pretty);
         }

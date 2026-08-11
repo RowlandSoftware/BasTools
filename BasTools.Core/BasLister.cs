@@ -177,13 +177,6 @@ namespace BasTools.Core
                                 ProgramLine line = new(progline);
                                 line.TaggedLine = taggedSection;
 
-                                /*line.IndentLevel = progline.IndentLevel;
-                                line.LineNumber = progline.LineNumber;
-                                line.InAsm = progline.InAsm;
-                                line.IsArm = progline.IsArm;
-                                line.IsDef = progline.IsDef;
-                                line.IsInDef = progline.IsInDef;*/
-
                                 sections.Lines.Add(line);
                             }
 
