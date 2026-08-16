@@ -8,10 +8,16 @@ namespace BasViewer.GUI
         [STAThread]
         static void Main(string[] args)
         {
-            // To customize application configuration such as set high DPI settings or default font,
-            // see https://aka.ms/applicationconfiguration.
-            ApplicationConfiguration.Initialize();
-            Application.Run(new Form1(args));
+            try
+            {
+                // To customize application configuration such as set high DPI settings or default font,
+                // see https://aka.ms/applicationconfiguration.
+                ApplicationConfiguration.Initialize();
+                Application.Run(new Form1(args));
+            }
+            catch (Exception ex) {
+                File.WriteAllText("startup_error.txt", ex.ToString());
+            }
         }
     }
 }

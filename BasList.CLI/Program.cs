@@ -7,8 +7,6 @@
     using System.Text.Json.Serialization;
     using static System.Runtime.InteropServices.JavaScript.JSType;
 
-    //using System.Windows.Forms
-
     //***************** CommandSwitches *****************
     public class CommandSwitches
     {
@@ -52,9 +50,14 @@
         internal bool FlgResetDefaults;
         // debug
         [JsonIgnore]
-        internal bool Debug;
+        internal bool Debug;       
         [JsonIgnore]
         internal bool FullDebug;
+        // saving
+        [JsonIgnore]
+        internal bool FlgTextSave;
+        [JsonIgnore]
+        internal string TextFilename;
         [JsonIgnore]
         internal bool FlgExportTagged;
         public CommandSwitches()
@@ -80,6 +83,8 @@
             FlgList = false;
             FlgPause = false;
             FlgDark = true;
+            FlgTextSave = false;
+            TextFilename = string.Empty;
             FlgSaveDefaults = false;
             FlgResetDefaults = false;
             FlgExportTagged = false;
@@ -164,6 +169,10 @@
             // debug
             opts.Debug = Debug;
             opts.FullDebug = FullDebug;
+
+            // saving
+            opts.FlgTextSave = FlgTextSave;
+            opts.TextFn = TextFilename; 
             opts.FlgExportTagged = FlgExportTagged;
 
             return opts;
@@ -244,9 +253,10 @@
         //**************** Get User Input *****************
         static void readCommandSwitches(string[] args, CommandSwitches switches,ref string filename)
         {
-            foreach (string arg in args)
+            for (int i = 0; i < args.Length; i++)
             {
                 bool recognised = false;
+                string arg = args[i];
                 if (arg.StartsWith('/') && arg.Length > 1)
                 {
                     string arg2 = arg.Substring(1).ToUpperInvariant(); // remove the /
@@ -260,6 +270,7 @@
                         arg3 = arg2.Substring(x + 1);
 
                         if ("FILE".StartsWith(arg1)) { filename = arg3; recognised = true; }
+                        if ("TEXTSAVE".StartsWith(arg1)) { switches.FlgTextSave = true; switches.TextFilename = arg3; recognised = true; }
                         if ("INDENT".StartsWith(arg1))
                         {
                             recognised = true;
@@ -287,9 +298,7 @@
                             if (int.TryParse(arg3, out int width))
                             {
                                 if (width >= -5 && width <= 20)
-                                {
                                     switches.SetColumnWidth(width);
-                                }
                                 else
                                 {
                                     Console.WriteLine($"Extra assembler column width {width} not between -5 and 20 inc.\n - Using default ({switches.ExtraColumnWidth})");
@@ -318,6 +327,7 @@
                     if ("NOFORMAT".StartsWith(arg2)) { switches.NoFormat = !flgNegative; recognised = true; }
                     if ("DARK".StartsWith(arg2)) { switches.FlgDark = !flgNegative; recognised = true; }
                     if ("LIGHT".StartsWith(arg2)) { switches.FlgDark = flgNegative; recognised = true; }
+                    if ("TEXTSAVE".StartsWith(arg2) && !recognised) { Console.WriteLine("Syntax: /textsave=<filename>"); recognised = true; }
                     if ("DEBUG".StartsWith(arg2)) { switches.Debug = true; recognised = true; }
                     if ("FULLDEBUG".StartsWith(arg2)) { switches.FullDebug = true; recognised = true; }
                     if ("SAVEDEFAULTS".StartsWith(arg2)) { switches.FlgSaveDefaults = true; recognised = true; }
@@ -459,7 +469,7 @@
 
         static void help()
         {
-            string vs = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion ?? "1.1.0"; // ?? = null coalescing operator. //requires ref to System.Windows.Forms
+            string vs = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion ?? "1.1.0"; // ?? = null coalescing operator.
 
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine($"\nBasList vs {vs} for BasTools (C) Andrew Rowland 2022-26");
@@ -493,6 +503,7 @@
             Console.WriteLine("      /cls             Clear console (terminal) before listing");
             Console.WriteLine("      /dark            Dark mode – black background (default)");
             Console.WriteLine("      /light           Light mode – white background");
+            Console.WriteLine("      /textsave=<filename> Save as formatted plain text");
             Console.WriteLine("      /savedefaults    Save current switches as defaults");
             Console.WriteLine("      /resetdefaults   Clear saved defaults back to application defaults");
             Console.WriteLine("      /debug           Display internal detokenised results for debug");

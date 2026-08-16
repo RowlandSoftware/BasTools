@@ -16,7 +16,7 @@
     <Description>Display BBC Basic programs
 * Supports Acorn, Z80 and text formats
 * Powerful search and analysis functions
-* Configurable display including syntax colouring and split apart lines</Description>
+* Configurable display including syntax colouring, indenting and split apart lines</Description>
     <PackageIcon>RS_lg.ico</PackageIcon>
   </PropertyGroup>
 
@@ -28,13 +28,13 @@
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3912.50" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\BasTools.Core\BasTools.Core.csproj">
-      <TreatAsUsed>true</TreatAsUsed>
-    </ProjectReference>
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\BasTools.Core\BasTools.Core.csproj">
+			<TreatAsUsed>true</TreatAsUsed>
+		</ProjectReference>
+	</ItemGroup>
 
-  <ItemGroup>
+	<ItemGroup>
     <Compile Update="Properties\Resources.Designer.cs">
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>

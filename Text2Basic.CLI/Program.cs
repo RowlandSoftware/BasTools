@@ -68,7 +68,7 @@ namespace Text2Basic.CLI
 
             if (!engine.LoadAndTokeniseFile(switches, progInfo))
             {
-                Console.Error.WriteLine($"Not a text file.\n  {switches.inputfile} is already tokenised.");
+                Console.Error.WriteLine($"\nError: Not a text file.\n  '{Path.GetFileNameWithoutExtension(switches.inputfile)}' is already tokenised.");
                 return;
             }
             Console.Error.WriteLine($"{engine.CurrentListing.Lines.Count} lines processed");
@@ -85,10 +85,11 @@ namespace Text2Basic.CLI
         }
         static void readCommandSwitches(string[] args, TokeniserCommandSwitches switches)
         {
-            foreach (string arg in args)
+            for (int i = 0; i < args.Length; i++)
             {
                 bool recognised = false;
-                if (arg.StartsWith('/') && arg.Length > 1)
+                string arg = args[i];
+                if ((arg.StartsWith('/') || arg.StartsWith('-')) && arg.Length > 1)
                 {
                     string arg2 = arg.Substring(1).ToUpperInvariant(); // remove the /
                     string arg1 = string.Empty;
@@ -117,9 +118,25 @@ namespace Text2Basic.CLI
                         switches.listargs = args[(Array.IndexOf(args, arg) + 1)..]; // dump remaining arguments into listargs
                         break;
                     }
+                    if ("SAVE".StartsWith(arg2))
+                    {
+                        arg3 = i < args.Length-1 ? args[i + 1] : string.Empty;
+                        if (arg3 != string.Empty && !(arg3.StartsWith('/') || arg3.StartsWith('-')))
+                        {
+                            switches.outputfile = arg3;
+                            recognised = true;
+                            switches.save = true;
+                            i++;
+                        }
+                        else
+                        {
+                            Console.WriteLine("\nError in Save\n  Syntax: /save=<filename>\n");
+                            recognised = true;
+                        }
+                    }
                     if (arg2 == "?" || "HELP".StartsWith(arg2))
                     {
-                        string[] helpargs = args[(Array.IndexOf(args, arg2) + 1)..]; // dump remaining arguments into helpargs
+                        string[] helpargs = args[(i + 1)..]; // dump remaining arguments into helpargs
                         if (helpargs.Length > 1) arg1 = helpargs[1];
                         help(arg1); Environment.Exit(0);
                     }
@@ -233,7 +250,7 @@ namespace Text2Basic.CLI
         }
         static void help(string arg)
         {
-            string vs = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion ?? "1.0.0"; // ?? = null coalescing operator. //requires ref to System.Windows.Forms
+            string vs = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion ?? "1.0.0"; // ?? = null coalescing operator
 
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine($"\nText2Basic vs {vs} for BasTools (C) Andrew Rowland 2026");

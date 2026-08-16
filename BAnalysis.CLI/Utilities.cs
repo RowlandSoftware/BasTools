@@ -142,7 +142,7 @@ namespace BasAnalysis.CLI
 
         public static void banner()
         {
-            string vs = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion ?? "1.0.0"; // ?? = null coalescing operator. //requires ref to System.Windows.Forms
+            string vs = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion ?? "1.0.0"; // ?? = null coalescing operator
 
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine($"\nBasAnalysis vs {vs} for BasTools (C) Andrew Rowland 2026");

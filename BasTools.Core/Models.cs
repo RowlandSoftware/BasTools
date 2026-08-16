@@ -324,6 +324,10 @@ namespace BasTools.Core
         // debug
         public bool Debug;
         public bool FullDebug;
+
+        // saving
+        public bool FlgTextSave;
+        public string TextFn;
         public bool FlgExportTagged;
         public ListerOptions()
         {

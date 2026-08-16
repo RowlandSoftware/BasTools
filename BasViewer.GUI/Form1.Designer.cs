@@ -114,7 +114,7 @@
             contextMenuStrip1.ImageScalingSize = new Size(32, 32);
             contextMenuStrip1.Items.AddRange(new ToolStripItem[] { helpToolStripMenuItem, dragFileToLoadToolStripMenuItem, gotoLineToolStripMenuItem, advancedSearchToolStripMenuItem, toolStripSeparator4, WebToolStripMenuItem, aboutToolStripMenuItem });
             contextMenuStrip1.Name = "contextMenuStrip1";
-            contextMenuStrip1.Size = new Size(398, 330);
+            contextMenuStrip1.Size = new Size(398, 286);
             // 
             // helpToolStripMenuItem
             // 
@@ -290,7 +290,7 @@
             toolStripTextBoxSearch.AutoSize = false;
             toolStripTextBoxSearch.Name = "toolStripTextBoxSearch";
             toolStripTextBoxSearch.Overflow = ToolStripItemOverflow.Never;
-            toolStripTextBoxSearch.Size = new Size(100, 54);
+            toolStripTextBoxSearch.Size = new Size(101, 54);
             toolStripTextBoxSearch.ToolTipText = "Quick Search";
             toolStripTextBoxSearch.KeyDown += toolStripTextBoxSearch_KeyDown;
             toolStripTextBoxSearch.KeyUp += toolStripTextBoxSearch_KeyDown;
