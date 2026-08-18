@@ -274,7 +274,7 @@ namespace BasTools.Core
         {
             List<DisplayLine> output_notsplit = new();
             List<DisplayLine> output_splitlines = new();
-            ListerState listerState = new(); // this sets initial conditions
+            ListerState listerState = new();    // set initial conditions
 
             string sIndent = string.Empty;
 

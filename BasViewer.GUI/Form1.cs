@@ -46,6 +46,8 @@ namespace BasViewer.GUI
         private string _htmlDoc;
         private string _script;
         private bool _loaded;
+        private bool _newload;
+        private string? _pendingScrollId;
         private bool _textFile;
         private readonly frmAdvancedSearch advancedSearch;
         private SearchNavControl searchNav;
@@ -294,7 +296,7 @@ namespace BasViewer.GUI
             }
             CurrentDisplayLines = engine._LinesForDisplay;
         }
-        private void BasicToHtml(BasToolsEngine engine)
+        private async void BasicToHtml(BasToolsEngine engine, string? firstVisibleId)
         {
             if (engine.CurrentListing == null) return;
 
@@ -323,7 +325,7 @@ namespace BasViewer.GUI
                 foreach (Token tok in BasToolsEngine.WalkTagged(line.LineBody))
                 {
                     if (tok.tag == null)
-                        lineBody.Append(tok.value);
+                        lineBody.Append(tok.value.Replace(" ", "&nbsp;")); // Necessary?
                     else
                     {
                         if (IsDef && (tok.tag == SemanticTags.FunctionName || tok.tag == SemanticTags.ProcName))
@@ -360,12 +362,17 @@ namespace BasViewer.GUI
                 }
             }
             htmlDoc.Append(Environment.NewLine + _htmlClose);
+            _htmlDoc = htmlHeader + htmlDoc.ToString();             // keep copy
 
-            _htmlDoc = htmlHeader + htmlDoc.ToString();          // keep copy
+            webView2.NavigationCompleted -= OnNavigationCompleted;  // ensure unsubscribed
+            _pendingScrollId = firstVisibleId;                      // may be null: then stay at top of doc
+            webView2.NavigationCompleted += OnNavigationCompleted;
+
             webView2.NavigateToString(_htmlDoc);
         }
-        private void LoadFile(string filename)
+        private async void LoadFile(string filename)
         {
+            _newload = true; // guard for combProcFnFinder.SelectedIndex
             progInfo.Filename = filename;
 
             _textFile = loadBasicOrText(filename, engine, _formatOptions, progInfo, false);
@@ -378,8 +385,10 @@ namespace BasViewer.GUI
             webView2.Visible = true;
             webView2.Enabled = true;
 
+            await webView2.CoreWebView2.ExecuteScriptAsync("history.scrollRestoration = 'manual';");
+
             GetBasicFileLines(engine);
-            BasicToHtml(engine);
+            BasicToHtml(engine, null);
 
             statusLeft.Text = $"{progInfo.ProgName}: {progInfo.NumberOfLines} lines";
             if (_textFile)
@@ -388,6 +397,8 @@ namespace BasViewer.GUI
                 statusRight.Text = $"{progInfo.BasicDialect}";
             if (combProcFnFinder.Items.Count > 0)
                 combProcFnFinder.SelectedIndex = 0;
+
+            _newload = false;
         }
         private async void Reload(BasToolsEngine engine)
         {
@@ -397,30 +408,24 @@ namespace BasViewer.GUI
             if (panelSearchNav.Visible)
                 panelSearchNav.Visible = false;
 
-            /*var scrollY = await webView2.ExecuteScriptAsync("document.scrollingElement.scrollTop");
-            bool v = int.TryParse(scrollY, out int savedScroll);
-            if (!v) savedScroll = 0;*/
-
             var firstVisibleIdJson = await webView2.ExecuteScriptAsync("window.search.getFirstVisibleLineId();");
-            string firstVisibleId = firstVisibleIdJson?.Trim('"');  // JS string -> C#
+            string? firstVisibleId = firstVisibleIdJson?.Trim('"');  // JS string -> C#
 
-            BasicToHtml(engine);
+            BasicToHtml(engine, firstVisibleId);
+        }
+        private async void OnNavigationCompleted(object sender, CoreWebView2NavigationCompletedEventArgs e)
+        {
+            await webView2.CoreWebView2.ExecuteScriptAsync(_script);
 
-            //await webView2.ExecuteScriptAsync($"document.scrollingElement.scrollTop = {savedScroll};");
-            webView2.NavigationCompleted += async (_, __) =>
+            if (!string.IsNullOrEmpty(_pendingScrollId))
             {
-                await webView2.CoreWebView2.ExecuteScriptAsync(_script);
-
-                if (!string.IsNullOrEmpty(firstVisibleId))
-                {
-                    string js = $@"
-            (function() {{
-                var el = document.getElementById('{firstVisibleId}');
-                if (el) el.scrollIntoView({{ block: 'start' }});
-            }})();";
-                    await webView2.CoreWebView2.ExecuteScriptAsync(js);
-                }
-            };
+                string js = $@"
+                (function() {{
+                    var el = document.getElementById('{_pendingScrollId}');
+                    if (el) el.scrollIntoView({{ block: 'start' }});
+                }})();";
+                await webView2.CoreWebView2.ExecuteScriptAsync(js);
+            }
         }
         private async void Form1_Shown(object? sender, EventArgs e)
         {
@@ -451,6 +456,8 @@ namespace BasViewer.GUI
         /**************** Search and Navigation ****************/
         private async void combProcFnFinder_SelectedIndexChanged(object sender, EventArgs e)
         {
+            if (_newload) return;
+
             string target = combProcFnFinder.Text;
 
             if (target.StartsWith("DEF"))
@@ -904,16 +911,18 @@ namespace BasViewer.GUI
                     if (_loaded) label1.Visible = false;
                     break;
                 case Keys.F:
-                    if (ctrlPressed)
+                    if (ctrlPressed && _loaded)
                     {
                         toolStripTextBoxSearch.Focus();
                         toolStripTextBoxSearch.SelectAll();
                     }
                     break;
                 case Keys.G:
-                    if (ctrlPressed)
+                    if (ctrlPressed && _loaded)
                     {
-                        gotoLineForm.Show();
+                        gotoLineForm.Visible = false;   // crashes without this
+                        gotoLineForm.StartPosition = FormStartPosition.CenterParent;
+                        gotoLineForm.Show(this);        // 'this' sets owner so CenterParent can work. Makes modal
                         gotoLineForm.FocusTextbox();
                     }
                     break;
@@ -926,7 +935,7 @@ namespace BasViewer.GUI
                     }
                     break;
                 case Keys.F2:
-                    ShowAdvancedSearch();
+                    if (_loaded) ShowAdvancedSearch();
                     break;
                 case Keys.F3:
                     if (_loaded && toolStripTextBoxSearch.Text.Trim().Length > 0)

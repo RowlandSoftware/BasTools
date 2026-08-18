@@ -290,7 +290,7 @@
                                 switches.FlgEmphDefs = true;
                             }
                         }
-                        if ("COLUMNS".StartsWith(arg1))
+                        if ("COLUMNS".StartsWith(arg1) || arg1 == "COLS")
                         {
                             switches.AssemblerColumns = true;
                             recognised = true;
@@ -303,6 +303,10 @@
                                 {
                                     Console.WriteLine($"Extra assembler column width {width} not between -5 and 20 inc.\n - Using default ({switches.ExtraColumnWidth})");
                                 }
+                            }
+                            else
+                            {
+                                Console.WriteLine($"'{arg3}' not recognised. Syntax: /columns=<extra width> (must be between -5 and 20 inc.))");
                             }
                         }
                     }
@@ -319,9 +323,8 @@
                     if ("PAUSE".StartsWith(arg2)) { switches.FlgPause = !flgNegative; recognised = true; }
                     if ("PRETTYPRINT".StartsWith(arg2)) { switches.Pretty = !flgNegative; recognised = true; }
                     if ("ALIGN".StartsWith(arg2)) { switches.Align = !flgNegative; recognised = true; }
-                    if ("COLUMNS".StartsWith(arg2)) { switches.AssemblerColumns = !flgNegative; recognised = true; }
-                    if ("CLS".StartsWith(arg2)) { switches.Clear = !flgNegative; recognised = true; }
-                    if ("CLEAR".StartsWith(arg2)) { switches.Clear = !flgNegative; recognised = true; }
+                    if ("COLUMNS".StartsWith(arg2) || arg2 == "COLS") { switches.AssemblerColumns = !flgNegative; recognised = true; }
+                    if ("CLS".StartsWith(arg2) || "CLEAR".StartsWith(arg2)) { switches.Clear = !flgNegative; recognised = true; }
                     if ("INDENT".StartsWith(arg2)) { switches.FlgIndent = !flgNegative; switches.FlgEmphDefs = !flgNegative; recognised = true; }
                     if ("NONUMBERS".StartsWith(arg2)) { switches.NoLineNumbers = !flgNegative; recognised = true; }
                     if ("NOFORMAT".StartsWith(arg2)) { switches.NoFormat = !flgNegative; recognised = true; }
@@ -480,7 +483,7 @@
             //Console.WriteLine("BasList [/file=]filename [(/dark | /light)]");
             Console.WriteLine("    BasList [/? | /h]  Display help\n");
             Console.WriteLine("    [/file=]filename  Specifies filename of tokenised BASIC program.");
-            Console.WriteLine("                      Filename to follow '=' without spaces. Quote if contains spaces.");
+            Console.WriteLine("                      Filename to follow '=' or ':' without spaces. Quote if contains spaces.");
             Console.WriteLine("                      '/file=' may be omitted if filename is first item");
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine("    OPTIONS");
@@ -503,7 +506,7 @@
             Console.WriteLine("      /cls             Clear console (terminal) before listing");
             Console.WriteLine("      /dark            Dark mode – black background (default)");
             Console.WriteLine("      /light           Light mode – white background");
-            Console.WriteLine("      /textsave=<filename> Save as formatted plain text");
+            Console.WriteLine("      /textsave=<filename>\n                       Save as formatted plain text");
             Console.WriteLine("      /savedefaults    Save current switches as defaults");
             Console.WriteLine("      /resetdefaults   Clear saved defaults back to application defaults");
             Console.WriteLine("      /debug           Display internal detokenised results for debug");

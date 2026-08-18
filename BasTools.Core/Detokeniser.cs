@@ -376,11 +376,13 @@ namespace BasTools.Core
                                 bool isMnemonic;
                                 if (progInfo.BasicV && !NotBasicV)
                                 {
-                                    isMnemonic = ArmMnemonics.Contains(possibleMnemonic.ToUpperInvariant());
+                                    isMnemonic = ArmMnemonics.Contains(possibleMnemonic.ToUpperInvariant()) ||
+                                        Regex.IsMatch(possibleMnemonic, "EQU[BDSW]", RegexOptions.IgnoreCase) ||
+                                        Regex.IsMatch(possibleMnemonic, "EQUF[DES]", RegexOptions.IgnoreCase);
                                 }
                                 else if (progInfo.Z80)
                                 {
-                                    isMnemonic = Z80Mnemonics.Contains(possibleMnemonic.ToUpperInvariant());
+                                    isMnemonic = Z80Mnemonics.Contains(possibleMnemonic.ToUpperInvariant()) || Regex.IsMatch(possibleMnemonic, "EQU[BDSWQ]", RegexOptions.IgnoreCase);
                                 }
                                 else
                                 {
