@@ -277,7 +277,7 @@ namespace BasTools.Core
             Bare = false;
             SplitLines = false;
             AssemblerColumns = false;
-            ExtraColumnWidth = 10;
+            ExtraColumnWidth = 0;
             FlgExportTagged = false;
         }
         public FormattingOptions(bool goodDefaults) : this()
@@ -369,8 +369,8 @@ namespace BasTools.Core
             NoLineNumbers = false;
 
             SplitLines = splitLines;
-            //AssemblerColumns = opt.AssemblerColumns;
-            //ColumnWidth = opt.ExtraColumnWidth;
+            AssemblerColumns = true;
+            ColumnWidth = 0;
             Pretty = pretty;
 
             FromLine = 0;

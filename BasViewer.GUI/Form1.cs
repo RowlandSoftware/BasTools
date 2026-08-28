@@ -54,7 +54,7 @@ namespace BasViewer.GUI
         private int currentMatchIndex;
         private List<SearchMatch> matches;
         private GoToLine gotoLineForm;
-        private DisplayLines CurrentDisplayLines;
+        private DisplayLines _CurrentDisplayLines;
 
         public Form1(string[] args)
         {
@@ -281,8 +281,8 @@ namespace BasViewer.GUI
         {
             if (engine.CurrentListing == null) return;
 
-            CurrentDisplayLines?.LinesWithSplitLines.Clear();
-            CurrentDisplayLines?.LinesNotSplit.Clear();
+            _CurrentDisplayLines?.LinesWithSplitLines.Clear();
+            _CurrentDisplayLines?.LinesNotSplit.Clear();
 
             _loaded = true;
             combProcFnFinder.Items.Clear();
@@ -294,7 +294,7 @@ namespace BasViewer.GUI
             {
                 engine.PrepLinesForDisplay(listerOptions);
             }
-            CurrentDisplayLines = engine._LinesForDisplay;
+            _CurrentDisplayLines = engine._LinesForDisplay;
         }
         private async void BasicToHtml(BasToolsEngine engine, string? firstVisibleId)
         {
@@ -305,9 +305,9 @@ namespace BasViewer.GUI
 
             List<DisplayLine> lines;
             if (splitLines)
-                lines = CurrentDisplayLines.LinesWithSplitLines;
+                lines = _CurrentDisplayLines.LinesWithSplitLines;
             else
-                lines = CurrentDisplayLines.LinesNotSplit;
+                lines = _CurrentDisplayLines.LinesNotSplit;
 
             string htmlHeader = "<html><head>" + Themes.GetCss(comboBoxTheme.Text, pretty) + _script + "</head><body><table>";
 
@@ -325,7 +325,7 @@ namespace BasViewer.GUI
                 foreach (Token tok in BasToolsEngine.WalkTagged(line.LineBody))
                 {
                     if (tok.tag == null)
-                        lineBody.Append(tok.value.Replace(" ", "&nbsp;")); // Necessary?
+                        lineBody.Append(tok.value); // .Replace(" ", "&nbsp;") necessary?
                     else
                     {
                         if (IsDef && (tok.tag == SemanticTags.FunctionName || tok.tag == SemanticTags.ProcName))
@@ -612,7 +612,7 @@ namespace BasViewer.GUI
                 if (opts.flgTextSearch)
                 {
                     if (sym.Name.Contains(term, matchCase))
-                        getTextMatches(sym, term, opts, matches, splitlines ? CurrentDisplayLines.LinesWithSplitLines : CurrentDisplayLines.LinesNotSplit);
+                        getTextMatches(sym, term, opts, matches, splitlines ? _CurrentDisplayLines.LinesWithSplitLines : _CurrentDisplayLines.LinesNotSplit);
                 }
                 else
                 {
@@ -622,7 +622,7 @@ namespace BasViewer.GUI
                     if (found)
                     {
                         //MessageBox.Show("Matched!");
-                        getMatches(sym, matches, splitlines ? CurrentDisplayLines.LinesWithSplitLines : CurrentDisplayLines.LinesNotSplit);
+                        getMatches(sym, matches, splitlines ? _CurrentDisplayLines.LinesWithSplitLines : _CurrentDisplayLines.LinesNotSplit);
                     }
                 }
             }

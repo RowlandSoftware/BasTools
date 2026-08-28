@@ -194,11 +194,41 @@ namespace BasTools.Core
         }
         internal void ProcessLineBody(ParserState parserState, byte[] tokenisedLine, ProgramLine returnObject, ProgInfo progInfo, bool NotBasicV)
         {
+            prePass(tokenisedLine, progInfo);   // identify 6502, Arm, Z80 assembler
+
             firstPass(parserState, tokenisedLine, returnObject, progInfo, NotBasicV);
 
-            secondPass(returnObject); // for 'implied THEN'
+            secondPass(returnObject);           // for 'implied THEN'
 
-            thirdPass(returnObject);  // detect = as Comparison Operator for assignment/reference in BasAnalysis
+            thirdPass(returnObject);            // detect = as Comparison Operator for assignment/reference in BasAnalysis
+        }
+        private void prePass(byte[] tokenisedLine, ProgInfo progInfo)
+        {
+            bool quote = false;
+            bool rem = false;
+            bool startOfStatement = true;
+            bool InAsm = false;
+            bool asmComment = false;
+
+            for (int i = 0; i <= tokenisedLine.Length - 1; i++)
+            {
+                byte curbyte = tokenisedLine[i];
+                char curchar = (char)curbyte;
+                char nxtchar = (i == tokenisedLine.Length - 1) ? '\0' : (char)tokenisedLine[i + 1];
+
+                if (startOfStatement && curbyte == '[')
+                    InAsm = true;
+
+                if (startOfStatement && curbyte == ']')
+                    InAsm = false;
+
+                // deal with quotes
+                if (curbyte == 34 && !rem)
+                {
+                    quote = !quote;
+                    continue;
+                }
+            }
         }
         private void firstPass(ParserState parserState, byte[] tokenisedLine, ProgramLine returnObject, ProgInfo progInfo, bool NotBasicV)
         {

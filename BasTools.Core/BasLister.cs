@@ -270,6 +270,7 @@ namespace BasTools.Core
             }
         }
         // ******** Make List of tagged program lines ********
+        // BasViewer only at the moment so more complicated than needed. Perhaps replace BasLister code this is copied from?
         public static DisplayLines PrepLinesForDisplay(Listing formattedListing, ListerOptions switches, ProgInfo progInfo)
         {
             List<DisplayLine> output_notsplit = new();
@@ -297,27 +298,28 @@ namespace BasTools.Core
 
                     if (shouldPrint)
                     {
-                        // See whether the line has sections
-                        List<string> SectionList = SplitStatements(progline.TaggedLine).ToList();
-
-                        // create a DisplayLine, whether we use it or not
+                        // create a DisplayLine using FormattedTagged and FormattedPlain
                         DisplayLine displayLine1 = new(progline.LineNumber)
                         {
                             sLineNumber = progline.FormattedLineNumber.Trim(),
                             Indent = progline.IndentLevel,
                             IsDef = progline.IsDef,
                             IsInDef = progline.IsInDef,
-                            LineBody = progline.FormattedTagged.TrimStart(),
+                            LineBody = progline.FormattedTagged.TrimStart(), // TrimStart() is unnecessary
                             PlainLine = progline.FormattedPlain.Trim(),
                             Id = progline.LineNumber.ToString() + "_0"
                         };
+
                         displayLine1.SetDefIndent(progline.DefIndent > 0);
 
-                        output_notsplit.Add(displayLine1);
+                        output_notsplit.Add(displayLine1); // Add to 'notsplit'
+
+                        // See whether the line has sections
+                        List<string> SectionList = SplitStatements(progline.TaggedLine).ToList(); // split using TaggedLine, not FormattedTagged
 
                         if (SectionList.Count == 1)
                         {
-                            output_splitlines.Add(displayLine1);
+                            output_splitlines.Add(displayLine1); // and to splitlines if no sections
                         }
                         else // SplitLines
                         {
@@ -331,7 +333,7 @@ namespace BasTools.Core
                             {
                                 ProgramLine line = new(progline); // clone needed properties
                                 line.TaggedLine = taggedSection;
-                                
+
                                 sections.Lines.Add(line);
                             }
 
