@@ -16,7 +16,8 @@
     <Description>Display BBC Basic programs
 * Supports Acorn, Z80 and text formats
 * Powerful search and analysis functions
-* Configurable display including syntax colouring, indenting and split apart lines</Description>
+* Configurable display including syntax colouring, indenting and split apart lines
+* Folding, semantic search and more.</Description>
     <PackageIcon>RS_lg.ico</PackageIcon>
   </PropertyGroup>
 

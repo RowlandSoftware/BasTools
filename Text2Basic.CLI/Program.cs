@@ -66,21 +66,28 @@ namespace Text2Basic.CLI
             // Show message
             Console.Error.WriteLine("Processing, please wait...");
 
-            if (!engine.LoadAndTokeniseFile(switches, progInfo))
+            try
             {
-                Console.Error.WriteLine($"\nError: Not a text file.\n  '{Path.GetFileNameWithoutExtension(switches.inputfile)}' is already tokenised.");
-                return;
-            }
-            Console.Error.WriteLine($"{engine.CurrentListing.Lines.Count} lines processed");
+                if (!engine.LoadAndTokeniseFile(switches, progInfo))
+                {
+                    Console.Error.WriteLine($"\nError: Not a text file.\n  '{Path.GetFileNameWithoutExtension(switches.inputfile)}' is already tokenised.");
+                    return;
+                }
+                Console.Error.WriteLine($"{engine.CurrentListing.Lines.Count} lines processed");
 
-            if (switches.list || switches.blist)
-            {
-                Utilities.ListProg(engine, switches.listargs, switches.blist);
-                //BasAnalysis.CLI.Utilities.List(engine, 0, 0xFEFF, 20, switches.blist); // TODO
+                if (switches.list || switches.blist)
+                {
+                    Utilities.ListProg(engine, switches.listargs, switches.blist);
+                    //BasAnalysis.CLI.Utilities.List(engine, 0, 0xFEFF, 20, switches.blist); // TODO
+                }
+                if (switches.save)
+                {
+                    savefile(switches, engine);
+                }
             }
-            if (switches.save)
+            catch (Exception ex)
             {
-                savefile(switches, engine);
+                Console.Error.WriteLine("\nAn error has occurred\n  "+ex.Message+ "\n  "+ex.InnerException.Message);
             }
         }
         static void readCommandSwitches(string[] args, TokeniserCommandSwitches switches)

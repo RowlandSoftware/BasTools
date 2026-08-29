@@ -325,7 +325,7 @@ namespace BasViewer.GUI
                 foreach (Token tok in BasToolsEngine.WalkTagged(line.LineBody))
                 {
                     if (tok.tag == null)
-                        lineBody.Append(tok.value); // .Replace(" ", "&nbsp;") necessary?
+                        lineBody.Append(tok.value);
                     else
                     {
                         if (IsDef && (tok.tag == SemanticTags.FunctionName || tok.tag == SemanticTags.ProcName))

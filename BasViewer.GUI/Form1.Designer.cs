@@ -407,7 +407,7 @@
         private Label label1;
         private ContextMenuStrip contextMenuStrip1;
         private ToolStripMenuItem dragFileToLoadToolStripMenuItem;
-        private ToolStripMenuItem advancedSearchMenuItem;
+        //private ToolStripMenuItem advancedSearchMenuItem;
         private ToolStripMenuItem aboutToolStripMenuItem;
         private ToolStripMenuItem advancedSearchToolStripMenuItem;
         private ToolStripMenuItem gotoLineToolStripMenuItem;

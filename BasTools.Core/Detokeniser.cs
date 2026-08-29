@@ -105,18 +105,27 @@ namespace BasTools.Core
             }
             #endregion
             progInfo.Z80 = State.Z80;
-            //Console.WriteLine($"Format {progInfo.BasicDialect} detected");
 
             // Split the file into lines
-            foreach (LineRecord progline in ParseLines(State.Data, progInfo)) // LineRecord is a temporary structure to hold int linenumber, byte[] lineContent here only
+            List<LineRecord> rawLines = ParseLines(State.Data, progInfo).ToList();
+
+            // Pre-pass - identify assembler type
+            
+            //DBG($"DetectAssemblerBlocks ({rawLines.Count} lines)");
+            List<AsmBlock> asmBlocks = DetectAssemblerBlocks(rawLines); // identify assembler
+            
+            //DBG($"asmDialects ({asmBlocks.Count} blocks)");
+            Dictionary<int, AsmDialect> asmDialects = DetectAssemblerDialects(rawLines, asmBlocks); // identify 6502, Arm, Z80 assembler
+
+            foreach (LineRecord progline in rawLines) // LineRecord is a temporary structure to hold int linenumber, byte[] lineContent here only
             {
-                ProgramLine thisline = new();                                 // This is where our ProgramLine object is created, to be added to the List listing
+                ProgramLine thisline = new();                            // This is where our ProgramLine object is created, to be added to the List listing
                 thisline.LineNumber = progline.linenumber;
-                thisline.TokenisedLine = progline.lineContent.ToArray();      // Because we need to _copy_ the array
+                thisline.TokenisedLine = progline.lineContent.ToArray(); // Because we need to _copy_ the array
 
                 // Line contents
 
-                ProcessLineBody(State, thisline.TokenisedLine, thisline, progInfo, NotBasicV);
+                ProcessLineBody(State, thisline, asmBlocks, asmDialects, progInfo, NotBasicV);
 
                 listing.Lines.Add(thisline);
 
@@ -192,49 +201,222 @@ namespace BasTools.Core
                 yield return new LineRecord(lineNumber, slice);
             }
         }
-        internal void ProcessLineBody(ParserState parserState, byte[] tokenisedLine, ProgramLine returnObject, ProgInfo progInfo, bool NotBasicV)
+        internal void ProcessLineBody(ParserState parserState, ProgramLine thisLine,
+                                        List<AsmBlock> asmBlocks, Dictionary<int, AsmDialect> asmDialects,
+                                        ProgInfo progInfo, bool NotBasicV)
         {
-            prePass(tokenisedLine, progInfo);   // identify 6502, Arm, Z80 assembler
+            firstPass(parserState, thisLine, asmBlocks, asmDialects, progInfo, NotBasicV);
 
-            firstPass(parserState, tokenisedLine, returnObject, progInfo, NotBasicV);
+            secondPass(thisLine);           // for 'implied THEN'
 
-            secondPass(returnObject);           // for 'implied THEN'
-
-            thirdPass(returnObject);            // detect = as Comparison Operator for assignment/reference in BasAnalysis
+            thirdPass(thisLine);            // detect = as Comparison Operator for assignment/reference in BasAnalysis
         }
-        private void prePass(byte[] tokenisedLine, ProgInfo progInfo)
+        private static List<AsmBlock> DetectAssemblerBlocks(List<LineRecord> rawLines)
         {
-            bool quote = false;
-            bool rem = false;
-            bool startOfStatement = true;
-            bool InAsm = false;
-            bool asmComment = false;
+            var blocks = new List<AsmBlock>();
 
-            for (int i = 0; i <= tokenisedLine.Length - 1; i++)
+            bool inAsm = false;
+            int asmStart = -1;
+
+            foreach (var lr in rawLines)
             {
-                byte curbyte = tokenisedLine[i];
-                char curchar = (char)curbyte;
-                char nxtchar = (i == tokenisedLine.Length - 1) ? '\0' : (char)tokenisedLine[i + 1];
+                var data = lr.lineContent;
+                int len = data.Length;
+                bool IsStartOfStatement = true;
 
-                if (startOfStatement && curbyte == '[')
-                    InAsm = true;
-
-                if (startOfStatement && curbyte == ']')
-                    InAsm = false;
-
-                // deal with quotes
-                if (curbyte == 34 && !rem)
+                // Scan the raw tokenised bytes
+                for (int i = 0; i < len; i++)
                 {
-                    quote = !quote;
-                    continue;
+                    byte b = data[i];
+
+                    // skip spaces
+                    if (b == (byte)' ')
+                    {
+                        continue; // test next byte
+                    }
+
+                    // --- quoted string detection ---
+                    if (b == (byte)'"')
+                    {
+                        i++; // skip opening quote
+                        while (i < len && data[i] != (byte)'"')
+                        {                            
+                            i++;
+                        }
+                        continue; // resume scanning after the string
+                    }
+
+                    // --- REM detection ---
+                    if (data[i] == 0xF4)
+                    {
+                        break; // ignore whole line
+                    }
+
+                    // --- assembler block start ---
+                    // Only valid at statement start: '[' must be first non-space token
+                    if (!inAsm && IsStartOfStatement && b == (byte)'[')
+                    {
+                        inAsm = true;
+                        asmStart = lr.linenumber;
+                        continue;   // there could be an end-of-block on the same line
+                    }
+
+                    // --- assembler comment detection ---
+                    if (inAsm && IsStartOfStatement && (char)b is ';' or '\\' or '\'')
+                    {
+                        // skip until next unquoted colon or end of line
+                        i++;
+                        while (i < len)
+                        {
+                            if (data[i] == (byte)'"')
+                            {
+                                // skip quoted string inside comment
+                                i++;
+                                while (i < len && data[i] != (byte)'"')
+                                    i++;
+                                if (i < len) i++; // skip closing quote
+                                continue;
+                            }
+
+                            if (data[i] == (byte)':')
+                            {
+                                // colon ends the comment and starts a new statement
+                                IsStartOfStatement = true;
+                                break;
+                            }
+
+                            i++;
+                        }
+                        continue; // resume scanning after comment
+                    }
+
+                    // --- assembler block end ---
+                    if (inAsm && IsStartOfStatement && b == (byte)']')
+                    {
+                        blocks.Add(new AsmBlock(asmStart, lr.linenumber));
+                        inAsm = false;
+                        asmStart = -1;
+                        continue;   // there could be another block on the same line
+                    }
+                    if (b == (byte)':')
+                    {
+                        IsStartOfStatement = true;
+                        continue;
+                    }
+
+                    // anything else = not StartOfStatement
+                    IsStartOfStatement = false;
                 }
             }
+
+            return blocks;
         }
-        private void firstPass(ParserState parserState, byte[] tokenisedLine, ProgramLine returnObject, ProgInfo progInfo, bool NotBasicV)
+        private Dictionary<int, AsmDialect> DetectAssemblerDialects(List<LineRecord> rawLines, List<AsmBlock> asmBlocks)
+        {
+            var result = new Dictionary<int, AsmDialect>();
+
+            foreach (var block in asmBlocks)
+            {
+                int armHits = 0;
+                int m6502Hits = 0;
+                int z80Hits = 0;
+
+                // Extract raw lines for this block
+                foreach (var lr in rawLines)
+                {
+                    if (lr.linenumber < block.StartLine || lr.linenumber > block.EndLine)
+                        continue;
+
+                    var data = lr.lineContent;
+                    int len = data.Length;
+
+                    // Lightweight token scan
+                    for (int i = 0; i < len; i++)
+                    {
+                        byte b = data[i];
+
+                        // Skip spaces
+                        if (b == (byte)' ')
+                            continue;
+
+                        // Skip quoted strings
+                        if (b == (byte)'"')
+                        {
+                            i++;
+                            while (i < len && data[i] != (byte)'"')
+                                i++;
+                            if (i < len) i++;
+                            continue;
+                        }
+
+                        // Skip assembler comments (;, \, ')
+                        if (b == ';' || b == '\\' || b == '\'')
+                        {
+                            i++;
+                            while (i < len && data[i] != (byte)':')
+                            {
+                                // skip quoted strings inside comments
+                                if (data[i] == (byte)'"')
+                                {
+                                    i++;
+                                    while (i < len && data[i] != (byte)'"')
+                                        i++;
+                                    if (i < len) i++;
+                                    continue;
+                                }
+                                i++;
+                            }
+                            continue;
+                        }
+
+                        // Skip REM
+                        if (b == 0xF4)
+                            break;
+
+                        // Now we are at a token start
+                        // Extract a token (simple ASCII scan)
+                        int start = i;
+                        while (i < len && data[i] > ' ' && data[i] != ':' && data[i] != '[' && data[i] != ']')
+                            i++;
+
+                        string token = Encoding.ASCII.GetString(data, start, i - start).ToUpperInvariant();
+                        // Count hits
+                        if (ArmMnemonics.Contains(token))
+                            armHits++;
+
+                        if (Mnemonics6502.Contains(token))
+                            m6502Hits++;
+
+                        if (Z80Mnemonics.Contains(token))
+                            z80Hits++;
+                    }
+                }
+
+                // Decide dialect: max hits wins
+                AsmDialect dialect =
+                    (armHits, m6502Hits, z80Hits) switch
+                    {
+                        var (a, m, z) when a > m && a > z => AsmDialect.ARM,
+                        var (a, m, z) when m > a && m > z => AsmDialect.M6502,
+                        var (a, m, z) when z > a && z > m => AsmDialect.Z80,
+                        _ => AsmDialect.M6502 // fallback (safe default)
+                    };
+                //DBG($"Dialect = {dialect}");
+                // Assign dialect to all lines in block
+                for (int ln = block.StartLine; ln <= block.EndLine; ln++)
+                    result[ln] = dialect;
+            }
+
+            return result;
+        }
+        private void firstPass(ParserState parserState, ProgramLine returnObject,
+                                List<AsmBlock> asmBlocks, Dictionary<int, AsmDialect> asmDialects,
+                                ProgInfo progInfo, bool NotBasicV)
         {
             string plainline = string.Empty;
             string linenospaces = string.Empty;
             string taggedline = string.Empty;
+            byte[] tokenisedLine = returnObject.TokenisedLine;
 
             bool quote = false;
             bool rem = false;
@@ -310,6 +492,7 @@ namespace BasTools.Core
                         tag: SemanticTags.BinaryNumber,
                         ref plainline, ref linenospaces, ref taggedline))
                         {
+                            startOfStatement = false;
                             continue;
                         }
                     }
@@ -403,20 +586,29 @@ namespace BasTools.Core
 
                             if (possibleMnemonic != string.Empty)
                             {
+                                if (asmDialects.TryGetValue(returnObject.LineNumber, out var dialect))
+                                {
+                                    returnObject.InAsm = true;
+                                    returnObject.IsArm = dialect == AsmDialect.ARM;
+                                    returnObject.IsZ80 = dialect == AsmDialect.Z80;
+                                }
+
                                 bool isMnemonic;
-                                if (progInfo.BasicV && !NotBasicV)
+                                if (returnObject.IsArm) // (progInfo.BasicV && !NotBasicV)
                                 {
                                     isMnemonic = ArmMnemonics.Contains(possibleMnemonic.ToUpperInvariant()) ||
                                         Regex.IsMatch(possibleMnemonic, "EQU[BDSW]", RegexOptions.IgnoreCase) ||
                                         Regex.IsMatch(possibleMnemonic, "EQUF[DES]", RegexOptions.IgnoreCase);
                                 }
-                                else if (progInfo.Z80)
+                                else if (returnObject.IsZ80) // (progInfo.Z80)
                                 {
-                                    isMnemonic = Z80Mnemonics.Contains(possibleMnemonic.ToUpperInvariant()) || Regex.IsMatch(possibleMnemonic, "EQU[BDSWQ]", RegexOptions.IgnoreCase);
+                                    isMnemonic = Z80Mnemonics.Contains(possibleMnemonic.ToUpperInvariant()) ||
+                                        Regex.IsMatch(possibleMnemonic, "EQU[BDSWQ]", RegexOptions.IgnoreCase);
                                 }
                                 else
                                 {
-                                    isMnemonic = Mnemonics6502.Contains(possibleMnemonic.ToUpperInvariant()) || Regex.IsMatch(possibleMnemonic, "EQU[BDSW]", RegexOptions.IgnoreCase);
+                                    isMnemonic = Mnemonics6502.Contains(possibleMnemonic.ToUpperInvariant()) ||
+                                        Regex.IsMatch(possibleMnemonic, "EQU[BDSW]", RegexOptions.IgnoreCase);
                                 }
                                 if (isMnemonic)
                                 {
@@ -431,7 +623,7 @@ namespace BasTools.Core
                                     prevbyte = (byte)plainline[^1];
                                     continue;
                                 }
-                                if (progInfo.BasicV && !NotBasicV)
+                                if (returnObject.IsArm) // (progInfo.BasicV && !NotBasicV)
                                 {
                                     // ARM registers: Detect tokens like R0, R12, SP, LR, PC
                                     char uchar = char.ToUpperInvariant(curchar);
@@ -457,7 +649,7 @@ namespace BasTools.Core
                                         }
                                     }
                                 }
-                                else if (progInfo.Z80)
+                                else if (returnObject.IsZ80) // (progInfo.Z80)
                                 {
                                     // Z80 registers: A, B, C, D, E, H, L,
                                     // AF, BC, DE, HL,

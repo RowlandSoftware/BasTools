@@ -21,21 +21,25 @@ namespace BasViewer.GUI
         }
 
         #region Assembly Attribute Accessors
-
         public string AssemblyTitle
         {
             get
             {
-                object[] attributes = Assembly.GetExecutingAssembly().GetCustomAttributes(typeof(AssemblyTitleAttribute), false);
-                if (attributes.Length > 0)
-                {
-                    AssemblyTitleAttribute titleAttribute = (AssemblyTitleAttribute)attributes[0];
-                    if (titleAttribute.Title != "")
-                    {
-                        return titleAttribute.Title;
-                    }
-                }
-                return System.IO.Path.GetFileNameWithoutExtension(Assembly.GetExecutingAssembly().CodeBase);
+                var asm = Assembly.GetExecutingAssembly();
+
+                // Try the attribute first
+                var attr = asm.GetCustomAttribute<AssemblyTitleAttribute>();
+                if (attr != null && !string.IsNullOrWhiteSpace(attr.Title))
+                    return attr.Title;
+
+                // Fallback: use Location (modern replacement for CodeBase)
+                var path = asm.Location;
+
+                // In single-file publish, Location is empty → use BaseDirectory
+                if (string.IsNullOrEmpty(path))
+                    path = AppContext.BaseDirectory;
+
+                return Path.GetFileNameWithoutExtension(path);
             }
         }
 

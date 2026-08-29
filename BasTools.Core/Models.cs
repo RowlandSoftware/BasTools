@@ -43,6 +43,10 @@ namespace BasTools.Core
         }
     }
 
+    //****************** Assembler *******************
+    enum AsmDialect { M6502, ARM, Z80, x86 }
+    record AsmBlock(int StartLine, int EndLine);
+
     //***************** SemanticTags *****************
     public static class SemanticTags
     {

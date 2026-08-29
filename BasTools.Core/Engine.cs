@@ -63,31 +63,36 @@
             Listing listing = new(new List<ProgramLine>());
             try
             {
-                // determine file type (Acorn or Z80)
+                // TEMP LOAD FILE - check for already tokenised
+                string fn = Path.GetFileName(switches.inputfile);
                 byte[] raw = File.ReadAllBytes(switches.inputfile);
 
+                // determine file type(Acorn or Z80)
                 if (raw.Length > 3)
                 {
                     int ll = raw[3];
                     if (raw[0] == 13 && raw[ll] == 13)
                     {
-                        return false; // Acorn format tokenised file
+                        //return false; // Acorn format tokenised file
+                        throw new BasToolsException("\'" + fn + "\' is already a tokenised BASIC program");
                     }
                     else
                     {
                         ll = raw[0];
                         if (raw[ll - 1] == 13)
                         {
-                            return false; // Z80 tokenised file
-                            //throw new BasToolsException("\'" + fn + "\' is already a BASIC program");
+                            //return false; // Z80 tokenised file
+                            throw new BasToolsException("\'" + fn + "\' is already a tokenised BASIC program");
                         }
                     }
                 }
 
+                // LOAD FILE
                 string[] lines = Tokeniser.ReadLines(switches.inputfile);
                 TokeniserState State = new();
                 int FakeLineNum = 0;
 
+                // TOKENISE
                 foreach (string textline in lines)
                 {
                     ProgramLine result = ProgramLineFromText(textline, false, false, State, ref FakeLineNum);
@@ -96,6 +101,7 @@
                     //Console.WriteLine();
                 }
 
+                // FORMAT
                 FormattingOptions formatOptions = new FormattingOptions(true);
                 if (FormatProgram(listing, formatOptions, progInfo))
                 {
@@ -127,7 +133,10 @@
             // Second pass - detokenise and tag
             ParserState parserState = new();
             ProgInfo progInfo = new(Z80, false, "NA");
-            ProcessLineBody(parserState, ProgLine.TokenisedLine, ProgLine, progInfo, false);
+
+            List<AsmBlock> asmBlocks = new();
+            Dictionary<int, AsmDialect> asmDialects = new();
+            ProcessLineBody(parserState, ProgLine, asmBlocks, asmDialects, progInfo, false); // todo
 
             //Console.WriteLine(ProgLine.TaggedLine);
 
