@@ -423,6 +423,14 @@ namespace BasTools.Core
                             copyByte(ref i, bytes, output);
                         }
                         break;
+                    case SemanticTags.RemText:
+                    case SemanticTags.AssemblerComment:
+                    case SemanticTags.StringLiteral:
+                        for (int j = 0; j < tok.value.Length; j++)
+                        {
+                            copyByte(ref i, bytes, output);
+                        }
+                        break;
                     case null:
                         // skip spaces, copy other non-tagged characters e.g. ~ in PRINT
                         for (int j = 0; j < tok.value.Length; j++)

@@ -7,6 +7,7 @@
     using System.Runtime;
     using System.Text;
     using System.Text.RegularExpressions;
+    using static System.Net.Mime.MediaTypeNames;
 
     //***************** Exceptions *****************
     public class BasToolsException : Exception
@@ -64,7 +65,7 @@
             try
             {
                 // TEMP LOAD FILE - check for already tokenised
-                string fn = Path.GetFileName(switches.inputfile);
+                string fn = Path.GetFileName(switches.inputfile); // filename & ext only
                 byte[] raw = File.ReadAllBytes(switches.inputfile);
 
                 // determine file type(Acorn or Z80)
@@ -92,13 +93,20 @@
                 TokeniserState State = new();
                 int FakeLineNum = 0;
 
+                // IDENTIFY ASSEMBLER BLOCKS
+                //  1. Convert into list
+                List<LineRecord> list = ParseTextLines(lines);
+                //  2. Identify
+                List<AsmBlock> asmBlocks = DetectAssemblerBlocks(list);
+                Dictionary<int, AsmDialect> asmDialects = DetectAssemblerDialects(list, asmBlocks);
+
                 // TOKENISE
+                ParserState parserState = new();
+
                 foreach (string textline in lines)
                 {
-                    ProgramLine result = ProgramLineFromText(textline, false, false, State, ref FakeLineNum);
+                    ProgramLine result = ProgramLineFromText(textline, parserState, progInfo, asmBlocks, asmDialects, false, false, State, ref FakeLineNum);
                     listing.Lines.Add(result);
-                    //Console.Write($"{result.LineNumber} "); WriteTokenisedLine(result.TokenisedLine);
-                    //Console.WriteLine();
                 }
 
                 // FORMAT
@@ -121,31 +129,40 @@
                 //return false;
             }
         }
-        public ProgramLine ProgramLineFromText(string text, bool Z80, bool SkipSpaces, TokeniserState State, ref int FakeLineNum)
+        public ProgramLine ProgramLineFromText(string text, ParserState parserState, ProgInfo progInfo, List<AsmBlock> asmBlocks, Dictionary<int, AsmDialect> asmDialects,
+                                                bool Z80, bool SkipSpaces, TokeniserState State, ref int FakeLineNum)
         {
             ProgramLine ProgLine = new();
 
-            // First pass
+            // --- First pass ---
             ProgLine.PlainDetokenisedLine = text;
             ProgLine.TokenisedLine = Tokeniser.TokeniseLine(text, Z80, SkipSpaces, State, this, out int linenum, ref FakeLineNum);
             ProgLine.LineNumber = linenum;
 
-            // Second pass - detokenise and tag
-            ParserState parserState = new();
-            ProgInfo progInfo = new(Z80, false, "NA");
+            // --- Second pass - detokenise and tag ---
+            ProcessLineBody(parserState, ProgLine, asmBlocks, asmDialects, progInfo, false);
 
-            List<AsmBlock> asmBlocks = new();
-            Dictionary<int, AsmDialect> asmDialects = new();
-            ProcessLineBody(parserState, ProgLine, asmBlocks, asmDialects, progInfo, false); // todo
+            if (ProgLine.LineNumber == 1720)
+                Console.WriteLine(ProgLine.TaggedLine);
 
-            //Console.WriteLine(ProgLine.TaggedLine);
-
-            // Third pass - compact tokenised line, inserting implied THEN as required
+            // --- Fourth pass - compact tokenised line, inserting implied THEN as required ---
             ProgLine.TokenisedLine = Tokeniser.NormaliseTokenised(ProgLine, this);
 
             return ProgLine;
         }
+        static List<LineRecord> ParseTextLines(string[] lines)
+        {
+            List<LineRecord> result = new();
+            int FakeLineNum = 0;
 
+            foreach (string line in lines)
+            {
+                string sline = line;
+                int num = ParseNumber(ref sline, ref FakeLineNum);
+                result.Add(new LineRecord(num, Encoding.Latin1.GetBytes(sline)));
+            }
+            return result;
+        }
         public void Analyse(BasToolsEngine engine, ref bool analyzed)
         {
             Symbols.Clear();
@@ -252,6 +269,32 @@
                 if (tok.tag == tag) return tok.value;
             }
             return null;
+        }
+        private static int ParseNumber(ref string line, ref int fakeNumber)
+        {
+            int i = 0;
+            line = line.Trim();
+            while (i < line.Length && char.IsDigit(line[i]))
+                i++;
+
+            if (i == 0)
+            {
+                // No leading digits at all — line numbers were stripped.
+                fakeNumber += 10;
+                return fakeNumber;
+            }
+
+            string digits = line.Substring(0, i);
+            line = line.Substring(i).Trim();
+
+            if (int.TryParse(digits, out int num))
+            {
+                fakeNumber = num; // keep fake numbering in step, in case later lines lack numbers too
+                return num;
+            }
+
+            fakeNumber += 10;
+            return fakeNumber;
         }
         static void DumpResourceNames()
         {

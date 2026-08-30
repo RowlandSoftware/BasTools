@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Security.Authentication;
 using System.Text;
 using System.Text.RegularExpressions;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace BasTools.Core
 {
@@ -117,11 +118,11 @@ namespace BasTools.Core
             //DBG($"asmDialects ({asmBlocks.Count} blocks)");
             Dictionary<int, AsmDialect> asmDialects = DetectAssemblerDialects(rawLines, asmBlocks); // identify 6502, Arm, Z80 assembler
 
-            foreach (LineRecord progline in rawLines) // LineRecord is a temporary structure to hold int linenumber, byte[] lineContent here only
+            foreach (LineRecord progline in rawLines) // LineRecord is a temporary structure to hold int linenumber, byte[] lineContent
             {
                 ProgramLine thisline = new();                            // This is where our ProgramLine object is created, to be added to the List listing
-                thisline.LineNumber = progline.linenumber;
-                thisline.TokenisedLine = progline.lineContent.ToArray(); // Because we need to _copy_ the array
+                thisline.LineNumber = progline.LineNumber;
+                thisline.TokenisedLine = progline.LineContent.ToArray(); // Because we need to _copy_ the array
 
                 // Line contents
 
@@ -220,7 +221,7 @@ namespace BasTools.Core
 
             foreach (var lr in rawLines)
             {
-                var data = lr.lineContent;
+                var data = lr.LineContent;
                 int len = data.Length;
                 bool IsStartOfStatement = true;
 
@@ -249,7 +250,7 @@ namespace BasTools.Core
                     // --- REM detection ---
                     if (data[i] == 0xF4)
                     {
-                        break; // ignore whole line
+                        break; // ignore whole line - problem if REM in assembler? (Later RiscOS only, I think)
                     }
 
                     // --- assembler block start ---
@@ -257,12 +258,12 @@ namespace BasTools.Core
                     if (!inAsm && IsStartOfStatement && b == (byte)'[')
                     {
                         inAsm = true;
-                        asmStart = lr.linenumber;
+                        asmStart = lr.LineNumber;
                         continue;   // there could be an end-of-block on the same line
                     }
 
                     // --- assembler comment detection ---
-                    if (inAsm && IsStartOfStatement && (char)b is ';' or '\\' or '\'')
+                    if (inAsm && IsStartOfStatement && (char)b is ';' or '\\' or '\'' or '\x00F4')
                     {
                         // skip until next unquoted colon or end of line
                         i++;
@@ -293,7 +294,7 @@ namespace BasTools.Core
                     // --- assembler block end ---
                     if (inAsm && IsStartOfStatement && b == (byte)']')
                     {
-                        blocks.Add(new AsmBlock(asmStart, lr.linenumber));
+                        blocks.Add(new AsmBlock(asmStart, lr.LineNumber));
                         inAsm = false;
                         asmStart = -1;
                         continue;   // there could be another block on the same line
@@ -324,10 +325,10 @@ namespace BasTools.Core
                 // Extract raw lines for this block
                 foreach (var lr in rawLines)
                 {
-                    if (lr.linenumber < block.StartLine || lr.linenumber > block.EndLine)
+                    if (lr.LineNumber < block.StartLine || lr.LineNumber > block.EndLine)
                         continue;
 
-                    var data = lr.lineContent;
+                    var data = lr.LineContent;
                     int len = data.Length;
 
                     // Lightweight token scan
@@ -350,7 +351,7 @@ namespace BasTools.Core
                         }
 
                         // Skip assembler comments (;, \, ')
-                        if (b == ';' || b == '\\' || b == '\'')
+                        if ((char)b is ';' or '\\' or '\'' or '\x00F4')
                         {
                             i++;
                             while (i < len && data[i] != (byte)':')
@@ -528,9 +529,8 @@ namespace BasTools.Core
                         closeTag = true;
                     }
                     // Operators (+ - * / >> etc)
-                    if (LexOperator(tokenisedLine, ref i,
-                    ref plainline, ref linenospaces, ref taggedline,
-                    parserState))
+                    if (LexOperator(tokenisedLine, ref i, ref plainline,
+                                    ref linenospaces, ref taggedline, parserState))
                     {
                         continue;
                     }
@@ -550,10 +550,9 @@ namespace BasTools.Core
                     }
                 }
                 #region Assembler
-                //if (parserState.InAsm) Console.WriteLine("In asm");
                 if (parserState.InAsm && !quote)
                 {
-                    if (!asmComment && curchar is '\\' or ';' or '\'')
+                    if (!asmComment && curchar is '\\' or ';' or '\'' or '\x00F4')
                     {
                         asmComment = true;
                         rem = true;

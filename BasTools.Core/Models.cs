@@ -44,8 +44,8 @@ namespace BasTools.Core
     }
 
     //****************** Assembler *******************
-    enum AsmDialect { M6502, ARM, Z80, x86 }
-    record AsmBlock(int StartLine, int EndLine);
+    public enum AsmDialect { M6502, ARM, Z80, x86 }
+    public record AsmBlock(int StartLine, int EndLine);
 
     //***************** SemanticTags *****************
     public static class SemanticTags
@@ -148,8 +148,8 @@ namespace BasTools.Core
     public record Listing(List<ProgramLine> Lines);
 
     internal record LineRecord(
-        int linenumber,
-        byte[] lineContent
+        int LineNumber,
+        byte[] LineContent
     );
     public record DisplayLines(
         List<DisplayLine> LinesNotSplit,
@@ -187,7 +187,7 @@ namespace BasTools.Core
     );
 
     //***************** ParserState used by Detokeniser *****************
-    internal class ParserState
+    public class ParserState
     {
         public byte[] Data;
         public int Ptr;

@@ -49,7 +49,12 @@ namespace Text2Basic.CLI
                         userinput = userinput.Replace('£', '`');
 
                         int dummy = 0;
-                        ProgramLine result = engine.ProgramLineFromText(userinput, false, false, State, ref dummy);
+                        // leave these empty - we don't attempt to identify assembler in the harness
+                        List<AsmBlock> asmBlocks = new();
+                        Dictionary<int, AsmDialect> asmDialects = new();
+                        ParserState pstate = new();
+
+                        ProgramLine result = engine.ProgramLineFromText(userinput, pstate, progInfo, asmBlocks, asmDialects, false, false, State, ref dummy);
                         WriteTokenisedLine(result.TokenisedLine);
                     }
                 }
@@ -61,6 +66,7 @@ namespace Text2Basic.CLI
             TokeniserCommandSwitches switches = new();
 
             //******** readCommandSwitches ********
+
             readCommandSwitches(args, switches);
 
             // Show message
@@ -70,6 +76,7 @@ namespace Text2Basic.CLI
             {
                 if (!engine.LoadAndTokeniseFile(switches, progInfo))
                 {
+                    // This doesn't arise because engine throws an error
                     Console.Error.WriteLine($"\nError: Not a text file.\n  '{Path.GetFileNameWithoutExtension(switches.inputfile)}' is already tokenised.");
                     return;
                 }
@@ -241,8 +248,8 @@ namespace Text2Basic.CLI
             }
             bw.Close();
         }
-        /************** Utilities ***************/
 
+        /************** Utilities ***************/
         private static void WriteTokenisedLine(byte[] result)
         {
             for (int i = 0; i < result.Length; i++)
