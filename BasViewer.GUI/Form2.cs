@@ -14,7 +14,7 @@ namespace BasViewer.GUI
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public BasToolsEngine? Engine { get; set; }
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public Action<string, SearchOptions>? RunSearch { get; set; }
+        public Action<string, SearchOpts>? RunSearch { get; set; }
         string tip = "Select category first, then choose the item";
         bool firstshowing = true;
 
@@ -47,7 +47,7 @@ namespace BasViewer.GUI
 
             string searchTerm = textsearch ? txtSearchString.Text : cmbBoxAdvSearch.SelectedItem.ToString();
 
-            SearchOptions opts = new();
+            SearchOpts opts = new();
 
             opts.flgRealVars = chkReal.Enabled && chkReal.Checked;
             opts.flgIntegers = chkInt.Enabled && chkInt.Checked;

@@ -22,20 +22,6 @@ using static System.Windows.Forms.LinkLabel;
 
 namespace BasViewer.GUI
 {
-    public record SearchOptions
-    {
-        public bool flgTextSearch { get; set; } = false;
-        public bool whole_word { get; set; } = false;
-        public bool match_case { get; set; } = false;
-        public bool flgRealVars { get; set; } = false;
-        public bool flgIntegers { get; set; } = false;
-        public bool flgStrings { get; set; } = false;
-        public bool flgProcs { get; set; } = false;
-        public bool flgFns { get; set; } = false;
-        public bool flgLiteralStrings { get; set; } = false;
-        public bool flgRemContains { get; set; } = false;
-        public bool flgStringContains { get; set; } = false;
-    }
     public partial class Form1 : Form
     {
         private readonly string[] _args;
@@ -579,7 +565,7 @@ namespace BasViewer.GUI
             public string? Text { get; set; }
             public SymbolKind Kind { get; set; }
         }
-        public void DoSearch(string term, SearchOptions opts)
+        public void DoSearch(string term, SearchOpts opts)
         {
             if (string.IsNullOrWhiteSpace(term))
                 return;
@@ -696,7 +682,7 @@ namespace BasViewer.GUI
                 }
             }
         }
-        public static void getTextMatches(SymbolInfo sym, string term, SearchOptions opts, List<SearchMatch> matches, IReadOnlyList<DisplayLine> displayLines)
+        public static void getTextMatches(SymbolInfo sym, string term, SearchOpts opts, List<SearchMatch> matches, IReadOnlyList<DisplayLine> displayLines)
         {
             // We know the term is contained (with case match), but have not checked if whole words
 
@@ -807,7 +793,7 @@ namespace BasViewer.GUI
             // Show navigator            
             panelSearchNav.Visible = true;
         }
-        private static bool MatchesKind(SymbolInfo sym, SearchOptions opts)
+        private static bool MatchesKind(SymbolInfo sym, SearchOpts opts)
         {
             switch (sym.Kind)
             {
@@ -1061,5 +1047,19 @@ namespace BasViewer.GUI
         {
             File.AppendAllText("search-debug.log", message + Environment.NewLine);
         }
+    }
+    public record SearchOpts
+    {
+        public bool flgTextSearch { get; set; } = false;
+        public bool whole_word { get; set; } = false;
+        public bool match_case { get; set; } = false;
+        public bool flgRealVars { get; set; } = false;
+        public bool flgIntegers { get; set; } = false;
+        public bool flgStrings { get; set; } = false;
+        public bool flgProcs { get; set; } = false;
+        public bool flgFns { get; set; } = false;
+        public bool flgLiteralStrings { get; set; } = false;
+        public bool flgRemContains { get; set; } = false;
+        public bool flgStringContains { get; set; } = false;
     }
 }

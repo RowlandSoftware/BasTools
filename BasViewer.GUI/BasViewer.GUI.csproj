@@ -57,4 +57,10 @@
     </None>
   </ItemGroup>
 
+<Target Name="DropWebView2Wpf" BeforeTargets="ResolveAssemblyReferences">
+  <ItemGroup>
+    <Reference Remove="@(Reference)" Condition="'%(Filename)' == 'Microsoft.Web.WebView2.Wpf'" />
+  </ItemGroup>
+</Target>
+
 </Project>
